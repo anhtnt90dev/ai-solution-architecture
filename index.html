@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Solution Architecture Knowledge System</title>
+  <meta name="description" content="Bilingual English/Vietnamese course and repository deep dives for production-grade AI solution architecture.">
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #566179;
+      --line: #d9e0ea;
+      --paper: #ffffff;
+      --soft: #f5f7fb;
+      --blue: #0a66c2;
+      --green: #047857;
+      --red: #c1121f;
+      --violet: #6d28d9;
+      --amber: #b45309;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.6;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      background: #fbfcff;
+    }
+
+    .wrap {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      min-height: 70px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--ink);
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      color: white;
+      background: var(--blue);
+      border-radius: 8px;
+      font-weight: 900;
+    }
+
+    .navlinks {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 14px;
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .hero {
+      padding: 64px 0 48px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--green);
+      font-size: 14px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 900px;
+      margin: 0;
+      font-size: clamp(40px, 7vw, 76px);
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 800px;
+      margin: 22px 0 0;
+      color: var(--muted);
+      font-size: 20px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      background: white;
+      font-weight: 750;
+    }
+
+    .button.primary {
+      color: white;
+      background: var(--blue);
+      border-color: var(--blue);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 36px;
+    }
+
+    .stat {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft);
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    section {
+      padding: 48px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: 32px;
+      letter-spacing: 0;
+    }
+
+    .section-lead {
+      max-width: 780px;
+      margin: 0 0 26px;
+      color: var(--muted);
+      font-size: 18px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      min-height: 180px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .tag {
+      display: inline-flex;
+      margin-bottom: 12px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      color: white;
+      background: var(--violet);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .tag.green { background: var(--green); }
+    .tag.red { background: var(--red); }
+    .tag.amber { background: var(--amber); }
+    .tag.blue { background: var(--blue); }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      align-items: start;
+    }
+
+    .panel {
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft);
+    }
+
+    .panel h3 {
+      margin-top: 0;
+    }
+
+    .diagram {
+      overflow-x: auto;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 15px;
+    }
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--soft);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    footer {
+      padding: 36px 0;
+      color: var(--muted);
+      background: #fbfcff;
+      font-size: 14px;
+    }
+
+    @media (max-width: 860px) {
+      .nav {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 16px 0;
+      }
+
+      .navlinks {
+        justify-content: flex-start;
+      }
+
+      .stats,
+      .grid,
+      .split {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        padding-top: 42px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap nav">
+      <a class="brand" href="./">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Primary navigation">
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/README.md">English</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/vi/README.md">Tieng Viet</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/curriculum.md">Curriculum</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture/tree/main/repo-architecture-docs">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Bilingual knowledge system</p>
+        <h1>Learn to design complete AI systems, not isolated model calls.</h1>
+        <p class="lead">
+          A course-style architecture guide synthesized from 17 AI repositories across agents, serving, training, RAG, evaluation, LLMOps, tools, and production governance.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/README.md">Start in English</a>
+          <a class="button" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/vi/README.md">Hoc bang tieng Viet</a>
+          <a class="button" href="https://github.com/anhtnt90dev/ai-solution-architecture/tree/main/repo-architecture-docs">Open repository deep dives</a>
+        </div>
+        <div class="stats">
+          <div class="stat"><strong>17</strong><span>repositories</span></div>
+          <div class="stat"><strong>6</strong><span>architecture domains</span></div>
+          <div class="stat"><strong>12</strong><span>lessons</span></div>
+          <div class="stat"><strong>34</strong><span>bilingual deep dives</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <h2>Architecture Map</h2>
+        <p class="section-lead">The course connects application control, model runtime, data retrieval, training, evaluation, tools, security, and production operations into one decision model.</p>
+        <div class="diagram">
+          <pre class="mermaid">
+flowchart LR
+  User[Users and workflows] --> App[AI app and agent architecture]
+  App --> Tools[Tools, MCP, platform gateway]
+  App --> RAG[RAG and vector data]
+  App --> Serving[Model serving and inference]
+  Training[Training and adaptation] --> Serving
+  Serving --> LLMOps[Observability, evaluation, LLMOps]
+  RAG --> LLMOps
+  Tools --> Governance[Security and governance]
+  LLMOps --> Governance
+  Governance --> Release[Production readiness]
+          </pre>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <h2>Six Domains</h2>
+        <p class="section-lead">Each domain includes English and Vietnamese learning material plus detailed repository-grounded notes.</p>
+        <div class="grid">
+          <article class="card">
+            <span class="tag blue">01</span>
+            <h3>AI App / Agent Architecture</h3>
+            <p>Agent loops, workflow graphs, handoffs, memory, tools, multi-agent boundaries, and retrieval orchestration.</p>
+          </article>
+          <article class="card">
+            <span class="tag green">02</span>
+            <h3>Model Serving / Inference</h3>
+            <p>Runtime selection, batching, scheduling, quantization, token streaming, and serving operations.</p>
+          </article>
+          <article class="card">
+            <span class="tag amber">03</span>
+            <h3>Fine-Tuning / Training</h3>
+            <p>Adapter tuning, distributed training, checkpoint recovery, optimizer state, and reproducibility.</p>
+          </article>
+          <article class="card">
+            <span class="tag red">04</span>
+            <h3>RAG / Vector Database</h3>
+            <p>Embeddings, chunks, metadata, indexing, tenancy, durability, hybrid retrieval, and search quality.</p>
+          </article>
+          <article class="card">
+            <span class="tag">05</span>
+            <h3>Observability / Evaluation / LLMOps</h3>
+            <p>Tracing, scoring, feedback, datasets, lineage, prompt governance, and promotion gates.</p>
+          </article>
+          <article class="card">
+            <span class="tag blue">06</span>
+            <h3>Tooling / MCP / AI Platform</h3>
+            <p>Tool contracts, MCP servers, provider gateways, self-hosted AI workspaces, and admin boundaries.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap split">
+        <div class="panel">
+          <h2>English Track</h2>
+          <p>Use this path to study the full course in English.</p>
+          <ul>
+            <li><a href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/README.md">Course homepage</a></li>
+            <li><a href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/curriculum.md">Curriculum</a></li>
+            <li><a href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/projects.md">Projects</a></li>
+            <li><a href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/reference-atlas.md">Repository atlas</a></li>
+            <li><a href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/glossary.md">Glossary</a></li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h2>Tieng Viet</h2>
+          <p>Duong hoc day du bang tieng Viet cho solution architect va senior developer.</p>
+          <ul>
+            <li><a href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/vi/README.md">Trang khoa hoc</a></li>
+            <li><a href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/vi/curriculum.md">Chuong trinh hoc</a></li>
+            <li><a href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/vi/projects.md">Du an thuc hanh</a></li>
+            <li><a href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/vi/reference-atlas.md">Ban do repository</a></li>
+            <li><a href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/vi/glossary.md">Bang thuat ngu</a></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <h2>Repository Deep Dives</h2>
+        <p class="section-lead">The course is backed by bilingual architecture notes for the selected AI repositories.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Domain</th>
+              <th>Repositories</th>
+              <th>Docs</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>AI App / Agent Architecture</td>
+              <td>OpenAI Agents Python, LangChain, AutoGen, LlamaIndex</td>
+              <td><a href="https://github.com/anhtnt90dev/ai-solution-architecture/tree/main/repo-architecture-docs/01-ai-app-agent-architecture">Group 01</a></td>
+            </tr>
+            <tr>
+              <td>Model Serving / Inference</td>
+              <td>vLLM, llama.cpp, Transformers</td>
+              <td><a href="https://github.com/anhtnt90dev/ai-solution-architecture/tree/main/repo-architecture-docs/02-model-serving-inference">Group 02</a></td>
+            </tr>
+            <tr>
+              <td>Fine-tuning / Training</td>
+              <td>PEFT, DeepSpeed</td>
+              <td><a href="https://github.com/anhtnt90dev/ai-solution-architecture/tree/main/repo-architecture-docs/03-fine-tuning-training">Group 03</a></td>
+            </tr>
+            <tr>
+              <td>RAG / Vector Database</td>
+              <td>Qdrant, Chroma</td>
+              <td><a href="https://github.com/anhtnt90dev/ai-solution-architecture/tree/main/repo-architecture-docs/04-rag-vector-database">Group 04</a></td>
+            </tr>
+            <tr>
+              <td>Observability / Evaluation / LLMOps</td>
+              <td>Langfuse, Phoenix, MLflow, TruLens</td>
+              <td><a href="https://github.com/anhtnt90dev/ai-solution-architecture/tree/main/repo-architecture-docs/05-observability-evaluation-llmops">Group 05</a></td>
+            </tr>
+            <tr>
+              <td>Tooling / MCP / AI Platform</td>
+              <td>MCP servers, Open WebUI</td>
+              <td><a href="https://github.com/anhtnt90dev/ai-solution-architecture/tree/main/repo-architecture-docs/06-tooling-mcp-ai-platform">Group 06</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <strong>AI Solution Architecture Knowledge System</strong><br>
+      Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>
