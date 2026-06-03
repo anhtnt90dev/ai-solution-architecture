@@ -5,7 +5,7 @@
 **A bilingual English/Vietnamese learning repository for designing production-grade AI systems.**
 
 [![English](https://img.shields.io/badge/English-0A66C2?style=for-the-badge)](./learn-ai-solution-architecture/docs/en/README.md)
-[![Tieng Viet](https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-C1121F?style=for-the-badge)](./learn-ai-solution-architecture/docs/vi/README.md)
+[![Tiếng Việt](https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-C1121F?style=for-the-badge)](./learn-ai-solution-architecture/docs/vi/README.md)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-2EA44F?style=for-the-badge)](https://anhtnt90dev.github.io/ai-solution-architecture/)
 [![17 Repositories](https://img.shields.io/badge/17_Repositories-111827?style=for-the-badge)](./repo-architecture-docs/README.md)
 [![6 Domains](https://img.shields.io/badge/6_AI_Domains-7C3AED?style=for-the-badge)](#architecture-map)
@@ -31,7 +31,7 @@ The focus is not "how to call an LLM API." The focus is the full system: agent o
 | --- | --- |
 | Read the course landing page | [Learn AI Solution Architecture](./learn-ai-solution-architecture/README.md) |
 | Study in English | [English course homepage](./learn-ai-solution-architecture/docs/en/README.md) |
-| Hoc bang tieng Viet | [Trang khoa hoc tieng Viet](./learn-ai-solution-architecture/docs/vi/README.md) |
+| Học bằng tiếng Việt | [Trang khóa học tiếng Việt](./learn-ai-solution-architecture/docs/vi/README.md) |
 | Compare all repositories | [Repository atlas](./learn-ai-solution-architecture/docs/en/reference-atlas.md) |
 | Open detailed repo notes | [Repository architecture docs](./repo-architecture-docs/README.md) |
 | Validate the docs | [Validation scripts](#validation) |
@@ -125,13 +125,13 @@ The upstream source checkouts used for analysis are intentionally not published 
 - [Repository atlas](./learn-ai-solution-architecture/docs/en/reference-atlas.md)
 - [Glossary](./learn-ai-solution-architecture/docs/en/glossary.md)
 
-### Tieng Viet
+### Tiếng Việt
 
-- [Trang khoa hoc](./learn-ai-solution-architecture/docs/vi/README.md)
-- [Chuong trinh hoc](./learn-ai-solution-architecture/docs/vi/curriculum.md)
-- [Du an thuc hanh](./learn-ai-solution-architecture/docs/vi/projects.md)
-- [Ban do repository](./learn-ai-solution-architecture/docs/vi/reference-atlas.md)
-- [Bang thuat ngu](./learn-ai-solution-architecture/docs/vi/glossary.md)
+- [Trang khóa học](./learn-ai-solution-architecture/docs/vi/README.md)
+- [Chương trình học](./learn-ai-solution-architecture/docs/vi/curriculum.md)
+- [Dự án thực hành](./learn-ai-solution-architecture/docs/vi/projects.md)
+- [Bản đồ repository](./learn-ai-solution-architecture/docs/vi/reference-atlas.md)
+- [Bảng thuật ngữ](./learn-ai-solution-architecture/docs/vi/glossary.md)
 
 ---
 
