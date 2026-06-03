@@ -1,0 +1,12 @@
+# Source checkouts used to generate the documentation. Do not publish vendored
+# upstream repositories from this documentation workspace.
+github-repos/
+
+# Internal agent planning artifacts.
+docs/superpowers/
+
+# OS/editor noise.
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
