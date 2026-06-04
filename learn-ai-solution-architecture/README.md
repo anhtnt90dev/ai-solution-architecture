@@ -8,6 +8,7 @@ A bilingual, repository-grounded course for learning how modern AI systems are d
 [![6 Domains](https://img.shields.io/badge/6_AI_Domains-2563EB?style=for-the-badge)](#the-ai-solution-architecture-map)
 [![12 Lessons](https://img.shields.io/badge/12_Lessons-047857?style=for-the-badge)](./docs/en/curriculum.md)
 [![6 Projects](https://img.shields.io/badge/6_Projects-7C3AED?style=for-the-badge)](./docs/en/projects.md)
+[![Templates](https://img.shields.io/badge/Templates-Ready_To_Copy-B45309?style=for-the-badge)](../templates/README.md)
 
 > This knowledge system is synthesized from the bilingual deep-dive architecture documents in [`repo-architecture-docs/`](../repo-architecture-docs/README.md). It is written as a learning path, not as another per-repository inventory.
 
@@ -22,6 +23,8 @@ A bilingual, repository-grounded course for learning how modern AI systems are d
 - [Learning Path](#learning-path)
 - [Syllabus](#syllabus)
 - [Projects](#projects)
+- [Toolkit](#toolkit)
+- [Capstone And Assessment](#capstone-and-assessment)
 - [Repository Atlas](#repository-atlas)
 - [Local Use](#local-use)
 
@@ -108,8 +111,9 @@ If you want the fastest path, do this:
 1. Read [English course homepage](./docs/en/README.md) or [trang tiếng Việt](./docs/vi/README.md).
 2. Use the [repository atlas](./docs/en/reference-atlas.md) to locate the stack you care about.
 3. Pick one project from [Projects](./docs/en/projects.md) or [Dự án](./docs/vi/projects.md).
-4. Go back to the deep-dive source docs in [`repo-architecture-docs/`](../repo-architecture-docs/README.md) when you need repository-level architecture details.
-5. Use the glossary to normalize vocabulary before comparing libraries.
+4. Copy a template from the [AI architecture toolkit](../templates/README.md).
+5. Go back to the deep-dive source docs in [`repo-architecture-docs/`](../repo-architecture-docs/README.md) when you need repository-level architecture details.
+6. Use the glossary to normalize vocabulary before comparing libraries.
 
 ```text
 FAST PATH
@@ -178,6 +182,28 @@ Open the full project track:
 
 - [English projects](./docs/en/projects.md)
 - [Dự án tiếng Việt](./docs/vi/projects.md)
+
+---
+
+## Toolkit
+
+The toolkit contains copy-ready architecture artifacts:
+
+- [Architecture Decision Record](../templates/architecture-decision-record.md)
+- [Runtime Decision Matrix](../templates/runtime-decision-matrix.md)
+- [RAG Data Contract](../templates/rag-data-contract.md)
+- [LLMOps Evaluation Scorecard](../templates/llmops-evaluation-scorecard.md)
+- [Security And Governance Review](../templates/security-governance-review.md)
+- [Production Readiness Checklist](../templates/production-readiness-checklist.md)
+
+---
+
+## Capstone And Assessment
+
+- [Enterprise Knowledge Copilot capstone](../capstone/README.md)
+- [Assessment pack](../assessments/README.md)
+
+The capstone gives the course one concrete product scenario. The assessment pack gives learners a way to test whether they can defend architecture decisions with evidence.
 
 ---
 

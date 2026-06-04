@@ -1,0 +1,33 @@
+name: Repository deep dive request
+description: Propose a repository to add to the architecture atlas.
+title: "[Repo Deep Dive]: "
+labels: ["repository-deep-dive", "needs-triage"]
+body:
+  - type: input
+    id: repo
+    attributes:
+      label: Repository URL
+      placeholder: https://github.com/org/repo
+    validations:
+      required: true
+  - type: dropdown
+    id: domain
+    attributes:
+      label: Architecture domain
+      options:
+        - AI app / agent architecture
+        - Model serving / inference
+        - Fine-tuning / training
+        - RAG / vector database
+        - Observability / evaluation / LLMOps
+        - Tooling / MCP / AI platform
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why this repo matters
+      description: Explain the architecture concept this repository teaches.
+    validations:
+      required: true

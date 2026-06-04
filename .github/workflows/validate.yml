@@ -1,0 +1,22 @@
+name: Validate Documentation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate knowledge system
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File learn-ai-solution-architecture\validate-knowledge-system.ps1
+
+      - name: Validate repository deep dives
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File repo-architecture-docs\validate-docs.ps1

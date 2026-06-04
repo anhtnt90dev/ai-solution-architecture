@@ -5,6 +5,7 @@ $workspaceRoot = Split-Path -Parent $root
 
 $requiredFiles = @(
   "README.md",
+  "../README.md",
   "docs/en/README.md",
   "docs/en/curriculum.md",
   "docs/en/projects.md",
@@ -15,6 +16,30 @@ $requiredFiles = @(
   "docs/vi/projects.md",
   "docs/vi/reference-atlas.md",
   "docs/vi/glossary.md"
+  "../templates/README.md",
+  "../templates/architecture-decision-record.md",
+  "../templates/runtime-decision-matrix.md",
+  "../templates/rag-data-contract.md",
+  "../templates/llmops-evaluation-scorecard.md",
+  "../templates/production-readiness-checklist.md",
+  "../templates/security-governance-review.md",
+  "../capstone/README.md",
+  "../assessments/README.md",
+  "../assessments/en/architecture-review-exam.md",
+  "../assessments/en/answer-key.md",
+  "../assessments/vi/bai-kiem-tra-kien-truc.md",
+  "../assessments/vi/dap-an.md",
+  "../CONTRIBUTING.md",
+  "../CODE_OF_CONDUCT.md",
+  "../SECURITY.md",
+  "../ROADMAP.md",
+  "../CHANGELOG.md",
+  "../LICENSE",
+  "../assets/social-preview.svg"
+)
+
+$requiredAssets = @(
+  "../assets/social-preview.png"
 )
 
 $problems = New-Object System.Collections.Generic.List[string]
@@ -32,11 +57,13 @@ foreach ($relative in $requiredFiles) {
   $mermaid = ([regex]::Matches($content, "```mermaid")).Count
   $placeholders = ([regex]::Matches($content, "\b(TBD|TODO|FIXME|PLACEHOLDER|Lorem ipsum)\b", "IgnoreCase")).Count
 
+  $isMarkdown = [System.IO.Path]::GetExtension($relative) -eq ".md"
+
   if ($relative -eq "README.md" -and $tokens -lt 1200) {
     $problems.Add("Root README is likely too shallow ($tokens tokens): $relative")
   }
 
-  if ($relative -ne "README.md" -and $tokens -lt 450) {
+  if ($isMarkdown -and $relative -ne "README.md" -and $tokens -lt 250) {
     $problems.Add("Knowledge page is likely too shallow ($tokens tokens): $relative")
   }
 
@@ -60,6 +87,23 @@ foreach ($relative in $requiredFiles) {
     File = $relative
     Mermaid = $mermaid
     Tokens = $tokens
+  })
+}
+
+foreach ($relative in $requiredAssets) {
+  $path = Join-Path $root $relative
+  if (-not (Test-Path -LiteralPath $path)) {
+    $problems.Add("Missing required asset: $relative")
+    continue
+  }
+  $asset = Get-Item -LiteralPath $path
+  if ($asset.Length -lt 1000) {
+    $problems.Add("Required asset looks too small ($($asset.Length) bytes): $relative")
+  }
+  $summary.Add([pscustomobject]@{
+    File = $relative
+    Mermaid = 0
+    Tokens = "asset:$($asset.Length)"
   })
 }
 

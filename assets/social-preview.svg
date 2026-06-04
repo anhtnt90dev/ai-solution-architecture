@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+  <title id="title">AI Solution Architecture Knowledge System</title>
+  <desc id="desc">Social preview image for the bilingual AI solution architecture repository.</desc>
+  <rect width="1280" height="640" fill="#f8fafc"/>
+  <rect x="64" y="64" width="1152" height="512" rx="28" fill="#ffffff" stroke="#d9e0ea" stroke-width="3"/>
+  <rect x="104" y="104" width="112" height="112" rx="24" fill="#0a66c2"/>
+  <text x="160" y="176" text-anchor="middle" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="56" font-weight="800" fill="#ffffff">AI</text>
+  <text x="248" y="142" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="28" font-weight="800" fill="#047857">BILINGUAL ENGLISH / VIETNAMESE</text>
+  <text x="104" y="286" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="68" font-weight="900" fill="#172033">AI Solution Architecture</text>
+  <text x="104" y="354" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="38" font-weight="650" fill="#566179">Course + toolkit + assessments + deep dives</text>
+  <g font-family="Inter, Segoe UI, Arial, sans-serif" font-size="28" font-weight="750">
+    <rect x="104" y="414" width="190" height="58" rx="14" fill="#eff6ff" stroke="#0a66c2"/>
+    <text x="199" y="452" text-anchor="middle" fill="#0a66c2">17 repos</text>
+    <rect x="316" y="414" width="210" height="58" rx="14" fill="#ecfdf5" stroke="#047857"/>
+    <text x="421" y="452" text-anchor="middle" fill="#047857">6 domains</text>
+    <rect x="548" y="414" width="220" height="58" rx="14" fill="#f5f3ff" stroke="#6d28d9"/>
+    <text x="658" y="452" text-anchor="middle" fill="#6d28d9">12 lessons</text>
+    <rect x="790" y="414" width="250" height="58" rx="14" fill="#fff7ed" stroke="#b45309"/>
+    <text x="915" y="452" text-anchor="middle" fill="#b45309">ready templates</text>
+  </g>
+  <text x="104" y="538" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="30" font-weight="650" fill="#172033">Agents • Serving • RAG • Training • LLMOps • MCP • Governance</text>
+</svg>

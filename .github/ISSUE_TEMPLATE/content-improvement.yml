@@ -1,0 +1,26 @@
+name: Content improvement
+description: Improve a lesson, diagram, glossary, template, or repository deep dive.
+title: "[Content]: "
+labels: ["content", "needs-triage"]
+body:
+  - type: textarea
+    id: section
+    attributes:
+      label: Section or file
+      description: Link or path to the content that should change.
+    validations:
+      required: true
+  - type: textarea
+    id: issue
+    attributes:
+      label: What should improve?
+      description: Explain the gap, ambiguity, missing trade-off, or missing production detail.
+    validations:
+      required: true
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed change
+      description: Include concrete wording, diagram changes, or references if possible.
+    validations:
+      required: false

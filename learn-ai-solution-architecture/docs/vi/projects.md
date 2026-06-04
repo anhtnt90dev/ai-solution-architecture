@@ -2,6 +2,8 @@
 
 Các dự án biến curriculum thành artifact kiến trúc. Mỗi dự án nên tạo diagram, decision log, risk register và verification plan.
 
+Hãy dùng các template trong [AI Solution Architecture Toolkit](../../../templates/README.md) khi làm từng dự án.
+
 ## Tiến Trình Dự Án
 
 ```mermaid
@@ -83,7 +85,7 @@ Quyết định chính: định nghĩa bằng chứng nào cần có trước kh
 
 ## P06: Capstone Production AI Platform
 
-Thiết kế một giải pháp AI end-to-end dùng cả sáu lớp. Capstone có thể là customer support assistant, internal knowledge copilot, coding assistant, research assistant hoặc operations analyst.
+Thiết kế một giải pháp AI end-to-end dùng cả sáu lớp. Capstone khuyến nghị là [Enterprise Knowledge Copilot for Architecture Review](../../../capstone/README.md), vì bài này buộc bạn xử lý retrieval, tool governance, evaluation, traceability và production readiness trong cùng một bối cảnh.
 
 ```mermaid
 flowchart LR

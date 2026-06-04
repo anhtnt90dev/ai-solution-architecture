@@ -8,6 +8,15 @@
   <meta http-equiv="Expires" content="0">
   <title>AI Solution Architecture Knowledge System</title>
   <meta name="description" content="Bilingual English/Vietnamese course and repository deep dives for production-grade AI solution architecture.">
+  <meta property="og:title" content="AI Solution Architecture Knowledge System">
+  <meta property="og:description" content="Bilingual course, toolkit, assessments, and repository deep dives for production-grade AI systems.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://anhtnt90dev.github.io/ai-solution-architecture/">
+  <meta property="og:image" content="https://anhtnt90dev.github.io/ai-solution-architecture/assets/social-preview.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="AI Solution Architecture Knowledge System">
+  <meta name="twitter:description" content="Learn AI architecture boundaries across agents, serving, RAG, training, LLMOps, tools, and governance.">
+  <meta name="twitter:image" content="https://anhtnt90dev.github.io/ai-solution-architecture/assets/social-preview.png">
   <style>
     :root {
       --ink: #172033;
@@ -196,6 +205,50 @@
       gap: 16px;
     }
 
+    .portal-search {
+      width: 100%;
+      min-height: 46px;
+      margin: 4px 0 18px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      background: white;
+      font: inherit;
+      font-size: 16px;
+    }
+
+    .portal-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .portal-item {
+      display: block;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: white;
+      color: var(--ink);
+    }
+
+    .portal-item:hover {
+      text-decoration: none;
+      border-color: var(--blue);
+    }
+
+    .portal-item strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .portal-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
     .card {
       min-height: 180px;
       padding: 20px;
@@ -296,6 +349,7 @@
 
       .stats,
       .grid,
+      .portal-list,
       .split {
         grid-template-columns: 1fr;
       }
@@ -317,6 +371,7 @@
         <a href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/README.md">English</a>
         <a href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/vi/README.md">Tiếng Việt</a>
         <a href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/curriculum.md">Curriculum</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture/tree/main/templates">Toolkit</a>
         <a href="https://github.com/anhtnt90dev/ai-solution-architecture/tree/main/repo-architecture-docs">Deep Dives</a>
         <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
       </nav>
@@ -334,6 +389,7 @@
         <div class="actions">
           <a class="button primary" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/README.md">Start in English</a>
           <a class="button" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/vi/README.md">Học bằng tiếng Việt</a>
+          <a class="button" href="https://github.com/anhtnt90dev/ai-solution-architecture/tree/main/templates">Copy templates</a>
           <a class="button" href="https://github.com/anhtnt90dev/ai-solution-architecture/tree/main/repo-architecture-docs">Open repository deep dives</a>
         </div>
         <div class="stats">
@@ -401,6 +457,48 @@ flowchart LR
             <span class="tag blue">06</span>
             <h3>Tooling / MCP / AI Platform</h3>
             <p>Tool contracts, MCP servers, provider gateways, self-hosted AI workspaces, and admin boundaries.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <h2>Learning Portal</h2>
+        <p class="section-lead">Search the core course, toolkit, capstone, assessments, and deep dives from one place.</p>
+        <input id="portalSearch" class="portal-search" type="search" placeholder="Search lessons, templates, capstone, assessment, RAG, LLMOps, runtime..." aria-label="Search learning portal">
+        <div id="portalList" class="portal-list">
+          <a class="portal-item" data-keywords="english course homepage curriculum learning path" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/README.md"><strong>English course homepage</strong><span>Start the English learning path.</span></a>
+          <a class="portal-item" data-keywords="vietnamese tieng viet khoa hoc chuong trinh" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/vi/README.md"><strong>Trang khóa học tiếng Việt</strong><span>Đường học đầy đủ bằng tiếng Việt.</span></a>
+          <a class="portal-item" data-keywords="curriculum lessons phases roadmap" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/curriculum.md"><strong>12-lesson curriculum</strong><span>Architecture lessons across six AI domains.</span></a>
+          <a class="portal-item" data-keywords="projects labs capstone practice" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/projects.md"><strong>Projects</strong><span>Hands-on architecture projects and deliverables.</span></a>
+          <a class="portal-item" data-keywords="templates toolkit adr runtime rag llmops security production checklist" href="https://github.com/anhtnt90dev/ai-solution-architecture/tree/main/templates"><strong>Architecture toolkit</strong><span>Copy-ready ADRs, matrices, scorecards, and checklists.</span></a>
+          <a class="portal-item" data-keywords="capstone enterprise knowledge copilot architecture review" href="https://github.com/anhtnt90dev/ai-solution-architecture/tree/main/capstone"><strong>Enterprise Knowledge Copilot</strong><span>Concrete end-to-end capstone scenario.</span></a>
+          <a class="portal-item" data-keywords="assessment exam rubric answer key architect skill" href="https://github.com/anhtnt90dev/ai-solution-architecture/tree/main/assessments"><strong>Assessment pack</strong><span>Exam, rubric, and answer key for architecture judgment.</span></a>
+          <a class="portal-item" data-keywords="repository atlas compare tools frameworks" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/reference-atlas.md"><strong>Repository atlas</strong><span>Compare 17 repositories by architecture role and risk.</span></a>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="wrap">
+        <h2>Toolkit, Capstone, Assessment</h2>
+        <p class="section-lead">The repo is designed to be used, not only read. Copy the templates, run the capstone, and score the architecture.</p>
+        <div class="grid">
+          <article class="card">
+            <span class="tag amber">Toolkit</span>
+            <h3>Copy-ready templates</h3>
+            <p>ADR, runtime matrix, RAG contract, LLMOps scorecard, security review, and production readiness checklist.</p>
+          </article>
+          <article class="card">
+            <span class="tag green">Capstone</span>
+            <h3>Enterprise Knowledge Copilot</h3>
+            <p>A concrete architecture review copilot scenario that exercises all six domains in one product.</p>
+          </article>
+          <article class="card">
+            <span class="tag red">Assessment</span>
+            <h3>Architecture review exam</h3>
+            <p>English and Vietnamese exam tracks with scoring rubric and answer keys for self-evaluation.</p>
           </article>
         </div>
       </div>
@@ -493,6 +591,17 @@ flowchart LR
   <script type="module">
     import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
     mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+  <script>
+    const search = document.getElementById("portalSearch");
+    const items = Array.from(document.querySelectorAll(".portal-item"));
+    search?.addEventListener("input", () => {
+      const q = search.value.trim().toLowerCase();
+      for (const item of items) {
+        const haystack = `${item.textContent} ${item.dataset.keywords}`.toLowerCase();
+        item.style.display = !q || haystack.includes(q) ? "block" : "none";
+      }
+    });
   </script>
 </body>
 </html>

@@ -2,6 +2,8 @@
 
 The projects convert the curriculum into architecture artifacts. Each project should produce diagrams, a decision log, a risk register, and a verification plan.
 
+Use the reusable templates in the [AI Solution Architecture Toolkit](../../../templates/README.md) while completing each project.
+
 ## Project Progression
 
 ```mermaid
@@ -83,7 +85,7 @@ Core decision: define what evidence is required before the system can be called 
 
 ## P06: Capstone Production AI Platform
 
-Design an end-to-end AI solution using all six layers. The capstone can be a customer support assistant, internal knowledge copilot, coding assistant, research assistant, or operations analyst.
+Design an end-to-end AI solution using all six layers. The recommended capstone is the [Enterprise Knowledge Copilot for Architecture Review](../../../capstone/README.md), because it exercises retrieval, tool governance, evaluation, traceability, and production readiness in one scenario.
 
 ```mermaid
 flowchart LR
