@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Documentation Standard | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../learn/en/index.html">English</a>
+        <a href="../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../learn/en/curriculum.html">Curriculum</a>
+        <a href="../templates/index.html">Toolkit</a>
+        <a href="index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../learn/en/index.html">English course</a>
+      <a href="../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../learn/en/curriculum.html">Curriculum</a>
+      <a href="../learn/en/projects.html">Projects</a>
+      <a href="../templates/index.html">Architecture toolkit</a>
+      <a href="../capstone/index.html">Capstone</a>
+      <a href="../assessments/index.html">Assessments</a>
+      <a href="index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/DOCUMENTATION_STANDARD.md">View source</a>
+      <h1 id="documentation-standard">Documentation Standard</h1>
+<p>This directory contains bilingual architecture documentation for the checked-out AI repositories.</p>
+<p>Each repository must have:</p>
+<ul>
+<li><code>README.en.md</code>: complete English architecture document.</li>
+<li><code>README.vi.md</code>: complete Vietnamese architecture document.</li>
+</ul>
+<p>Each language version should include:</p>
+<ul>
+<li>Executive summary.</li>
+<li>Problem and AI-stack role.</li>
+<li>Source tree map based on actual repository files.</li>
+<li>Core concepts and vocabulary.</li>
+<li>Internal architecture.</li>
+<li>Runtime, request, or data flow.</li>
+<li>Extension points and integration surfaces.</li>
+<li>Configuration, deployment, and operations.</li>
+<li>Observability, testing, evaluation, and failure modes.</li>
+<li>Security, governance, and production risks.</li>
+<li>Senior engineer / solution architect reading guide.</li>
+<li>Production readiness checklist.</li>
+<li>Practical learning path.</li>
+<li>Glossary.</li>
+</ul>
+<p>Each document should be detailed enough for senior developers and solution architects. English files should be complete deep dives, and Vietnamese files must be full Vietnamese versions rather than summaries or translated outlines. When a statement depends on repository structure, ground it in actual directories or files under <code>github-repos/</code>.</p>
+<p>Each document should include at least six Mermaid diagrams:</p>
+<ul>
+<li>System or component diagram.</li>
+<li>End-to-end flow diagram.</li>
+<li>Deployment or operational topology.</li>
+<li>Lifecycle, decision tree, or dependency map.</li>
+<li>Module dependency or package boundary map.</li>
+<li>Production readiness, risk, or failure-mode map.</li>
+</ul>
+<p>The cloned repositories under <code>github-repos/</code> are source material and should remain read-only for this documentation pass.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

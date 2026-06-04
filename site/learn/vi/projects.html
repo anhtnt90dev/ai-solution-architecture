@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dự Án Thực Hành | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../en/index.html">English</a>
+        <a href="index.html">Tiếng Việt</a>
+        <a href="../en/curriculum.html">Curriculum</a>
+        <a href="../../templates/index.html">Toolkit</a>
+        <a href="../../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../en/index.html">English course</a>
+      <a href="index.html">Trang tiếng Việt</a>
+      <a href="../en/curriculum.html">Curriculum</a>
+      <a href="../en/projects.html">Projects</a>
+      <a href="../../templates/index.html">Architecture toolkit</a>
+      <a href="../../capstone/index.html">Capstone</a>
+      <a href="../../assessments/index.html">Assessments</a>
+      <a href="../../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/vi/projects.md">View source</a>
+      <h1 id="d-n-th-c-h-nh">Dự Án Thực Hành</h1>
+<p>Các dự án biến curriculum thành artifact kiến trúc. Mỗi dự án nên tạo diagram, decision log, risk register và verification plan.</p>
+<p>Hãy dùng các template trong <a href="../../templates/index.html">AI Solution Architecture Toolkit</a> khi làm từng dự án.</p>
+<h2 id="ti-n-tr-nh-d-n">Tiến Trình Dự Án</h2>
+<div class="mermaid">flowchart TB
+  P01[P01 So sánh agent architecture] --&gt; P02[P02 Chọn serving runtime]
+  P02 --&gt; P03[P03 RAG data plane]
+  P03 --&gt; P04[P04 Kế hoạch adaptation và training]
+  P04 --&gt; P05[P05 LLMOps và evaluation layer]
+  P05 --&gt; P06[P06 Capstone production AI platform]</div>
+<h2 id="p01-so-s-nh-agent-architecture">P01: So Sánh Agent Architecture</h2>
+<p>Thiết kế cùng một use case assistant trên OpenAI Agents Python, LangChain/LangGraph, AutoGen và LlamaIndex.</p>
+<p>Deliverable:</p>
+<ul>
+<li>System context diagram.</li>
+<li>Ma trận so sánh agent/workflow/team.</li>
+<li>Bản đồ boundary cho tool và memory.</li>
+<li>Chính sách human escalation.</li>
+<li>Failure mode và test plan.</li>
+</ul>
+<p>Quyết định chính: sản phẩm nên dựa chủ yếu trên agent loop, workflow graph, multi-agent team, retrieval engine hay hybrid.</p>
+<h2 id="p02-ch-n-serving-runtime">P02: Chọn Serving Runtime</h2>
+<p>Thiết kế serving layer cho ứng dụng đã chọn. So sánh Transformers, vLLM, llama.cpp và UI gateway như Open WebUI.</p>
+<p>Deliverable:</p>
+<ul>
+<li>Runtime decision table.</li>
+<li>Giả định capacity: QPS, token throughput, context length, concurrency, latency SLO.</li>
+<li>Kế hoạch model artifact: format, tokenizer, quantization, adapter compatibility, rollback.</li>
+<li>Kế hoạch health check và observability.</li>
+</ul>
+<p>Quyết định chính: chọn runtime khớp với deployment environment và traffic pattern.</p>
+<h2 id="p03-rag-data-plane">P03: RAG Data Plane</h2>
+<p>Thiết kế retrieval bằng Qdrant hoặc Chroma. Định nghĩa ingestion, chunking, embedding versioning, collection layout, metadata filter, deletion/update semantics và query routing.</p>
+<p>Deliverable:</p>
+<ul>
+<li>Data contract cho document, chunk, embedding, metadata, tenant và access policy.</li>
+<li>Ingestion lifecycle diagram.</li>
+<li>Query lifecycle diagram.</li>
+<li>So sánh vector DB: Qdrant vs Chroma.</li>
+<li>Retrieval evaluation plan.</li>
+</ul>
+<p>Quyết định chính: chọn vector store và operating mode phù hợp với durability, scale, developer velocity và governance.</p>
+<h2 id="p04-k-ho-ch-adaptation-v-training">P04: Kế Hoạch Adaptation Và Training</h2>
+<p>Quyết định sản phẩm có cần training không. So sánh prompting, retrieval, PEFT adapter và DeepSpeed distributed training.</p>
+<p>Deliverable:</p>
+<ul>
+<li>Training decision tree.</li>
+<li>Dataset readiness checklist.</li>
+<li>Adapter artifact policy.</li>
+<li>Distributed training risk map.</li>
+<li>Serving handoff checklist.</li>
+</ul>
+<p>Quyết định chính: khoảng cách chất lượng đến từ data, orchestration, retrieval, adapter tuning hay full training.</p>
+<h2 id="p05-llmops-v-evaluation-layer">P05: LLMOps Và Evaluation Layer</h2>
+<p>Thiết kế tracing, scoring, feedback, dataset, experiment lineage và promotion gate bằng Langfuse, Phoenix, MLflow và TruLens.</p>
+<p>Deliverable:</p>
+<ul>
+<li>Trace schema gồm user input, retrieval, tool, model call, score và feedback.</li>
+<li>Kế hoạch evaluation dataset.</li>
+<li>Promotion gate cho prompt, model, adapter và retrieval config.</li>
+<li>Workflow incident review.</li>
+</ul>
+<p>Quyết định chính: định nghĩa bằng chứng nào cần có trước khi nói hệ thống tốt hơn.</p>
+<h2 id="p06-capstone-production-ai-platform">P06: Capstone Production AI Platform</h2>
+<p>Thiết kế một giải pháp AI end-to-end dùng cả sáu lớp. Capstone khuyến nghị là <a href="../../capstone/index.html">Enterprise Knowledge Copilot for Architecture Review</a>, vì bài này buộc bạn xử lý retrieval, tool governance, evaluation, traceability và production readiness trong cùng một bối cảnh.</p>
+<div class="mermaid">flowchart LR
+  UI[User interface / Open WebUI hoặc app] --&gt; Agent[Agent hoặc workflow layer]
+  Agent --&gt; MCP[MCP tools và internal APIs]
+  Agent --&gt; RAG[RAG engine]
+  Agent --&gt; Runtime[Model serving runtime]
+  RAG --&gt; VectorDB[Qdrant hoặc Chroma]
+  Runtime --&gt; Model[Base model + adapter]
+  PEFT[PEFT / DeepSpeed training plan] --&gt; Model
+  Agent --&gt; Obs[Langfuse / Phoenix / TruLens traces]
+  Runtime --&gt; Obs
+  Obs --&gt; MLflow[MLflow lineage và registry]
+  Obs --&gt; Gate[Promotion gate]
+  Gate --&gt; Release[Production release]</div>
+<p>Deliverable:</p>
+<ul>
+<li>End-to-end architecture diagram.</li>
+<li>Mapping repository vào từng layer.</li>
+<li>Decision log với các phương án bị loại.</li>
+<li>Security và governance model.</li>
+<li>Production readiness checklist.</li>
+<li>Failure rehearsal plan.</li>
+<li>Rollback strategy.</li>
+</ul>
+<h2 id="rubric-review">Rubric Review</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Khu vực</th><th>Tiêu chí đạt</th></tr></thead>
+<tbody>
+<tr><td>Layering</td><td>Mỗi layer có owner và boundary rõ.</td></tr>
+<tr><td>Runtime</td><td>Serving choice khớp capacity, latency, memory và deployment constraint.</td></tr>
+<tr><td>Data</td><td>RAG data contract có versioning, tenancy, deletion và access policy.</td></tr>
+<tr><td>Evaluation</td><td>Quality được đo bằng dataset, trace, score và promotion gate.</td></tr>
+<tr><td>Security</td><td>Tool execution, secret, auth, data access và audit logging rõ ràng.</td></tr>
+<tr><td>Operations</td><td>Health check, incident, rollback, cost và ownership được định nghĩa.</td></tr>
+<tr><td>Evidence</td><td>Mỗi claim kiến trúc link được tới deep dive repo hoặc design artifact.</td></tr>
+</tbody></table></div>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

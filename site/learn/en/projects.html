@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Projects | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="index.html">English</a>
+        <a href="../vi/index.html">Tiếng Việt</a>
+        <a href="curriculum.html">Curriculum</a>
+        <a href="../../templates/index.html">Toolkit</a>
+        <a href="../../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="index.html">English course</a>
+      <a href="../vi/index.html">Trang tiếng Việt</a>
+      <a href="curriculum.html">Curriculum</a>
+      <a href="projects.html">Projects</a>
+      <a href="../../templates/index.html">Architecture toolkit</a>
+      <a href="../../capstone/index.html">Capstone</a>
+      <a href="../../assessments/index.html">Assessments</a>
+      <a href="../../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/projects.md">View source</a>
+      <h1 id="projects">Projects</h1>
+<p>The projects convert the curriculum into architecture artifacts. Each project should produce diagrams, a decision log, a risk register, and a verification plan.</p>
+<p>Use the reusable templates in the <a href="../../templates/index.html">AI Solution Architecture Toolkit</a> while completing each project.</p>
+<h2 id="project-progression">Project Progression</h2>
+<div class="mermaid">flowchart TB
+  P01[P01 Agent architecture comparison] --&gt; P02[P02 Serving runtime selection]
+  P02 --&gt; P03[P03 RAG data plane]
+  P03 --&gt; P04[P04 Adaptation and training plan]
+  P04 --&gt; P05[P05 LLMOps and evaluation layer]
+  P05 --&gt; P06[P06 Capstone production AI platform]</div>
+<h2 id="p01-agent-architecture-comparison">P01: Agent Architecture Comparison</h2>
+<p>Build a design comparison for the same assistant use case across OpenAI Agents Python, LangChain/LangGraph, AutoGen, and LlamaIndex.</p>
+<p>Deliverables:</p>
+<ul>
+<li>System context diagram.</li>
+<li>Agent/workflow/team comparison matrix.</li>
+<li>Tool and memory boundary map.</li>
+<li>Human escalation policy.</li>
+<li>Failure modes and test plan.</li>
+</ul>
+<p>Core decision: choose whether the product should be primarily an agent loop, workflow graph, multi-agent team, retrieval engine, or hybrid.</p>
+<h2 id="p02-serving-runtime-selection">P02: Serving Runtime Selection</h2>
+<p>Design the serving layer for the chosen application. Compare Transformers, vLLM, llama.cpp, and a UI gateway such as Open WebUI.</p>
+<p>Deliverables:</p>
+<ul>
+<li>Runtime decision table.</li>
+<li>Capacity assumptions: QPS, token throughput, context length, concurrency, latency SLO.</li>
+<li>Model artifact plan: format, tokenizer, quantization, adapter compatibility, rollback.</li>
+<li>Health check and observability plan.</li>
+</ul>
+<p>Core decision: choose the runtime that matches the deployment environment and traffic pattern.</p>
+<h2 id="p03-rag-data-plane">P03: RAG Data Plane</h2>
+<p>Design retrieval using Qdrant or Chroma. Define ingestion, chunking, embedding versioning, collection layout, metadata filters, deletion/update semantics, and query routing.</p>
+<p>Deliverables:</p>
+<ul>
+<li>Data contract for document, chunk, embedding, metadata, tenant, and access policy.</li>
+<li>Ingestion lifecycle diagram.</li>
+<li>Query lifecycle diagram.</li>
+<li>Vector DB comparison: Qdrant vs Chroma.</li>
+<li>Retrieval evaluation plan.</li>
+</ul>
+<p>Core decision: choose the vector store and operating mode that fit durability, scale, developer velocity, and governance needs.</p>
+<h2 id="p04-adaptation-and-training-plan">P04: Adaptation And Training Plan</h2>
+<p>Decide if the product needs training. Compare prompting, retrieval, PEFT adapters, and DeepSpeed distributed training.</p>
+<p>Deliverables:</p>
+<ul>
+<li>Training decision tree.</li>
+<li>Dataset readiness checklist.</li>
+<li>Adapter artifact policy.</li>
+<li>Distributed training risk map.</li>
+<li>Serving handoff checklist.</li>
+</ul>
+<p>Core decision: decide whether the quality gap is data, orchestration, retrieval, adapter tuning, or full training.</p>
+<h2 id="p05-llmops-and-evaluation-layer">P05: LLMOps And Evaluation Layer</h2>
+<p>Design tracing, scoring, feedback, datasets, experiment lineage, and promotion gates using Langfuse, Phoenix, MLflow, and TruLens.</p>
+<p>Deliverables:</p>
+<ul>
+<li>Trace schema covering user input, retrieval, tools, model calls, scores, and feedback.</li>
+<li>Evaluation dataset plan.</li>
+<li>Promotion gate for prompts, models, adapters, and retrieval configs.</li>
+<li>Incident review workflow.</li>
+</ul>
+<p>Core decision: define what evidence is required before the system can be called better.</p>
+<h2 id="p06-capstone-production-ai-platform">P06: Capstone Production AI Platform</h2>
+<p>Design an end-to-end AI solution using all six layers. The recommended capstone is the <a href="../../capstone/index.html">Enterprise Knowledge Copilot for Architecture Review</a>, because it exercises retrieval, tool governance, evaluation, traceability, and production readiness in one scenario.</p>
+<div class="mermaid">flowchart LR
+  UI[User interface / Open WebUI or app] --&gt; Agent[Agent or workflow layer]
+  Agent --&gt; MCP[MCP tools and internal APIs]
+  Agent --&gt; RAG[RAG engine]
+  Agent --&gt; Runtime[Model serving runtime]
+  RAG --&gt; VectorDB[Qdrant or Chroma]
+  Runtime --&gt; Model[Base model + adapter]
+  PEFT[PEFT / DeepSpeed training plan] --&gt; Model
+  Agent --&gt; Obs[Langfuse / Phoenix / TruLens traces]
+  Runtime --&gt; Obs
+  Obs --&gt; MLflow[MLflow lineage and registry]
+  Obs --&gt; Gate[Promotion gate]
+  Gate --&gt; Release[Production release]</div>
+<p>Deliverables:</p>
+<ul>
+<li>End-to-end architecture diagram.</li>
+<li>Repository-to-layer mapping.</li>
+<li>Decision log with alternatives rejected.</li>
+<li>Security and governance model.</li>
+<li>Production readiness checklist.</li>
+<li>Failure rehearsal plan.</li>
+<li>Rollback strategy.</li>
+</ul>
+<h2 id="review-rubric">Review Rubric</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Area</th><th>Pass Criteria</th></tr></thead>
+<tbody>
+<tr><td>Layering</td><td>Each layer has a clear owner and boundary.</td></tr>
+<tr><td>Runtime</td><td>Serving choice matches capacity, latency, memory, and deployment constraints.</td></tr>
+<tr><td>Data</td><td>RAG data contract includes versioning, tenancy, deletion, and access policy.</td></tr>
+<tr><td>Evaluation</td><td>Quality is measured with datasets, traces, scores, and promotion gates.</td></tr>
+<tr><td>Security</td><td>Tool execution, secrets, auth, data access, and audit logging are explicit.</td></tr>
+<tr><td>Operations</td><td>Health checks, incidents, rollback, cost, and ownership are defined.</td></tr>
+<tr><td>Evidence</td><td>Every architectural claim links to a repository deep dive or design artifact.</td></tr>
+</tbody></table></div>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

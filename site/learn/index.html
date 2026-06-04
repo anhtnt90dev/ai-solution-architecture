@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Learn AI Solution Architecture | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="en/index.html">English</a>
+        <a href="vi/index.html">Tiếng Việt</a>
+        <a href="en/curriculum.html">Curriculum</a>
+        <a href="../templates/index.html">Toolkit</a>
+        <a href="../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="en/index.html">English course</a>
+      <a href="vi/index.html">Trang tiếng Việt</a>
+      <a href="en/curriculum.html">Curriculum</a>
+      <a href="en/projects.html">Projects</a>
+      <a href="../templates/index.html">Architecture toolkit</a>
+      <a href="../capstone/index.html">Capstone</a>
+      <a href="../assessments/index.html">Assessments</a>
+      <a href="../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/README.md">View source</a>
+      <h1 id="learn-ai-solution-architecture">Learn AI Solution Architecture</h1>
+<p>A bilingual, repository-grounded course for learning how modern AI systems are designed from agent applications to serving, retrieval, training, observability, tools, and production governance.</p>
+<p><a href="en/index.html"><img src="https://img.shields.io/badge/English-0A66C2?style=for-the-badge" alt="English"></a> <a href="vi/index.html"><img src="https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-C1121F?style=for-the-badge" alt="Tiếng Việt"></a> <a href="../deep-dives/index.html"><img src="https://img.shields.io/badge/17_Repositories-111827?style=for-the-badge" alt="17 Repositories"></a> <a href="#the-ai-solution-architecture-map"><img src="https://img.shields.io/badge/6_AI_Domains-2563EB?style=for-the-badge" alt="6 Domains"></a> <a href="en/curriculum.html"><img src="https://img.shields.io/badge/12_Lessons-047857?style=for-the-badge" alt="12 Lessons"></a> <a href="en/projects.html"><img src="https://img.shields.io/badge/6_Projects-7C3AED?style=for-the-badge" alt="6 Projects"></a> <a href="../templates/index.html"><img src="https://img.shields.io/badge/Templates-Ready_To_Copy-B45309?style=for-the-badge" alt="Templates"></a></p>
+<blockquote><p>This knowledge system is synthesized from the bilingual deep-dive architecture documents in <a href="../deep-dives/index.html"><code>repo-architecture-docs/</code></a>. It is written as a learning path, not as another per-repository inventory.</p></blockquote>
+<hr>
+<h2 id="table-of-contents">Table Of Contents</h2>
+<ul>
+<li><a href="#english">English</a></li>
+<li><a href="#tiếng-việt">Tiếng Việt</a></li>
+<li><a href="#the-ai-solution-architecture-map">The AI Solution Architecture Map</a></li>
+<li><a href="#quick-start">Quick Start</a></li>
+<li><a href="#learning-path">Learning Path</a></li>
+<li><a href="#syllabus">Syllabus</a></li>
+<li><a href="#projects">Projects</a></li>
+<li><a href="#toolkit">Toolkit</a></li>
+<li><a href="#capstone-and-assessment">Capstone And Assessment</a></li>
+<li><a href="#repository-atlas">Repository Atlas</a></li>
+<li><a href="#local-use">Local Use</a></li>
+</ul>
+<hr>
+<h2 id="english">English</h2>
+<p>The goal is simple: learn how to design a complete AI solution, not just one library call. A production AI system normally needs six cooperating layers:</p>
+<ol>
+<li><strong>Application and agent architecture</strong>: agent loops, tools, memory, workflows, human-in-the-loop, orchestration.</li>
+<li><strong>Model serving and inference</strong>: model loading, batching, scheduling, token streaming, local or distributed serving.</li>
+<li><strong>Training and adaptation</strong>: parameter-efficient tuning, distributed training, checkpointing, optimizer state, reproducibility.</li>
+<li><strong>RAG and vector data</strong>: ingestion, embeddings, indexing, hybrid search, metadata filters, tenancy, durability.</li>
+<li><strong>Observability, evaluation, and LLMOps</strong>: tracing, scoring, datasets, feedback, prompt/version governance, experiment lineage.</li>
+<li><strong>Tooling, MCP, and AI platform</strong>: tool servers, UI gateways, model/provider routing, admin controls, workspace integration.</li>
+</ol>
+<p>Read the full English course:</p>
+<ul>
+<li><a href="en/index.html">Course homepage</a></li>
+<li><a href="en/curriculum.html">Curriculum</a></li>
+<li><a href="en/projects.html">Projects</a></li>
+<li><a href="en/reference-atlas.html">Repository atlas</a></li>
+<li><a href="en/glossary.html">Glossary</a></li>
+</ul>
+<hr>
+<h2 id="ti-ng-vi-t">Tiếng Việt</h2>
+<p>Mục tiêu của bộ tài liệu này là giúp bạn học cách thiết kế một <strong>giải pháp AI hoàn chỉnh</strong>, không chỉ gọi một thư viện đơn lẻ. Một hệ thống AI production thường cần sáu lớp phối hợp:</p>
+<ol>
+<li><strong>Kiến trúc ứng dụng và agent</strong>: vòng lặp agent, tool, memory, workflow, human-in-the-loop, orchestration.</li>
+<li><strong>Serving và inference mô hình</strong>: nạp model, batching, scheduling, streaming token, serving local hoặc distributed.</li>
+<li><strong>Training và adaptation</strong>: fine-tuning tiết kiệm tham số, training phân tán, checkpoint, optimizer state, khả năng tái lập.</li>
+<li><strong>RAG và dữ liệu vector</strong>: ingestion, embedding, indexing, hybrid search, metadata filter, tenancy, durability.</li>
+<li><strong>Observability, evaluation và LLMOps</strong>: tracing, scoring, dataset, feedback, quản trị prompt/version, lineage thí nghiệm.</li>
+<li><strong>Tooling, MCP và nền tảng AI</strong>: tool server, UI gateway, routing provider/model, admin control, tích hợp workspace.</li>
+</ol>
+<p>Đọc khóa học tiếng Việt:</p>
+<ul>
+<li><a href="vi/index.html">Trang khóa học</a></li>
+<li><a href="vi/curriculum.html">Chương trình học</a></li>
+<li><a href="vi/projects.html">Dự án thực hành</a></li>
+<li><a href="vi/reference-atlas.html">Bản đồ repository</a></li>
+<li><a href="vi/glossary.html">Bảng thuật ngữ</a></li>
+</ul>
+<hr>
+<h2 id="the-ai-solution-architecture-map">The AI Solution Architecture Map</h2>
+<div class="mermaid">flowchart LR
+  User[Users and business workflows] --&gt; App[AI app and agent layer]
+  App --&gt; Tools[Tools, MCP, platform gateway]
+  App --&gt; RAG[RAG and vector data]
+  App --&gt; Serving[Model serving and inference]
+  Serving --&gt; Models[Model artifacts and runtimes]
+  Training[Training and adaptation] --&gt; Models
+  RAG --&gt; Data[Documents, metadata, embeddings]
+  App --&gt; LLMOps[Tracing, evaluation, feedback]
+  Serving --&gt; LLMOps
+  RAG --&gt; LLMOps
+  LLMOps --&gt; Governance[Security, governance, operations]
+  Tools --&gt; Governance
+  Governance --&gt; User</div>
+<p>The repository set is organized around that map:</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Domain</th><th>Repositories</th><th>What You Learn</th></tr></thead>
+<tbody>
+<tr><td>AI app / agent architecture</td><td>OpenAI Agents Python, LangChain, AutoGen, LlamaIndex</td><td>Agent loops, workflow graphs, multi-agent boundaries, retrieval orchestration</td></tr>
+<tr><td>Model serving / inference</td><td>vLLM, llama.cpp, Transformers</td><td>Runtime selection, scheduling, quantization, token streaming, compatibility</td></tr>
+<tr><td>Fine-tuning / training</td><td>PEFT, DeepSpeed</td><td>Adapter tuning, distributed training, memory partitioning, checkpoint governance</td></tr>
+<tr><td>RAG / vector database</td><td>Qdrant, Chroma</td><td>Vector search, indexing, tenancy, durability, query semantics</td></tr>
+<tr><td>Observability / evaluation / LLMOps</td><td>Langfuse, Phoenix, MLflow, TruLens</td><td>Tracing, scoring, experiment lineage, eval design, feedback loops</td></tr>
+<tr><td>Tooling / MCP / AI platform</td><td>MCP servers, Open WebUI</td><td>Tool contracts, provider gateways, admin surfaces, self-hosted AI workspaces</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="quick-start">Quick Start</h2>
+<p>If you want the fastest path, do this:</p>
+<ol>
+<li>Read <a href="en/index.html">English course homepage</a> or <a href="vi/index.html">trang tiếng Việt</a>.</li>
+<li>Use the <a href="en/reference-atlas.html">repository atlas</a> to locate the stack you care about.</li>
+<li>Pick one project from <a href="en/projects.html">Projects</a> or <a href="vi/projects.html">Dự án</a>.</li>
+<li>Copy a template from the <a href="../templates/index.html">AI architecture toolkit</a>.</li>
+<li>Go back to the deep-dive source docs in <a href="../deep-dives/index.html"><code>repo-architecture-docs/</code></a> when you need repository-level architecture details.</li>
+<li>Use the glossary to normalize vocabulary before comparing libraries.</li>
+</ol>
+<pre><code class="language-text">FAST PATH
+=========
+Course map
+  |
+  v
+Repository atlas --&gt; choose layer --&gt; read deep-dive docs
+  |
+  v
+Project lab --&gt; design decision log --&gt; production checklist
+  |
+  v
+Capstone architecture</code></pre>
+<hr>
+<h2 id="learning-path">Learning Path</h2>
+<div class="mermaid">flowchart TB
+  P1[Phase 1: Agent applications] --&gt; P2[Phase 2: Inference runtime]
+  P2 --&gt; P3[Phase 3: RAG and vector storage]
+  P3 --&gt; P4[Phase 4: Training and adaptation]
+  P4 --&gt; P5[Phase 5: Observability and evaluation]
+  P5 --&gt; P6[Phase 6: Platform, tools, and governance]
+  P6 --&gt; Capstone[Capstone: production AI solution architecture]</div>
+<p>Each phase has two outputs: a mental model and a practical architecture artifact. Do not stop at reading APIs. The useful skill is knowing where boundaries should be drawn, what failure modes matter, and how to verify that the system is production-ready.</p>
+<hr>
+<h2 id="syllabus">Syllabus</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Lesson</th><th>Question</th><th>Primary Repositories</th></tr></thead>
+<tbody>
+<tr><td>L01</td><td>What does an AI solution architecture contain end to end?</td><td>All repositories</td></tr>
+<tr><td>L02</td><td>How should agent applications be decomposed?</td><td>OpenAI Agents Python, LangChain, AutoGen, LlamaIndex</td></tr>
+<tr><td>L03</td><td>When do you choose workflow graphs, agent loops, or multi-agent teams?</td><td>LangChain, AutoGen, OpenAI Agents Python</td></tr>
+<tr><td>L04</td><td>How do model runtimes change architecture decisions?</td><td>Transformers, vLLM, llama.cpp</td></tr>
+<tr><td>L05</td><td>What makes serving production-grade?</td><td>vLLM, llama.cpp, Open WebUI</td></tr>
+<tr><td>L06</td><td>When should you fine-tune, adapt, or avoid training?</td><td>PEFT, DeepSpeed</td></tr>
+<tr><td>L07</td><td>How should RAG data be modeled and operated?</td><td>Qdrant, Chroma</td></tr>
+<tr><td>L08</td><td>How do retrieval and agent orchestration interact?</td><td>LlamaIndex, LangChain, Qdrant, Chroma</td></tr>
+<tr><td>L09</td><td>What should be traced, scored, and evaluated?</td><td>Langfuse, Phoenix, TruLens</td></tr>
+<tr><td>L10</td><td>How do experiment lineage and model lifecycle fit into LLMOps?</td><td>MLflow, Langfuse, Phoenix</td></tr>
+<tr><td>L11</td><td>How should tools and MCP servers be governed?</td><td>MCP servers, Open WebUI, AutoGen</td></tr>
+<tr><td>L12</td><td>What does a production readiness review look like?</td><td>All repositories</td></tr>
+</tbody></table></div>
+<hr>
+<h2 id="projects">Projects</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Project</th><th>Build</th><th>Main Decision</th></tr></thead>
+<tbody>
+<tr><td>P01</td><td>Agent architecture comparison</td><td>Agent loop vs workflow graph vs multi-agent team</td></tr>
+<tr><td>P02</td><td>Serving runtime selection</td><td>Transformers vs vLLM vs llama.cpp</td></tr>
+<tr><td>P03</td><td>RAG system design</td><td>Qdrant vs Chroma, ingestion and query lifecycle</td></tr>
+<tr><td>P04</td><td>Fine-tuning and deployment plan</td><td>PEFT adapters, DeepSpeed scaling, serving handoff</td></tr>
+<tr><td>P05</td><td>LLMOps and evaluation layer</td><td>Langfuse, Phoenix, MLflow, TruLens boundaries</td></tr>
+<tr><td>P06</td><td>Capstone production AI platform</td><td>End-to-end architecture with governance and failure drills</td></tr>
+</tbody></table></div>
+<p>Open the full project track:</p>
+<ul>
+<li><a href="en/projects.html">English projects</a></li>
+<li><a href="vi/projects.html">Dự án tiếng Việt</a></li>
+</ul>
+<hr>
+<h2 id="toolkit">Toolkit</h2>
+<p>The toolkit contains copy-ready architecture artifacts:</p>
+<ul>
+<li><a href="../templates/architecture-decision-record.html">Architecture Decision Record</a></li>
+<li><a href="../templates/runtime-decision-matrix.html">Runtime Decision Matrix</a></li>
+<li><a href="../templates/rag-data-contract.html">RAG Data Contract</a></li>
+<li><a href="../templates/llmops-evaluation-scorecard.html">LLMOps Evaluation Scorecard</a></li>
+<li><a href="../templates/security-governance-review.html">Security And Governance Review</a></li>
+<li><a href="../templates/production-readiness-checklist.html">Production Readiness Checklist</a></li>
+</ul>
+<hr>
+<h2 id="capstone-and-assessment">Capstone And Assessment</h2>
+<ul>
+<li><a href="../capstone/index.html">Enterprise Knowledge Copilot capstone</a></li>
+<li><a href="../assessments/index.html">Assessment pack</a></li>
+</ul>
+<p>The capstone gives the course one concrete product scenario. The assessment pack gives learners a way to test whether they can defend architecture decisions with evidence.</p>
+<hr>
+<h2 id="repository-atlas">Repository Atlas</h2>
+<p>The atlas is the fastest way to compare repositories by role, decision point, integration surface, and production risk:</p>
+<ul>
+<li><a href="en/reference-atlas.html">English repository atlas</a></li>
+<li><a href="vi/reference-atlas.html">Bản đồ repository tiếng Việt</a></li>
+</ul>
+<div class="mermaid">mindmap
+  root((AI solution architecture))
+    Agent apps
+      OpenAI Agents Python
+      LangChain
+      AutoGen
+      LlamaIndex
+    Serving
+      Transformers
+      vLLM
+      llama.cpp
+    Training
+      PEFT
+      DeepSpeed
+    RAG
+      Qdrant
+      Chroma
+    LLMOps
+      Langfuse
+      Phoenix
+      MLflow
+      TruLens
+    Platform
+      MCP servers
+      Open WebUI</div>
+<hr>
+<h2 id="local-use">Local Use</h2>
+<p>This is a Markdown-first documentation set. No build step is required.</p>
+<p>Run validation from the workspace root:</p>
+<pre><code class="language-powershell">powershell -ExecutionPolicy Bypass -File learn-ai-solution-architecture\validate-knowledge-system.ps1</code></pre>
+<p>Source deep dives remain in <a href="../deep-dives/index.html"><code>repo-architecture-docs/</code></a>. This course layer synthesizes them into a learning system.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

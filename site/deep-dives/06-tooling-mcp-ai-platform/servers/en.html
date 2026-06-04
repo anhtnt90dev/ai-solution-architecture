@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Model Context Protocol Servers - Architecture Notes | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/06-tooling-mcp-ai-platform/servers/README.en.md">View source</a>
+      <h1 id="model-context-protocol-servers-architecture-notes">Model Context Protocol Servers - Architecture Notes</h1>
+<h2 id="executive-summary">Executive summary</h2>
+<p><code>github-repos/06-tooling-mcp-ai-platform/servers</code> is the Model Context Protocol reference server collection. It is organized as a monorepo with TypeScript and Python packages that demonstrate common MCP server roles: conformance testing, filesystem access, web fetching, Git operations, persistent memory, sequential reasoning, and timezone utilities.</p>
+<p>The repository should be treated as a reference and learning asset, not as a hardened production platform. The top-level <code>README.md</code> explicitly positions these servers as educational/reference implementations, and each package keeps the implementation small enough for MCP client authors and tool builders to study. The strongest architectural value is that the repo shows several MCP interaction shapes side by side: stdio-only tools, HTTP transports, roots-aware authorization, task notifications, structured tool outputs, prompts, resources, and capability negotiation.</p>
+<h2 id="problem-solved">Problem solved</h2>
+<p>MCP clients need realistic servers to verify that protocol primitives work end to end. This repo solves that by providing:</p>
+<ul>
+<li>A broad conformance-style server in <code>src/everything</code>.</li>
+<li>Narrow task-focused servers for local files, Git repositories, web retrieval, memory, reasoning traces, and time conversion.</li>
+<li>Concrete examples for both Node.js/TypeScript and Python MCP SDK usage.</li>
+<li>Package metadata and command names suitable for <code>npx</code>, <code>uvx</code>, Docker, and desktop client configuration.</li>
+</ul>
+<p>The result is a catalog of small servers that explain the protocol by running it.</p>
+<h2 id="ai-stack-role">AI stack role</h2>
+<p>In an AI system, these servers sit between an MCP client or agent runtime and external context systems. They do not host a model. Instead, they expose controlled capabilities that a model-facing client can call:</p>
+<ul>
+<li>Local context: <code>filesystem</code>, <code>git</code>, and <code>memory</code>.</li>
+<li>Remote or semi-remote context: <code>fetch</code>.</li>
+<li>Reasoning scaffolding: <code>sequentialthinking</code>.</li>
+<li>Utility context: <code>time</code>.</li>
+<li>Protocol feature validation: <code>everything</code>.</li>
+</ul>
+<div class="mermaid">flowchart LR
+    User[&quot;User / operator&quot;] --&gt; Client[&quot;MCP client&lt;br/&gt;Claude Desktop, IDE, agent runtime&quot;]
+    Client --&gt; Transport[&quot;MCP transport&lt;br/&gt;stdio, SSE, Streamable HTTP&quot;]
+    Transport --&gt; Everything[&quot;everything&lt;br/&gt;protocol coverage&quot;]
+    Transport --&gt; Filesystem[&quot;filesystem&lt;br/&gt;allowed directories + roots&quot;]
+    Transport --&gt; Fetch[&quot;fetch&lt;br/&gt;web retrieval&quot;]
+    Transport --&gt; Git[&quot;git&lt;br/&gt;repo operations&quot;]
+    Transport --&gt; Memory[&quot;memory&lt;br/&gt;JSONL knowledge graph&quot;]
+    Transport --&gt; Sequential[&quot;sequentialthinking&lt;br/&gt;thought history&quot;]
+    Transport --&gt; Time[&quot;time&lt;br/&gt;timezone tools&quot;]
+    Filesystem --&gt; LocalDisk[&quot;Local disk&quot;]
+    Git --&gt; Repo[&quot;Git repository&quot;]
+    Fetch --&gt; Web[&quot;HTTP sites + robots.txt&quot;]
+    Memory --&gt; MemoryFile[&quot;memory.jsonl&quot;]
+    Time --&gt; TZ[&quot;IANA timezone database&quot;]</div>
+<h2 id="source-tree-map">Source tree map</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Path</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td><code>README.md</code></td><td>Repository overview, maintained reference servers, client configuration examples, and reference-only warning.</td></tr>
+<tr><td><code>package.json</code></td><td>Private Node workspace for TypeScript server packages under <code>src/*</code>.</td></tr>
+<tr><td><code>.mcp.json</code></td><td>Local MCP documentation server configuration pointing at the public MCP docs endpoint.</td></tr>
+<tr><td><code>ADDITIONAL.md</code></td><td>Curated ecosystem list: frameworks, third-party servers, clients, and community resources.</td></tr>
+<tr><td><code>src/everything</code></td><td>TypeScript test/reference server that exercises tools, prompts, resources, subscriptions, tasks, sampling, elicitation, and multiple transports.</td></tr>
+<tr><td><code>src/filesystem</code></td><td>TypeScript server for controlled local filesystem access with path validation, roots support, structured outputs, and edit helpers.</td></tr>
+<tr><td><code>src/memory</code></td><td>TypeScript JSONL-backed knowledge graph server.</td></tr>
+<tr><td><code>src/sequentialthinking</code></td><td>TypeScript reasoning trace server with branch/revision metadata and optional thought logging suppression.</td></tr>
+<tr><td><code>src/fetch</code></td><td>Python web fetch server using HTTPX, readability extraction, markdown conversion, and robots.txt checks.</td></tr>
+<tr><td><code>src/git</code></td><td>Python Git server built on GitPython, with repository scoping and read/write/destructive annotations.</td></tr>
+<tr><td><code>src/time</code></td><td>Python timezone server using IANA names, <code>zoneinfo</code>, and local timezone discovery.</td></tr>
+</tbody></table></div>
+<h2 id="core-concepts">Core concepts</h2>
+<h3 id="mcp-primitives">MCP primitives</h3>
+<p>The repo demonstrates the main MCP primitives:</p>
+<ul>
+<li>Tools: callable actions such as <code>read_text_file</code>, <code>git_status</code>, <code>fetch</code>, <code>create_entities</code>, <code>sequentialthinking</code>, and <code>convert_time</code>.</li>
+<li>Resources: content addressable by URI, mostly demonstrated in <code>src/everything/resources</code>.</li>
+<li>Prompts: reusable prompt templates, shown in <code>src/everything/prompts</code> and <code>src/fetch/server.py</code>.</li>
+<li>Roots: client-provided filesystem or repository scopes, used by <code>filesystem</code> and <code>git</code>.</li>
+<li>Notifications and subscriptions: <code>everything</code> simulates resource and logging updates.</li>
+<li>Structured content: many TypeScript tools return both text content and typed <code>structuredContent</code>.</li>
+<li>Tool annotations: read-only, destructive, idempotent, and open-world hints are used to help clients reason about risk.</li>
+</ul>
+<h3 id="reference-server-pattern">Reference server pattern</h3>
+<p>The servers intentionally keep narrow responsibilities. Each package starts a server, registers tools/resources/prompts, and connects to a transport. Most packages use stdio because it is the easiest transport for desktop MCP clients. <code>everything</code> adds HTTP transports so client authors can test Streamable HTTP, SSE compatibility, event replay, session IDs, and cleanup behavior.</p>
+<h3 id="client-governed-scope">Client-governed scope</h3>
+<p>The repo repeatedly shows that an MCP server should not assume full local authority. <code>filesystem</code> accepts explicit allowed directories or client roots. <code>git</code> validates that requested repositories sit inside the configured repository or client roots. <code>fetch</code> consults robots.txt for autonomous tool calls unless explicitly disabled. These are reference-level controls, but they illustrate the right shape of governance.</p>
+<h2 id="internal-architecture">Internal architecture</h2>
+<h3 id="monorepo-shape">Monorepo shape</h3>
+<p>The root Node workspace covers the TypeScript servers. Python packages under <code>src/fetch</code>, <code>src/git</code>, and <code>src/time</code> are independent Python projects with their own <code>pyproject.toml</code>. There is no shared application runtime across all servers; each package is separately invokable.</p>
+<h3 id="server-by-server-architecture">Server-by-server architecture</h3>
+<p><strong><code>src/everything</code></strong></p>
+<ul>
+<li><code>index.ts</code> dispatches between <code>stdio</code>, <code>sse</code>, and <code>streamableHttp</code>.</li>
+<li><code>server/index.ts</code> creates the <code>McpServer</code>, declares capabilities, registers tools/resources/prompts, manages subscriptions, and handles cleanup.</li>
+<li><code>tools</code>, <code>resources</code>, <code>prompts</code>, and <code>tasks</code> are split into modules so protocol features can be studied independently.</li>
+<li><code>transports/streamableHttp.ts</code> implements <code>/mcp</code> POST/GET/DELETE handling, session IDs, CORS headers, and event replay through an in-memory event store.</li>
+</ul>
+<p><strong><code>src/filesystem</code></strong></p>
+<ul>
+<li><code>index.ts</code> parses allowed directories, reacts to roots change notifications, and registers filesystem tools.</li>
+<li><code>lib.ts</code> contains most filesystem behavior: path validation, symlink checks, directory tree generation, atomic write/edit logic, search, and file metadata.</li>
+<li><code>path-validation.ts</code> and <code>roots-utils.ts</code> isolate path normalization and root parsing.</li>
+</ul>
+<p><strong><code>src/memory</code></strong></p>
+<ul>
+<li><code>index.ts</code> contains the <code>KnowledgeGraphManager</code> and tool registrations.</li>
+<li>Persistence is JSONL, selected by <code>MEMORY_FILE_PATH</code> or defaulting to the package output directory.</li>
+<li>Entities, relations, and observations are simple records, which keeps the graph easy to inspect and migrate.</li>
+</ul>
+<p><strong><code>src/sequentialthinking</code></strong></p>
+<ul>
+<li><code>index.ts</code> registers the <code>sequentialthinking</code> tool and validates/coerces inputs.</li>
+<li><code>lib.ts</code> maintains in-memory thought history and branches, formats logs with <code>chalk</code>, and supports disabling thought logging through <code>DISABLE_THOUGHT_LOGGING</code>.</li>
+</ul>
+<p><strong><code>src/fetch</code></strong></p>
+<ul>
+<li><code>server.py</code> extracts readable content, converts HTML to markdown, checks robots.txt through Protego, and exposes both a tool and a prompt.</li>
+<li>Tool calls use an autonomous user agent and respect robots.txt unless <code>--ignore-robots-txt</code> is supplied.</li>
+<li>Prompt usage is treated as manual/user-directed fetching.</li>
+</ul>
+<p><strong><code>src/git</code></strong></p>
+<ul>
+<li><code>server.py</code> defines Git tool schemas, uses GitPython for repository operations, and validates repository scope.</li>
+<li>Mutating operations such as add, reset, commit, branch creation, and checkout are clearly distinguishable through annotations.</li>
+<li>Inputs that might become command flags are rejected as defense in depth.</li>
+</ul>
+<p><strong><code>src/time</code></strong></p>
+<ul>
+<li><code>server.py</code> wraps timezone lookup, current time, and same-day time conversion.</li>
+<li>It uses IANA timezone names and reports DST state, UTC offset, ISO datetime, and day-of-week data.</li>
+</ul>
+<h2 id="end-to-end-flow">End-to-end flow</h2>
+<p>The following sequence shows the common stdio path. HTTP transport adds session management and request routing, but the server-side registration and handler model stays the same.</p>
+<div class="mermaid">sequenceDiagram
+    participant User
+    participant Client as MCP client
+    participant Server as Reference server process
+    participant Handler as Tool/resource/prompt handler
+    participant System as Local or remote system
+
+    User-&gt;&gt;Client: Ask for context or action
+    Client-&gt;&gt;Server: initialize + capability negotiation
+    Server--&gt;&gt;Client: capabilities, tools, resources, prompts
+    Client-&gt;&gt;Server: tools/call or resources/read
+    Server-&gt;&gt;Handler: Validate schema and policy
+    Handler-&gt;&gt;System: Read, write, fetch, Git, memory, or time lookup
+    System--&gt;&gt;Handler: Result or error
+    Handler--&gt;&gt;Server: MCP content + structuredContent
+    Server--&gt;&gt;Client: Tool result, notification, or error
+    Client--&gt;&gt;User: Model-facing answer or action summary</div>
+<h2 id="runtime-and-data-flow">Runtime and data flow</h2>
+<h3 id="tool-call-flow">Tool call flow</h3>
+<ol>
+<li>The client launches the server process or connects to the HTTP endpoint.</li>
+<li>The server advertises capabilities and registered handlers.</li>
+<li>The client lists tools/resources/prompts or calls a known item.</li>
+<li>The server validates input through SDK schemas, Zod, or Pydantic.</li>
+<li>The package-specific handler performs a scoped operation.</li>
+<li>The server returns MCP content blocks, structured data, or protocol errors.</li>
+</ol>
+<h3 id="state-and-persistence">State and persistence</h3>
+<div class="table-scroll"><table>
+<thead><tr><th>Server</th><th>State model</th></tr></thead>
+<tbody>
+<tr><td><code>everything</code></td><td>In-memory tasks, subscriptions, simulated updates, and event replay cache.</td></tr>
+<tr><td><code>filesystem</code></td><td>No durable state, but allowed directories are runtime state and may change through roots notifications.</td></tr>
+<tr><td><code>memory</code></td><td>Durable JSONL graph file.</td></tr>
+<tr><td><code>sequentialthinking</code></td><td>In-memory thought history and branch map for the server process lifetime.</td></tr>
+<tr><td><code>fetch</code></td><td>Mostly stateless; HTTP responses and robots checks are per request.</td></tr>
+<tr><td><code>git</code></td><td>Durable state lives in the target Git repository.</td></tr>
+<tr><td><code>time</code></td><td>Stateless, derived from system timezone data.</td></tr>
+</tbody></table></div>
+<h3 id="error-handling-patterns">Error handling patterns</h3>
+<ul>
+<li>TypeScript servers generally throw or return SDK-compatible errors after validation fails.</li>
+<li>Python servers use Pydantic validation and <code>McpError</code> where protocol-level error codes are appropriate.</li>
+<li><code>filesystem</code> is the most defensive local server because it validates requested paths, symlinks, parent directories, and allowed scopes before file operations.</li>
+<li><code>fetch</code> surfaces HTTP, extraction, and robots.txt failures while also supporting continuation through <code>start_index</code>.</li>
+</ul>
+<h2 id="deployment-and-operations-topology">Deployment and operations topology</h2>
+<div class="mermaid">flowchart TB
+    subgraph Desktop[&quot;Desktop / IDE runtime&quot;]
+        Client[&quot;MCP client&quot;]
+        Stdio[&quot;stdio child process&quot;]
+    end
+
+    subgraph NodeServers[&quot;Node.js packages&quot;]
+        Everything[&quot;mcp-server-everything&quot;]
+        Filesystem[&quot;mcp-server-filesystem&quot;]
+        Memory[&quot;mcp-server-memory&quot;]
+        Sequential[&quot;mcp-server-sequential-thinking&quot;]
+    end
+
+    subgraph PythonServers[&quot;Python packages&quot;]
+        Fetch[&quot;mcp-server-fetch&quot;]
+        Git[&quot;mcp-server-git&quot;]
+        Time[&quot;mcp-server-time&quot;]
+    end
+
+    subgraph HostSystems[&quot;Host and external systems&quot;]
+        Disk[&quot;Allowed directories&quot;]
+        Repo[&quot;Allowed Git repo&quot;]
+        MemoryJsonl[&quot;memory.jsonl&quot;]
+        Internet[&quot;Web targets&quot;]
+        TzDb[&quot;Timezone database&quot;]
+    end
+
+    Client --&gt; Stdio
+    Stdio --&gt; Everything
+    Stdio --&gt; Filesystem
+    Stdio --&gt; Memory
+    Stdio --&gt; Sequential
+    Stdio --&gt; Fetch
+    Stdio --&gt; Git
+    Stdio --&gt; Time
+    Everything -. optional .-&gt; Http[&quot;SSE / Streamable HTTP&lt;br/&gt;port from PORT or 3001&quot;]
+    Filesystem --&gt; Disk
+    Memory --&gt; MemoryJsonl
+    Fetch --&gt; Internet
+    Git --&gt; Repo
+    Time --&gt; TzDb</div>
+<h2 id="extension-points">Extension points</h2>
+<h3 id="adding-or-changing-typescript-servers">Adding or changing TypeScript servers</h3>
+<p>Follow the existing package pattern under <code>src/&lt;server&gt;</code>:</p>
+<ul>
+<li><code>package.json</code> with a bin entry and build/test scripts.</li>
+<li><code>src/index.ts</code> that creates an MCP server and connects a transport.</li>
+<li>Tool schemas with Zod and clear annotations.</li>
+<li>Focused tests in <code>*.test.ts</code>.</li>
+</ul>
+<p><code>everything</code> is the best guide for advanced protocol features. <code>filesystem</code> is the best guide for local system access and defensive path validation.</p>
+<h3 id="adding-or-changing-python-servers">Adding or changing Python servers</h3>
+<p>Use the pattern in <code>fetch</code>, <code>git</code>, or <code>time</code>:</p>
+<ul>
+<li>Define a <code>pyproject.toml</code> package with a console script.</li>
+<li>Use Pydantic models for input validation.</li>
+<li>Register tools through the Python MCP server.</li>
+<li>Keep side effects explicit and annotate mutating operations.</li>
+</ul>
+<h3 id="tool-design-guidance-from-the-repo">Tool design guidance from the repo</h3>
+<ul>
+<li>Make the least-privilege scope visible in both configuration and runtime validation.</li>
+<li>Return structured output when a client may need machine-readable data.</li>
+<li>Use text content blocks for human-readable summaries.</li>
+<li>Prefer small, composable tools over broad, ambiguous actions.</li>
+<li>Declare destructive and read-only behavior so clients can present useful trust decisions.</li>
+</ul>
+<h2 id="integrations">Integrations</h2>
+<p>The top-level README and package metadata show the expected integrations:</p>
+<ul>
+<li>MCP clients: Claude Desktop, IDE integrations, Codex-style agents, and the MCP Inspector.</li>
+<li>Package runners: <code>npx</code> for Node packages and <code>uvx</code> for Python packages.</li>
+<li>Containers: Docker examples in the repository README for selected servers.</li>
+<li>Local systems: filesystem, Git repositories, timezone database, and JSONL memory storage.</li>
+<li>Remote systems: HTTP websites for <code>fetch</code>.</li>
+<li>MCP ecosystem: <code>ADDITIONAL.md</code> catalogs additional frameworks, clients, registries, and community servers.</li>
+</ul>
+<h2 id="configuration-deployment-and-operations">Configuration, deployment, and operations</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Area</th><th>Practical notes</th></tr></thead>
+<tbody>
+<tr><td>Transport</td><td>Most servers use stdio. <code>everything</code> additionally supports deprecated SSE and Streamable HTTP.</td></tr>
+<tr><td><code>everything</code> port</td><td>HTTP transports read <code>PORT</code>, defaulting to <code>3001</code> in the inspected transport code.</td></tr>
+<tr><td>Filesystem scope</td><td>Pass allowed directories on the command line or provide MCP roots. Empty scope fails initialization.</td></tr>
+<tr><td>Memory path</td><td><code>MEMORY_FILE_PATH</code> overrides the default <code>memory.jsonl</code> location.</td></tr>
+<tr><td>Sequential logging</td><td><code>DISABLE_THOUGHT_LOGGING=true</code> suppresses formatted thought logs.</td></tr>
+<tr><td>Fetch policy</td><td>CLI flags configure user agents, proxy, and whether autonomous fetches ignore robots.txt.</td></tr>
+<tr><td>Git scope</td><td>Start with an explicit repository or rely on client roots; requested repo paths are validated.</td></tr>
+<tr><td>Timezone</td><td><code>time</code> supports a local timezone override and expects IANA timezone names.</td></tr>
+</tbody></table></div>
+<p>Operationally, each server should be managed as a separate capability boundary. For example, do not give a general chat client both wide filesystem access and mutating Git access unless the user workflow really requires it.</p>
+<h2 id="observability-testing-evaluation-and-failure-modes">Observability, testing, evaluation, and failure modes</h2>
+<h3 id="observability">Observability</h3>
+<p>The repo is intentionally lightweight. Observability is mostly process logs, protocol responses, and client-side inspection. Useful places to inspect are:</p>
+<ul>
+<li><code>everything</code> logging and resource update simulations.</li>
+<li><code>filesystem</code> stderr messages around allowed directories and roots changes.</li>
+<li><code>fetch</code> HTTP and robots failures.</li>
+<li><code>git</code> repository validation and GitPython exceptions.</li>
+<li><code>sequentialthinking</code> formatted thought logging, when enabled.</li>
+</ul>
+<p>For production use, wrap these servers with process supervision, log collection, and explicit audit trails for mutating tools.</p>
+<h3 id="testing-and-evaluation">Testing and evaluation</h3>
+<p>The repository includes focused tests rather than large integration suites:</p>
+<ul>
+<li>TypeScript packages use Vitest in packages such as <code>everything</code>, <code>filesystem</code>, <code>memory</code>, and <code>sequentialthinking</code>.</li>
+<li>Python packages use pytest-style tests in <code>fetch</code>, <code>git</code>, and <code>time</code>.</li>
+<li><code>everything</code> acts as a practical evaluation target for MCP client conformance because it combines tools, prompts, resources, subscriptions, HTTP transports, and task-like behavior.</li>
+</ul>
+<p>No dependency installation or test execution is required to understand the architecture.</p>
+<h3 id="common-failure-modes">Common failure modes</h3>
+<ul>
+<li>Client lacks roots and no explicit filesystem directories were supplied.</li>
+<li>Filesystem paths resolve through symlinks outside the allowed directory set.</li>
+<li>Fetch target blocks access through robots.txt, network timeout, invalid HTML, or content length truncation.</li>
+<li>Git tool is pointed at a path outside the allowed repository boundary.</li>
+<li>Memory graph file is missing, unwritable, or migrated from an older JSON format.</li>
+<li>Sequential thinking state is lost when the server process exits.</li>
+<li>HTTP <code>everything</code> sessions are lost when the process restarts because session/event state is in memory.</li>
+</ul>
+<h2 id="security-and-governance-risks">Security and governance risks</h2>
+<p>This repo is a reference implementation set, so production hardening is the responsibility of the adopter.</p>
+<p>Key risks:</p>
+<ul>
+<li><code>filesystem</code> can read, write, edit, move, and search local files inside its allowed scope. Scope selection is the main governance decision.</li>
+<li><code>git</code> exposes mutating repository operations, including add, reset, commit, branch creation, and checkout.</li>
+<li><code>fetch</code> can access URLs. The README warns about the risk of local/internal IP access; robots.txt checks do not solve SSRF by themselves.</li>
+<li><code>memory</code> persists user-provided entity and observation data in a local JSONL file that may contain sensitive information.</li>
+<li><code>sequentialthinking</code> logs reasoning traces unless disabled. Treat logs as sensitive.</li>
+<li><code>everything</code> includes deliberately broad test capabilities such as environment inspection, sampling, elicitation, and permissive CORS in HTTP test transports.</li>
+<li>Docker bind mounts and client configuration files can accidentally widen server authority.</li>
+</ul>
+<p>Governance recommendations:</p>
+<ul>
+<li>Configure one server per purpose instead of exposing every server to every user.</li>
+<li>Prefer explicit roots and narrow directories.</li>
+<li>Run mutating servers in trusted workspaces only.</li>
+<li>Treat logs, memory files, and Git diffs as sensitive artifacts.</li>
+<li>Put network egress controls around <code>fetch</code> if it is used outside a trusted local environment.</li>
+</ul>
+<h2 id="lifecycle-and-decision-diagram">Lifecycle and decision diagram</h2>
+<div class="mermaid">flowchart TD
+    Start[&quot;Need to expose context or an action to an AI client&quot;] --&gt; NeedType{&quot;What is the capability?&quot;}
+    NeedType --&gt;|Protocol client testing| Everything[&quot;Use everything&quot;]
+    NeedType --&gt;|Local files| FsScope{&quot;Can scope be narrow?&quot;}
+    FsScope --&gt;|Yes| Filesystem[&quot;Use filesystem with roots or allowed dirs&quot;]
+    FsScope --&gt;|No| RejectFs[&quot;Do not expose broad filesystem access&quot;]
+    NeedType --&gt;|Web page content| FetchPolicy{&quot;Autonomous fetch allowed?&quot;}
+    FetchPolicy --&gt;|Respect robots| Fetch[&quot;Use fetch default policy&quot;]
+    FetchPolicy --&gt;|Override required| FetchRisk[&quot;Use fetch with explicit governance&quot;]
+    NeedType --&gt;|Git workflow| GitScope{&quot;Trusted repository?&quot;}
+    GitScope --&gt;|Yes| Git[&quot;Use git server&quot;]
+    GitScope --&gt;|No| RejectGit[&quot;Avoid mutating Git tools&quot;]
+    NeedType --&gt;|Persistent user facts| Memory[&quot;Use memory JSONL graph&quot;]
+    NeedType --&gt;|Reasoning trace| Seq[&quot;Use sequentialthinking&quot;]
+    NeedType --&gt;|Timezone utility| Time[&quot;Use time&quot;]
+    Everything --&gt; Observe[&quot;Inspect protocol behavior&quot;]
+    Filesystem --&gt; Observe
+    Fetch --&gt; Observe
+    Git --&gt; Observe
+    Memory --&gt; Observe
+    Seq --&gt; Observe
+    Time --&gt; Observe</div>
+<h2 id="reading-guide">Reading guide</h2>
+<p>Start with:</p>
+<ol>
+<li><code>README.md</code> for the maintained server list, intent, and client setup examples.</li>
+<li><code>src/everything/README.md</code> and <code>src/everything/docs/*</code> for protocol features.</li>
+<li><code>src/filesystem/src/lib.ts</code> and <code>src/filesystem/src/path-validation.ts</code> for defensive local access.</li>
+<li><code>src/fetch/src/mcp_server_fetch/server.py</code> for HTTP retrieval and robots policy.</li>
+<li><code>src/git/src/mcp_server_git/server.py</code> for repository scoping and Git tool annotations.</li>
+<li><code>src/memory/index.ts</code>, <code>src/sequentialthinking/src/lib.ts</code>, and <code>src/time/src/mcp_server_time/server.py</code> for compact examples.</li>
+</ol>
+<h2 id="learning-path">Learning path</h2>
+<ol>
+<li>Run or inspect <code>time</code> first; it is the smallest stateless example.</li>
+<li>Read <code>memory</code> to understand durable tool state.</li>
+<li>Read <code>filesystem</code> to learn validation and roots negotiation.</li>
+<li>Read <code>fetch</code> to understand network governance and truncation.</li>
+<li>Read <code>git</code> to compare read-only and destructive tool annotations.</li>
+<li>Read <code>everything</code> last; it combines most protocol surfaces and is easiest after the smaller servers are clear.</li>
+</ol>
+<h2 id="glossary">Glossary</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Term</th><th>Meaning in this repository</th></tr></thead>
+<tbody>
+<tr><td>MCP</td><td>Model Context Protocol, the client/server protocol these packages implement.</td></tr>
+<tr><td>Client</td><td>The host application or agent runtime that launches or connects to a server.</td></tr>
+<tr><td>Tool</td><td>A callable operation exposed to the client.</td></tr>
+<tr><td>Resource</td><td>Addressable content exposed by URI.</td></tr>
+<tr><td>Prompt</td><td>A reusable prompt template returned by the server.</td></tr>
+<tr><td>Root</td><td>A client-declared scope, usually a filesystem or repository boundary.</td></tr>
+<tr><td>Transport</td><td>The communication channel, such as stdio, SSE, or Streamable HTTP.</td></tr>
+<tr><td>Structured content</td><td>Machine-readable result data returned with human-readable content.</td></tr>
+<tr><td>Annotation</td><td>Metadata that describes whether a tool is read-only, destructive, idempotent, or open-world.</td></tr>
+<tr><td>JSONL</td><td>Newline-delimited JSON format used by the memory server.</td></tr>
+</tbody></table></div>
+<h2 id="repository-grounded-deep-dive">Repository-Grounded Deep Dive</h2>
+<p>This repository is a set of reference implementations for MCP capability design. The TypeScript servers under <code>github-repos/06-tooling-mcp-ai-platform/servers/src/everything/</code>, <code>src/filesystem/</code>, <code>src/memory/</code>, and <code>src/sequentialthinking/</code> show different levels of capability surface, while Python servers under <code>src/fetch/</code>, <code>src/git/</code>, and <code>src/time/</code> show how smaller tools expose external systems. The most important architectural lesson is that MCP servers should be judged by scope control, tool annotations, transport assumptions, and result structure, not just by how many tools they expose.</p>
+<div class="mermaid">flowchart LR
+  Client[&quot;MCP client or agent host&quot;] --&gt; Transport[&quot;stdio, SSE, or Streamable HTTP&quot;]
+  Transport --&gt; Server[&quot;server index.ts or Python server.py&quot;]
+  Server --&gt; Tools[&quot;tools registration&quot;]
+  Server --&gt; Resources[&quot;resources and templates&quot;]
+  Server --&gt; Prompts[&quot;prompt templates&quot;]
+  Server --&gt; Roots[&quot;client roots and scope&quot;]
+  Tools --&gt; Fs[&quot;filesystem path validation&quot;]
+  Tools --&gt; Mem[&quot;memory JSONL graph&quot;]
+  Tools --&gt; Net[&quot;fetch network access&quot;]
+  Tools --&gt; Git[&quot;git repository operations&quot;]
+  Resources --&gt; Everything[&quot;everything reference server&quot;]</div>
+<p>The <code>everything</code> server is best read as a protocol exerciser: <code>src/everything/tools/</code>, <code>resources/</code>, <code>prompts/</code>, <code>transports/</code>, and <code>server/</code> demonstrate breadth. The smaller servers are better production examples. <code>src/filesystem/path-validation.ts</code>, <code>src/filesystem/roots-utils.ts</code>, and <code>src/filesystem/lib.ts</code> show root-scoped filesystem access. <code>src/memory/index.ts</code> shows a persisted knowledge graph backed by JSONL. <code>src/sequentialthinking/lib.ts</code> shows stateful reasoning data. The Python <code>fetch</code>, <code>git</code>, and <code>time</code> servers show how to bind external APIs or command-like operations to MCP without requiring a full monorepo service.</p>
+<div class="mermaid">sequenceDiagram
+  participant Host as Agent host
+  participant MCP as MCP server
+  participant Guard as Scope and validation
+  participant Impl as Tool implementation
+  participant Ext as Filesystem, network, git, or time
+  Host-&gt;&gt;MCP: initialize and list capabilities
+  MCP--&gt;&gt;Host: tools, resources, prompts, annotations
+  Host-&gt;&gt;MCP: call tool with arguments
+  MCP-&gt;&gt;Guard: validate schema, roots, paths, and policy
+  Guard-&gt;&gt;Impl: approved invocation
+  Impl-&gt;&gt;Ext: perform scoped operation
+  Ext--&gt;&gt;Impl: raw result
+  Impl--&gt;&gt;MCP: content plus structured content
+  MCP--&gt;&gt;Host: result or explicit error</div>
+<div class="mermaid">flowchart TD
+  Risk[&quot;MCP production risk&quot;] --&gt; Scope[&quot;scope too broad&quot;]
+  Risk --&gt; Annotation[&quot;wrong tool annotation&quot;]
+  Risk --&gt; Transport[&quot;transport mismatch&quot;]
+  Risk --&gt; Data[&quot;unstructured result&quot;]
+  Risk --&gt; Persistence[&quot;state file corruption&quot;]
+  Risk --&gt; Network[&quot;open-world network access&quot;]
+  Scope --&gt; S1[&quot;filesystem or git tool crosses intended root&quot;]
+  Annotation --&gt; A1[&quot;client approves destructive tool as read-only&quot;]
+  Transport --&gt; T1[&quot;server deployed with wrong lifecycle expectations&quot;]
+  Data --&gt; D1[&quot;agent cannot reliably parse result&quot;]
+  Persistence --&gt; P1[&quot;memory graph loses entities or relations&quot;]
+  Network --&gt; N1[&quot;fetch server reaches disallowed hosts&quot;]</div>
+<h3 id="production-readiness-checklist">Production Readiness Checklist</h3>
+<ul>
+<li>For every server, document transport, lifecycle, and trust boundary: local stdio helper, remote HTTP service, or sidecar tool server.</li>
+<li>Review tool annotations and destructive behavior. The client may rely on read-only, destructive, idempotent, and open-world hints for approval and UX decisions.</li>
+<li>For filesystem and git servers, test path traversal, symlinks, Windows path normalization, root changes, and denied paths using the existing tests under <code>src/filesystem/__tests__/</code> and <code>src/git/tests/</code>.</li>
+<li>For <code>fetch</code>, define host allow/deny policy, content truncation policy, timeout policy, and how fetched content is attributed.</li>
+<li>For <code>memory</code>, protect the JSONL state location, validate concurrent writes, and define backup or export behavior.</li>
+<li>Prefer structured content for machine-readable outputs. Human-readable text alone makes downstream agent behavior brittle.</li>
+<li>Keep example servers separated from production servers. The <code>everything</code> server is valuable for protocol coverage but too broad to use as a default production capability set.</li>
+</ul>
+<h3 id="senior-architect-reading-path">Senior Architect Reading Path</h3>
+<p>Read <code>src/filesystem/</code> first because it demonstrates the most important production pattern: client roots plus local validation. Then read <code>src/memory/</code> for persistent state, <code>src/sequentialthinking/</code> for stateful tool data, and the Python <code>src/fetch/</code>, <code>src/git/</code>, and <code>src/time/</code> packages for external operation design. Finish with <code>src/everything/</code> to understand the full protocol surface after the narrower safety patterns are clear.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

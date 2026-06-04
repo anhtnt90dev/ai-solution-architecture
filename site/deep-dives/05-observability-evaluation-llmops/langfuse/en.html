@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Langfuse Architecture Notes | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/05-observability-evaluation-llmops/langfuse/README.en.md">View source</a>
+      <h1 id="langfuse-architecture-notes">Langfuse Architecture Notes</h1>
+<h2 id="executive-summary">Executive summary</h2>
+<p>Langfuse is an open source LLM engineering platform for tracing, prompt management, datasets, evaluations, playground workflows, and LLMOps automation. In this repository it is implemented as a TypeScript monorepo: <code>web/</code> is the Next.js application and API surface, <code>worker/</code> runs asynchronous queue processors, and <code>packages/shared/</code> holds common domain schemas, Prisma access, ClickHouse access, ingestion logic, queue definitions, and query builders. The root <code>package.json</code> identifies version <code>3.178.0</code>, Node <code>24</code>, <code>pnpm@11.1.3</code>, and Turborepo tasks for build, typecheck, lint, test, development, database migration, and local infrastructure.</p>
+<p>The repo is shaped for production LLM observability at high event volume. Operational metadata and identity state live in PostgreSQL through Prisma, analytical trace and event data live in ClickHouse, background work is coordinated through Redis and BullMQ, and large or replayable payloads use S3-compatible object storage. The provided <code>docker-compose.yml</code> makes this explicit with <code>langfuse-web</code>, <code>langfuse-worker</code>, <code>postgres</code>, <code>clickhouse</code>, <code>redis</code>, and <code>minio</code> services.</p>
+<h2 id="problem-solved">Problem solved</h2>
+<p>Langfuse solves the gap between raw application logs and the questions AI product teams ask every day: which prompt version produced this answer, which retrieval step failed, what did a user session cost, which traces need human review, and whether a new prompt or model variant regressed on a dataset. It captures spans, generations, scores, datasets, comments, annotations, prompts, model metadata, and evaluation results as first-class product concepts instead of leaving teams to assemble them from generic logging backends.</p>
+<h2 id="ai-stack-role">AI stack role</h2>
+<p>In a broader AI platform, Langfuse sits in the LLMOps control plane:</p>
+<ul>
+<li>It is downstream from applications, agents, RAG pipelines, model gateways, and SDK instrumentation.</li>
+<li>It is upstream from analysts, prompt engineers, evaluators, annotation teams, and incident responders.</li>
+<li>It complements model gateways by observing behavior and quality, while gateways mainly enforce routing, credentials, rate limits, and policy.</li>
+<li>It complements data warehouses by providing trace-shaped, prompt-shaped, and eval-shaped workflows before teams export or archive data.</li>
+</ul>
+<h2 id="source-tree-map">Source tree map</h2>
+<p>Key repository evidence:</p>
+<ul>
+<li><code>README.md</code> describes core features: LLM observability, prompt management, evaluations, datasets, playground, API, SDKs, integrations, cloud and self-hosting.</li>
+<li><code>package.json</code> defines the Turborepo workspace, Node and pnpm versions, and scripts such as <code>dev</code>, <code>build</code>, <code>typecheck</code>, <code>test</code>, <code>infra:dev:up</code>, <code>db:migrate</code>, and <code>db:seed</code>.</li>
+<li><code>web/src/server/api/root.ts</code> assembles the main tRPC router with modules for traces, observations, sessions, scores, datasets, prompts, evals, experiments, annotation queues, dashboards, monitors, integrations, billing, RBAC, API keys, audit logs, media, batch exports, and batch actions.</li>
+<li><code>web/src/pages/api/trpc/[trpc].ts</code> exposes the tRPC API handler.</li>
+<li><code>web/src/pages/api/public/traces/index.ts</code> shows the legacy/public ingestion surface.</li>
+<li><code>packages/shared/src/db.ts</code> centralizes Prisma database access.</li>
+<li><code>packages/shared/src/server/queues.ts</code> defines typed queue payloads such as <code>IngestionEvent</code>, <code>OtelIngestionEvent</code>, batch export, deletion, dataset, eval, retention, and integration jobs, plus <code>QueueName</code>, <code>QueueJobs</code>, and <code>TQueueJobTypes</code>.</li>
+<li><code>packages/shared/src/server/ingestion/</code> contains ingestion validation and batch processing utilities.</li>
+<li><code>packages/shared/src/server/clickhouse/</code> and <code>packages/shared/src/server/queries/clickhouse-sql/</code> contain the ClickHouse client, schema helpers, query tracking, SQL fragments, filters, full-text search, and event query builders.</li>
+<li><code>worker/src/queues/</code> contains processors for ingestion, OTEL ingestion, evals, code evals, experiments, webhooks, deletion, data retention, batch export, batch actions, cloud metering, and integrations.</li>
+<li><code>worker/src/services/IngestionService/index.ts</code> and <code>worker/src/services/ClickhouseWriter/index.ts</code> are core ingestion write-path services.</li>
+<li><code>worker/src/instrumentation.ts</code> configures OpenTelemetry instrumentation for Prisma and BullMQ.</li>
+<li><code>docker-compose.yml</code> documents the reference self-host topology with Postgres, ClickHouse, Redis, MinIO, web, and worker.</li>
+</ul>
+<h2 id="core-concepts">Core concepts</h2>
+<ul>
+<li><strong>Trace</strong>: a user request or workflow execution, often containing nested observations and model calls.</li>
+<li><strong>Observation or generation</strong>: a span-like event for model calls, tool calls, retrieval, embeddings, agent actions, or custom application logic.</li>
+<li><strong>Score</strong>: human, automated, or evaluator-produced quality signal attached to traces, observations, sessions, or dataset runs.</li>
+<li><strong>Prompt</strong>: managed and versioned prompt asset used by applications and the playground.</li>
+<li><strong>Dataset and experiment</strong>: reusable examples and runs used for regression testing, prompt comparison, and release gates.</li>
+<li><strong>Annotation queue</strong>: review workflow for human labeling, triage, and feedback collection.</li>
+<li><strong>Ingestion event</strong>: typed event accepted by API endpoints, optionally staged through object storage, then processed asynchronously into ClickHouse and relational state.</li>
+<li><strong>Evaluation job</strong>: batch or trigger-driven execution that applies LLM-as-judge, code evaluators, or observation-level scoring.</li>
+</ul>
+<h2 id="internal-architecture">Internal architecture</h2>
+<div class="mermaid">graph TB
+  SDK[SDKs and integrations] --&gt; API[Next.js API routes]
+  User[Web users] --&gt; UI[Next.js UI]
+  UI --&gt; TRPC[tRPC appRouter]
+  API --&gt; Auth[Auth and API key checks]
+  TRPC --&gt; Domain[Feature routers]
+  Domain --&gt; Prisma[Prisma and PostgreSQL]
+  Domain --&gt; CHRead[ClickHouse query layer]
+  API --&gt; S3[Object storage event payloads]
+  API --&gt; Redis[Redis and BullMQ]
+  Redis --&gt; Worker[Langfuse worker]
+  Worker --&gt; Ingestion[IngestionService]
+  Ingestion --&gt; CHWrite[ClickhouseWriter]
+  CHWrite --&gt; ClickHouse[(ClickHouse)]
+  Worker --&gt; Prisma
+  Worker --&gt; Integrations[Webhooks and external integrations]
+  Prisma --&gt; Postgres[(PostgreSQL)]</div>
+<p>The web application owns user interaction, authentication, project scoping, and synchronous product APIs. <code>web/src/server/api/root.ts</code> is the best starting point because it lists the product modules that become the internal API contract. Feature directories under <code>web/src/features/</code> own higher-level domain behavior such as datasets, prompts, experiments, public API keys, RBAC, batch exports, table views, evaluations, LLM tools, and integrations.</p>
+<p><code>packages/shared/</code> is the cross-process contract layer. It prevents the web and worker packages from inventing incompatible event shapes. Queue schemas in <code>packages/shared/src/server/queues.ts</code> are especially important: an ingestion, deletion, export, or evaluation job must be valid before it can be processed. ClickHouse code in <code>packages/shared/src/server/clickhouse/</code> and <code>packages/shared/src/server/queries/clickhouse-sql/</code> isolates analytical storage details from feature routers.</p>
+<p>The worker owns durability and side effects. It consumes Redis/BullMQ queues, validates job payloads, performs ingestion enrichment, writes to ClickHouse, updates Postgres, executes evals, dispatches webhooks, runs retention and deletion tasks, and gathers queue metrics.</p>
+<h2 id="runtime-and-data-flow">Runtime and data flow</h2>
+<div class="mermaid">sequenceDiagram
+  participant App as AI application
+  participant API as Langfuse web API
+  participant Obj as S3 or MinIO
+  participant Q as Redis and BullMQ
+  participant W as Worker
+  participant CH as ClickHouse
+  participant PG as PostgreSQL
+  participant UI as Langfuse UI
+
+  App-&gt;&gt;API: Send trace, observation, score, OTEL event
+  API-&gt;&gt;API: Authenticate project key and validate payload
+  API-&gt;&gt;Obj: Store large or replayable event body
+  API-&gt;&gt;Q: Enqueue Ingestion or OtelIngestion job
+  W-&gt;&gt;Q: Consume typed job
+  W-&gt;&gt;Obj: Load event body when needed
+  W-&gt;&gt;W: Normalize, mask, enrich, price, map model metadata
+  W-&gt;&gt;CH: Batch write analytical trace rows
+  W-&gt;&gt;PG: Update relational metadata and job state
+  UI-&gt;&gt;PG: Read projects, prompts, eval configs, RBAC
+  UI-&gt;&gt;CH: Query traces, observations, scores, sessions</div>
+<p>The most important design decision is the split between ingestion acceptance and ingestion processing. API routes should return quickly after authentication, validation, object upload, and queueing. The worker then handles expensive or failure-prone enrichment and ClickHouse writes. This design supports replay: <code>worker/src/scripts/replayIngestionEventsV2/README.md</code> documents replaying failed ingestion from S3 keys through an admin API into <code>IngestionSecondaryQueue</code> or <code>OtelIngestionQueue</code>.</p>
+<h2 id="deployment-and-operations-topology">Deployment and operations topology</h2>
+<div class="mermaid">graph LR
+  subgraph Clients
+    Browser[Browser]
+    App[Instrumented AI apps]
+  end
+  subgraph LangfuseRuntime
+    Web[langfuse-web port 3000]
+    Worker[langfuse-worker port 3030 health]
+  end
+  subgraph State
+    PG[(Postgres)]
+    CH[(ClickHouse)]
+    Redis[(Redis noeviction)]
+    MinIO[(S3 compatible storage)]
+  end
+  Browser --&gt; Web
+  App --&gt; Web
+  Web --&gt; PG
+  Web --&gt; CH
+  Web --&gt; Redis
+  Web --&gt; MinIO
+  Worker --&gt; PG
+  Worker --&gt; CH
+  Worker --&gt; Redis
+  Worker --&gt; MinIO
+  Worker --&gt; Email[SMTP]
+  Worker --&gt; Hooks[Webhooks and analytics integrations]</div>
+<p><code>docker-compose.yml</code> marks most backing services as localhost-bound and exposes only web and MinIO console-style access by default. Production deployments should preserve that shape: the web/API service is the external entrypoint, while Postgres, Redis, ClickHouse, and object storage stay private. Important configuration families include <code>DATABASE_URL</code>, <code>NEXTAUTH_SECRET</code>, <code>SALT</code>, <code>ENCRYPTION_KEY</code>, <code>CLICKHOUSE_URL</code>, <code>CLICKHOUSE_*</code>, <code>REDIS_*</code>, <code>LANGFUSE_S3_EVENT_UPLOAD_*</code>, <code>LANGFUSE_S3_MEDIA_UPLOAD_*</code>, <code>LANGFUSE_S3_BATCH_EXPORT_*</code>, SMTP settings, and initialization variables for first org/project/user creation.</p>
+<h2 id="lifecycle-and-module-dependency-diagram">Lifecycle and module dependency diagram</h2>
+<div class="mermaid">stateDiagram-v2
+  [*] --&gt; Instrument
+  Instrument --&gt; Ingest
+  Ingest --&gt; Normalize
+  Normalize --&gt; Store
+  Store --&gt; Explore
+  Explore --&gt; Annotate
+  Explore --&gt; Evaluate
+  Evaluate --&gt; Dataset
+  Dataset --&gt; Experiment
+  Experiment --&gt; PromptIteration
+  PromptIteration --&gt; Instrument
+  Store --&gt; RetainOrDelete
+  RetainOrDelete --&gt; [*]</div>
+<p>This lifecycle maps to source modules. Instrumentation enters public API routes. Ingestion validation and transformation live in <code>packages/shared/src/server/ingestion/</code> and <code>worker/src/services/IngestionService/</code>. Storage uses Prisma/Postgres for relational state and ClickHouse for analytical trace tables. Exploration is implemented through feature routers and UI under <code>web/src/features/</code> plus ClickHouse query builders. Annotation queues, eval routers, experiments, datasets, and prompt routers close the loop from production trace to controlled improvement.</p>
+<h2 id="extension-points">Extension points</h2>
+<ul>
+<li>Add a product API capability by creating or extending a feature router and registering it in <code>web/src/server/api/root.ts</code>.</li>
+<li>Add a public ingestion or admin route under <code>web/src/pages/api/</code> when the route is not naturally a tRPC call.</li>
+<li>Add a durable background job by defining its Zod schema in <code>packages/shared/src/server/queues.ts</code>, adding a queue under <code>worker/src/queues/</code>, and registering processing in <code>worker/src/queues/workerManager.ts</code>.</li>
+<li>Add ingestion transformation or validation in <code>packages/shared/src/server/ingestion/</code> and worker ingestion services.</li>
+<li>Add analytical query behavior in <code>packages/shared/src/server/queries/clickhouse-sql/</code>.</li>
+<li>Add provider-facing or framework-facing integrations in feature packages and tests, following existing OpenAI, LangChain, LlamaIndex, LiteLLM, Vercel AI SDK, and webhook patterns.</li>
+<li>Add enterprise-only behavior under <code>ee/</code> or <code>web/src/ee/</code> without mixing license-specific paths into OSS feature code.</li>
+</ul>
+<h2 id="integrations">Integrations</h2>
+<p>The README lists SDK and framework integrations across Python and JS/TS, OpenAI, LangChain, LlamaIndex, Haystack, LiteLLM, Vercel AI SDK, Mastra, Amazon Bedrock, AutoGen, Flowise, Langflow, Dify, OpenWebUI, Promptfoo, CrewAI, and other providers or app builders. In the repository, integration behavior appears in product routers, ingestion adapters, webhook processors, blob storage integration queues, PostHog and Mixpanel integration queues, and tests under <code>worker/src/__tests__/chatml/</code> for framework trace conversion.</p>
+<h2 id="configuration-deployment-and-operations">Configuration, deployment, and operations</h2>
+<p>Run modes are encoded in root scripts: local infra through <code>infra:dev:up</code>, development through <code>dev:web</code> and <code>dev:worker</code>, and build/test/typecheck through Turborepo. Database changes are handled through workspace scripts such as <code>db:migrate</code>, <code>db:generate</code>, and <code>db:seed</code>.</p>
+<p>Operationally, watch these signals:</p>
+<ul>
+<li>Queue depth and failure rate for ingestion, OTEL ingestion, evals, deletion, retention, webhooks, and batch exports.</li>
+<li>ClickHouse resource errors surfaced through tRPC error handling in <code>web/src/server/api/trpc.ts</code>.</li>
+<li>Redis memory policy and connection health because BullMQ depends on Redis and the compose file uses <code>noeviction</code>.</li>
+<li>Object storage availability for event upload, media upload, replay, and batch export.</li>
+<li>Postgres migration status and Prisma connection health.</li>
+<li>Worker health and readiness endpoints in <code>worker/src/api/index.ts</code>.</li>
+</ul>
+<h2 id="observability-testing-evaluation-and-failure-modes">Observability, testing, evaluation, and failure modes</h2>
+<p>The repository has broad tests under <code>worker/src/__tests__/</code>, <code>worker/src/queues/__tests__/</code>, <code>worker/src/services/IngestionService/tests/</code>, <code>web/src/__tests__/</code>, and package-level tests. The test names show the expected risk areas: ingestion masking, process event batch, OTEL conversion, queue processing, eval execution, model matching, secure LLM fetch, outbound connection validation, webhooks, retention cleaning, deletion, batch export, pricing, and ClickHouse writer behavior.</p>
+<p>Common failure modes:</p>
+<ul>
+<li><strong>Ingestion backlog</strong>: Redis queue depth rises, worker concurrency is insufficient, or ClickHouse writes are slow.</li>
+<li><strong>Partial trace data</strong>: event payload reaches object storage but queue processing fails; replay scripts are the recovery path.</li>
+<li><strong>ClickHouse pressure</strong>: query resource errors should be exposed cleanly to users and mitigated through query tuning or capacity.</li>
+<li><strong>Evaluator drift</strong>: LLM-as-judge prompts or model versions change, making scores non-comparable unless evaluator config is versioned.</li>
+<li><strong>Secret leakage</strong>: traces may include prompts, user input, retrieved documents, tool arguments, or API output; masking and retention are mandatory controls.</li>
+<li><strong>Webhook or integration loops</strong>: external destination failures can amplify retries without backoff and dead-letter handling.</li>
+</ul>
+<h2 id="security-and-governance-risks">Security and governance risks</h2>
+<p>Treat Langfuse as sensitive production telemetry. It stores user prompts, outputs, tool parameters, retrieval context, model usage, scores, comments, and potentially regulated data. Required controls include project-scoped API keys, strong <code>NEXTAUTH_SECRET</code>, rotated <code>ENCRYPTION_KEY</code>, private backing services, TLS, RBAC, SSO where needed, audit log review, outbound network validation, retention policies, object storage lifecycle rules, and explicit masking for PII or secrets before ingestion.</p>
+<p>The compose file includes several <code>CHANGEME</code> placeholders for passwords and cryptographic secrets. Those defaults are for local setup only. Production deployments should also restrict direct ClickHouse, Redis, Postgres, and object storage access to the Langfuse services.</p>
+<h2 id="reading-guide">Reading guide</h2>
+<ol>
+<li>Start with <code>README.md</code> for product scope and supported integrations.</li>
+<li>Read <code>package.json</code>, <code>pnpm-workspace.yaml</code>, and <code>turbo.json</code> to understand the monorepo and build graph.</li>
+<li>Read <code>docker-compose.yml</code> to understand runtime dependencies.</li>
+<li>Read <code>web/src/server/api/root.ts</code> and <code>web/src/server/api/trpc.ts</code> for the application API boundary.</li>
+<li>Read <code>packages/shared/src/server/queues.ts</code>, <code>packages/shared/src/server/ingestion/</code>, and <code>packages/shared/src/server/clickhouse/</code> for cross-process contracts.</li>
+<li>Read <code>worker/src/queues/workerManager.ts</code>, queue processors, <code>worker/src/services/IngestionService/index.ts</code>, and <code>worker/src/services/ClickhouseWriter/index.ts</code> for asynchronous behavior.</li>
+<li>Use tests under <code>worker/src/__tests__/</code> and <code>worker/src/queues/__tests__/</code> to learn failure handling.</li>
+</ol>
+<h2 id="learning-path">Learning path</h2>
+<ol>
+<li>Run through the README quickstart conceptually: project, API keys, SDK ingestion.</li>
+<li>Trace one event from public API route to queue schema to worker processor to ClickHouse writer.</li>
+<li>Study a tRPC feature router, then find the corresponding UI feature and tests.</li>
+<li>Study one eval path from dataset or observation selection to eval queue and score writeback.</li>
+<li>Review deployment variables and decide which secrets, retention settings, and storage policies are required in your environment.</li>
+<li>Only after the architecture is clear, run local dev infrastructure if needed; this documentation task did not install dependencies or start services.</li>
+</ol>
+<h2 id="glossary">Glossary</h2>
+<ul>
+<li><strong>BullMQ</strong>: Redis-backed queue library used by workers.</li>
+<li><strong>ClickHouse</strong>: columnar analytical database used for high-volume trace and event querying.</li>
+<li><strong>Prisma</strong>: TypeScript ORM used for relational state in Postgres.</li>
+<li><strong>tRPC</strong>: typed API framework used by the Next.js web application.</li>
+<li><strong>OTEL</strong>: OpenTelemetry ingestion and internal instrumentation path.</li>
+<li><strong>Score</strong>: quantitative or categorical quality signal attached to observed AI behavior.</li>
+<li><strong>Dataset run</strong>: execution of an application or prompt against a dataset for regression and comparison.</li>
+<li><strong>Annotation queue</strong>: human review workflow for labels and quality feedback.</li>
+</ul>
+<h2 id="repository-grounded-deep-dive">Repository-Grounded Deep Dive</h2>
+<p>Langfuse should be read as a high-volume event system first and a dashboard second. The source tree backs this up: <code>web/src/features/public-api/</code> and <code>web/src/features/traces/</code> define ingestion and trace-facing product behavior, <code>worker/src/features/traces/</code>, <code>worker/src/features/evaluation/</code>, <code>worker/src/features/scores/</code>, and <code>worker/src/features/datasets/</code> process asynchronous work, <code>packages/shared/prisma/schema.prisma</code> holds relational project state, and <code>packages/shared/clickhouse/migrations/</code> describes the analytical trace/event store. The generated API descriptions under <code>fern/apis/</code> and environment examples such as <code>.env.prod.example</code> are operational contracts that should be reviewed together.</p>
+<div class="mermaid">flowchart LR
+  SDK[&quot;SDK or OTEL producer&quot;] --&gt; PublicAPI[&quot;public API routes web/src/features/public-api&quot;]
+  PublicAPI --&gt; Auth[&quot;project key auth and ingestion validation&quot;]
+  Auth --&gt; Queue[&quot;Redis and BullMQ queues&quot;]
+  Queue --&gt; TraceWorker[&quot;worker trace processors&quot;]
+  Queue --&gt; EvalWorker[&quot;worker evaluation processors&quot;]
+  TraceWorker --&gt; ClickHouse[&quot;ClickHouse trace, observation, score tables&quot;]
+  EvalWorker --&gt; Postgres[&quot;Postgres via Prisma schema&quot;]
+  EvalWorker --&gt; ClickHouse
+  WebUI[&quot;Next.js UI web/src/features/traces&quot;] --&gt; Postgres
+  WebUI --&gt; ClickHouse</div>
+<p>A trace has two lifecycles: the ingest lifecycle that gets raw observations durable and queryable, and the quality lifecycle that attaches scores, annotations, eval results, or dataset run comparisons. Senior reviewers should keep those paths separate. ClickHouse is optimized for event analytics and trace exploration, while Postgres/Prisma holds organizations, projects, API keys, users, prompts, datasets, score configs, and workflow metadata. Mixing these responsibilities in mental models leads to bad migration and retention decisions.</p>
+<div class="mermaid">stateDiagram-v2
+  [*] --&gt; Observed
+  Observed --&gt; Stored: ingestion accepted
+  Stored --&gt; Reviewed: human annotation queue
+  Stored --&gt; Evaluated: worker evaluation job
+  Evaluated --&gt; Scored: score persisted
+  Reviewed --&gt; Scored
+  Scored --&gt; Compared: dataset or experiment view
+  Compared --&gt; Retained: retention policy keeps data
+  Compared --&gt; Deleted: project or trace deletion flow
+  Deleted --&gt; [*]</div>
+<div class="mermaid">flowchart TD
+  Risk[&quot;Production risk&quot;] --&gt; Ingest[&quot;ingestion burst&quot;]
+  Risk --&gt; QueueLag[&quot;queue lag&quot;]
+  Risk --&gt; Warehouse[&quot;ClickHouse migration or retention&quot;]
+  Risk --&gt; Secret[&quot;LLM provider secrets&quot;]
+  Risk --&gt; EvalCost[&quot;eval cost and recursion&quot;]
+  Risk --&gt; Privacy[&quot;PII and media retention&quot;]
+  Ingest --&gt; I1[&quot;API accepts faster than workers persist&quot;]
+  QueueLag --&gt; Q1[&quot;scores and webhooks arrive late&quot;]
+  Warehouse --&gt; W1[&quot;dashboards query missing partitions&quot;]
+  Secret --&gt; S1[&quot;playground/eval worker can call external model&quot;]
+  EvalCost --&gt; E1[&quot;judge runs exceed budget&quot;]
+  Privacy --&gt; P1[&quot;trace payloads or media outlive policy&quot;]</div>
+<h3 id="production-readiness-checklist">Production Readiness Checklist</h3>
+<ul>
+<li>Capacity-plan ingestion separately from UI traffic. Public API endpoints, Redis queues, workers, ClickHouse writes, and dashboard queries have different bottlenecks.</li>
+<li>Treat <code>packages/shared/prisma/schema.prisma</code> and <code>packages/shared/clickhouse/migrations/</code> as jointly versioned state. A deploy that changes one store but not the other can break trace exploration or score joins.</li>
+<li>Put deletion, retention, media cleanup, and project cleanup workers in the incident runbook; relevant code exists under <code>worker/src/features/batch-project-cleaner/</code>, <code>batch-project-media-cleaner/</code>, <code>batch-trace-deletion-cleaner/</code>, and <code>media-retention-cleaner/</code>.</li>
+<li>Review outbound model calls from playground and evaluation flows. <code>worker/src/features/evaluation/</code>, <code>web/src/features/playground/</code>, and <code>web/src/features/llm-api-key/</code> are security-sensitive.</li>
+<li>Define masking and PII policy before SDK rollout. Trace payloads often include prompts, retrieved documents, tool arguments, and model outputs.</li>
+<li>Monitor ingestion error rate, queue depth, worker retry count, ClickHouse insert latency, ClickHouse query latency, Postgres connection saturation, and eval spend.</li>
+<li>Confirm annotation queues, score configs, dataset runs, and experiments are included in backup and restore testing, not only raw traces.</li>
+</ul>
+<h3 id="senior-architect-reading-path">Senior Architect Reading Path</h3>
+<p>Start with <code>docker-compose.yml</code> and <code>.env.prod.example</code> to understand runtime dependencies. Then read <code>packages/shared/prisma/schema.prisma</code> and <code>packages/shared/clickhouse/migrations/</code> to separate relational state from event analytics. After that, trace one ingest endpoint in <code>web/src/features/public-api/</code> into worker processors under <code>worker/src/features/traces/</code>. Finally, read <code>web/src/features/evals/</code>, <code>worker/src/features/evaluation/</code>, and <code>web/src/features/datasets/</code> to understand how Langfuse turns observed behavior into governed quality signals.</p>
+<h3 id="operational-scenarios-to-rehearse">Operational Scenarios to Rehearse</h3>
+<p>Before treating Langfuse as production LLMOps infrastructure, rehearse three concrete scenarios. First, send a burst of traces with nested tool calls, media, and scores, then verify queue lag, ClickHouse inserts, dashboard filters, and deletion behavior. Second, run an evaluator against a dataset while an LLM provider is slow or unavailable, then inspect retries, score writeback, and cost reporting. Third, rotate project API keys and provider credentials, then verify ingestion, playground, webhooks, and annotation queues still respect the intended project boundaries.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

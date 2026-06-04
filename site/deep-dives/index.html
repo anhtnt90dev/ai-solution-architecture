@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Repository Architecture Documentation | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../learn/en/index.html">English</a>
+        <a href="../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../learn/en/curriculum.html">Curriculum</a>
+        <a href="../templates/index.html">Toolkit</a>
+        <a href="index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../learn/en/index.html">English course</a>
+      <a href="../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../learn/en/curriculum.html">Curriculum</a>
+      <a href="../learn/en/projects.html">Projects</a>
+      <a href="../templates/index.html">Architecture toolkit</a>
+      <a href="../capstone/index.html">Capstone</a>
+      <a href="../assessments/index.html">Assessments</a>
+      <a href="index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/README.md">View source</a>
+      <h1 id="ai-repository-architecture-documentation">AI Repository Architecture Documentation</h1>
+<p>This folder contains bilingual deep-dive architecture notes for 17 AI repositories checked out under <code>github-repos/</code>.</p>
+<p>Mỗi repository có hai tài liệu Markdown:</p>
+<ul>
+<li><code>README.en.md</code>: English deep-dive architecture document.</li>
+<li><code>README.vi.md</code>: Tài liệu kiến trúc chuyên sâu bằng tiếng Việt.</li>
+</ul>
+<p>The docs are written for senior developers and solution architects. They use clear language, repository-grounded source maps, and Mermaid diagrams for architecture, flows, operations, production readiness, and decision points.</p>
+<h2 id="documentation-standard">Documentation Standard</h2>
+<ul>
+<li><a href="documentation-standard.html">Documentation standard</a></li>
+<li><a href="../../repo-architecture-docs/validate-docs.ps1">Validation script</a></li>
+</ul>
+<h2 id="synthesized-knowledge-system">Synthesized Knowledge System</h2>
+<ul>
+<li><a href="../learn/index.html">Learn AI Solution Architecture</a>: bilingual English/Vietnamese course-style knowledge system synthesized from these repository deep dives.</li>
+</ul>
+<h2 id="group-1-ai-app-agent-architecture">Group 1: AI App / Agent Architecture</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Repository</th><th>English</th><th>Vietnamese</th></tr></thead>
+<tbody>
+<tr><td>openai/openai-agents-python</td><td><a href="01-ai-app-agent-architecture/openai-agents-python/en.html">README.en.md</a></td><td><a href="01-ai-app-agent-architecture/openai-agents-python/vi.html">README.vi.md</a></td></tr>
+<tr><td>langchain-ai/langchain</td><td><a href="01-ai-app-agent-architecture/langchain/en.html">README.en.md</a></td><td><a href="01-ai-app-agent-architecture/langchain/vi.html">README.vi.md</a></td></tr>
+<tr><td>microsoft/autogen</td><td><a href="01-ai-app-agent-architecture/autogen/en.html">README.en.md</a></td><td><a href="01-ai-app-agent-architecture/autogen/vi.html">README.vi.md</a></td></tr>
+<tr><td>run-llama/llama_index</td><td><a href="01-ai-app-agent-architecture/llama_index/en.html">README.en.md</a></td><td><a href="01-ai-app-agent-architecture/llama_index/vi.html">README.vi.md</a></td></tr>
+</tbody></table></div>
+<h2 id="group-2-model-serving-inference">Group 2: Model Serving / Inference</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Repository</th><th>English</th><th>Vietnamese</th></tr></thead>
+<tbody>
+<tr><td>vllm-project/vllm</td><td><a href="02-model-serving-inference/vllm/en.html">README.en.md</a></td><td><a href="02-model-serving-inference/vllm/vi.html">README.vi.md</a></td></tr>
+<tr><td>ggml-org/llama.cpp</td><td><a href="02-model-serving-inference/llama.cpp/en.html">README.en.md</a></td><td><a href="02-model-serving-inference/llama.cpp/vi.html">README.vi.md</a></td></tr>
+<tr><td>huggingface/transformers</td><td><a href="02-model-serving-inference/transformers/en.html">README.en.md</a></td><td><a href="02-model-serving-inference/transformers/vi.html">README.vi.md</a></td></tr>
+</tbody></table></div>
+<h2 id="group-3-fine-tuning-training">Group 3: Fine-tuning / Training</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Repository</th><th>English</th><th>Vietnamese</th></tr></thead>
+<tbody>
+<tr><td>huggingface/peft</td><td><a href="03-fine-tuning-training/peft/en.html">README.en.md</a></td><td><a href="03-fine-tuning-training/peft/vi.html">README.vi.md</a></td></tr>
+<tr><td>deepspeedai/DeepSpeed</td><td><a href="03-fine-tuning-training/DeepSpeed/en.html">README.en.md</a></td><td><a href="03-fine-tuning-training/DeepSpeed/vi.html">README.vi.md</a></td></tr>
+</tbody></table></div>
+<h2 id="group-4-rag-vector-database">Group 4: RAG / Vector Database</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Repository</th><th>English</th><th>Vietnamese</th></tr></thead>
+<tbody>
+<tr><td>qdrant/qdrant</td><td><a href="04-rag-vector-database/qdrant/en.html">README.en.md</a></td><td><a href="04-rag-vector-database/qdrant/vi.html">README.vi.md</a></td></tr>
+<tr><td>chroma-core/chroma</td><td><a href="04-rag-vector-database/chroma/en.html">README.en.md</a></td><td><a href="04-rag-vector-database/chroma/vi.html">README.vi.md</a></td></tr>
+</tbody></table></div>
+<h2 id="group-5-observability-evaluation-llmops">Group 5: Observability / Evaluation / LLMOps</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Repository</th><th>English</th><th>Vietnamese</th></tr></thead>
+<tbody>
+<tr><td>langfuse/langfuse</td><td><a href="05-observability-evaluation-llmops/langfuse/en.html">README.en.md</a></td><td><a href="05-observability-evaluation-llmops/langfuse/vi.html">README.vi.md</a></td></tr>
+<tr><td>Arize-ai/phoenix</td><td><a href="05-observability-evaluation-llmops/phoenix/en.html">README.en.md</a></td><td><a href="05-observability-evaluation-llmops/phoenix/vi.html">README.vi.md</a></td></tr>
+<tr><td>mlflow/mlflow</td><td><a href="05-observability-evaluation-llmops/mlflow/en.html">README.en.md</a></td><td><a href="05-observability-evaluation-llmops/mlflow/vi.html">README.vi.md</a></td></tr>
+<tr><td>truera/trulens</td><td><a href="05-observability-evaluation-llmops/trulens/en.html">README.en.md</a></td><td><a href="05-observability-evaluation-llmops/trulens/vi.html">README.vi.md</a></td></tr>
+</tbody></table></div>
+<h2 id="group-6-tooling-mcp-ai-platform">Group 6: Tooling / MCP / AI Platform</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Repository</th><th>English</th><th>Vietnamese</th></tr></thead>
+<tbody>
+<tr><td>modelcontextprotocol/servers</td><td><a href="06-tooling-mcp-ai-platform/servers/en.html">README.en.md</a></td><td><a href="06-tooling-mcp-ai-platform/servers/vi.html">README.vi.md</a></td></tr>
+<tr><td>open-webui/open-webui</td><td><a href="06-tooling-mcp-ai-platform/open-webui/en.html">README.en.md</a></td><td><a href="06-tooling-mcp-ai-platform/open-webui/vi.html">README.vi.md</a></td></tr>
+</tbody></table></div>
+<h2 id="validation">Validation</h2>
+<p>Run from workspace root:</p>
+<pre><code class="language-powershell">powershell -ExecutionPolicy Bypass -File repo-architecture-docs\validate-docs.ps1</code></pre>
+<p>The script verifies that all expected bilingual docs exist, each has at least six Mermaid diagrams, obvious placeholder text is absent, and each document passes a stronger depth sanity check.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

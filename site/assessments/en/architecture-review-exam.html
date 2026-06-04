@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Architecture Review Exam | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../learn/en/index.html">English</a>
+        <a href="../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../templates/index.html">Toolkit</a>
+        <a href="../../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../learn/en/index.html">English course</a>
+      <a href="../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../learn/en/projects.html">Projects</a>
+      <a href="../../templates/index.html">Architecture toolkit</a>
+      <a href="../../capstone/index.html">Capstone</a>
+      <a href="../index.html">Assessments</a>
+      <a href="../../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/assessments/en/architecture-review-exam.md">View source</a>
+      <h1 id="architecture-review-exam">Architecture Review Exam</h1>
+<p>Timebox: 90 minutes</p>
+<p>Scenario: You are designing an Enterprise Knowledge Copilot for architecture review. It must answer with citations from internal standards, support approved tool calls, trace every interaction, and provide a production readiness summary.</p>
+<h2 id="section-1-layering">Section 1: Layering</h2>
+<ol>
+<li>Draw the six major layers of the system and state the responsibility of each layer.</li>
+<li>Explain why the model runtime should not own retrieval policy.</li>
+<li>Explain why the agent/workflow layer should not own long-term experiment lineage.</li>
+</ol>
+<h2 id="section-2-runtime-decision">Section 2: Runtime Decision</h2>
+<p>You have three candidate serving options: hosted API, vLLM, and llama.cpp.</p>
+<ol>
+<li>Create a decision matrix with at least six criteria.</li>
+<li>Pick one runtime for the first production release and justify the choice.</li>
+<li>Define the metrics that would force a runtime change.</li>
+</ol>
+<h2 id="section-3-rag-data-contract">Section 3: RAG Data Contract</h2>
+<ol>
+<li>Define the required document, chunk, metadata, and query fields.</li>
+<li>Explain how access control should be enforced.</li>
+<li>Define a retrieval evaluation plan.</li>
+</ol>
+<h2 id="section-4-llmops-and-evaluation">Section 4: LLMOps And Evaluation</h2>
+<ol>
+<li>Define the trace schema.</li>
+<li>Define a promotion gate for prompt, retrieval, and model changes.</li>
+<li>Explain how MLflow-style lineage differs from LLM trace observability.</li>
+</ol>
+<h2 id="section-5-security-and-governance">Section 5: Security And Governance</h2>
+<ol>
+<li>Identify five security risks specific to this copilot.</li>
+<li>Define the tool governance policy.</li>
+<li>Define what must be logged for auditability.</li>
+</ol>
+<h2 id="section-6-production-readiness">Section 6: Production Readiness</h2>
+<ol>
+<li>Create a release checklist.</li>
+<li>Define rollback behavior.</li>
+<li>Define three failure rehearsal scenarios.</li>
+</ol>
+<h2 id="scoring-rubric">Scoring Rubric</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Area</th><th>Points</th></tr></thead>
+<tbody>
+<tr><td>Layering and boundaries</td><td>15</td></tr>
+<tr><td>Runtime decision quality</td><td>15</td></tr>
+<tr><td>RAG data contract</td><td>15</td></tr>
+<tr><td>Evaluation and LLMOps</td><td>20</td></tr>
+<tr><td>Security and governance</td><td>20</td></tr>
+<tr><td>Production readiness</td><td>15</td></tr>
+</tbody></table></div>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

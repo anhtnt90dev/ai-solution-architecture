@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kien truc Transformers | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/02-model-serving-inference/transformers/README.vi.md">View source</a>
+      <h1 id="kien-truc-transformers">Kien truc Transformers</h1>
+<p>Anh chup nguon: <code>github-repos/02-model-serving-inference/transformers</code> tai commit <code>a46a732</code> (<code>[docs] contributing (#45465)</code>). Tai lieu nay dua tren cac tep va thu muc co trong anh chup do.</p>
+<h2 id="tom-tat-dieu-hanh">Tom tat dieu hanh</h2>
+<p>Hugging Face Transformers la model-definition framework nam o trung tam ecosystem AI lon. README noi Transformers tap trung dinh nghia model de cac training framework, inference engine va runtime lien quan nhu vLLM, SGLang, TGI, llama.cpp va MLX co the tai su dung. Thu vien ho tro text, vision, audio, video va multimodal models cho inference va training.</p>
+<p>Ve kien truc, Transformers la thu vien Python theo lop: configuration classes, pretrained model base classes, tokenizers/processors, Auto classes, per-model implementations, generation utilities, pipelines, trainers, integrations, quantizers va CLI serving. Core library nam trong <code>src/transformers</code>; model families trong <code>src/transformers/models</code>; task inference cap cao trong <code>src/transformers/pipelines</code>; generation trong <code>src/transformers/generation</code>; serving CLI trong <code>src/transformers/cli</code> va <code>src/transformers/cli/serving</code>.</p>
+<p>Voi model-serving architect, Transformers vua la runtime truc tiep vua la lop tuong thich chuan. Nhieu serving system dua vao config, tokenizer, chat template, generation config, quy uoc ten model va checkpoint loading cua no. Code moi hon trong <code>generation/continuous_batching</code> va <code>transformers serve</code> cung cap duong serving OpenAI-compatible, nhung vai tro rong hon cua thu vien van la dinh nghia va load model nhat quan trong ecosystem.</p>
+<h2 id="bai-toan-duoc-giai-quyet">Bai toan duoc giai quyet</h2>
+<p>Truoc khi serve mot model, stack phai thong nhat model la gi, weights map vao code ra sao, input duoc preprocess nhu the nao, generation chay theo quy tac gi, artifact duoc luu va chia se ra sao. Transformers giai quyet:</p>
+<ul>
+<li>Interface <code>from_pretrained</code> / <code>save_pretrained</code> nhat quan cho models, configs, tokenizers, image processors, feature extractors va processors.</li>
+<li>Auto classes map metadata model sang implementation classes.</li>
+<li>Code tung model du ro rang va tu chua de cong dong dong gop.</li>
+<li>Generation algorithms, logits processors, stopping criteria, cache utilities, streamers, watermarking va continuous batching.</li>
+<li>Pipelines cho task inference tren text, audio, vision, video va multimodal.</li>
+<li>Integration points cho quantization, distributed training/inference, attention backends, PEFT, Hub, GGUF, ONNX/ExecuTorch export va serving.</li>
+</ul>
+<p>Diem neo trong repo gom <code>src/transformers/configuration_utils.py</code>, <code>modeling_utils.py</code>, <code>tokenization_utils_base.py</code>, <code>processing_utils.py</code>, <code>models/auto/*</code>, <code>generation/*</code>, <code>generation/continuous_batching/*</code>, <code>pipelines/*</code>, <code>quantizers/*</code>, <code>integrations/*</code>, <code>cli/serve.py</code>, <code>cli/serving/*</code> va <code>tests/*</code>.</p>
+<h2 id="vai-tro-trong-ai-stack">Vai tro trong AI stack</h2>
+<p>Transformers dam nhan nhieu vai tro:</p>
+<ul>
+<li><strong>Model-definition layer:</strong> config va modeling files theo tung model trong <code>src/transformers/models/*</code>.</li>
+<li><strong>Artifact contract layer:</strong> <code>PreTrainedConfig</code>, <code>PreTrainedModel</code>, tokenizers, processors, <code>save_pretrained</code> va layout tuong thich Hub.</li>
+<li><strong>Inference convenience layer:</strong> <code>pipeline</code>, <code>AutoModelFor*</code>, <code>GenerationMixin</code>, <code>GenerationConfig</code>, streamers va chat templates.</li>
+<li><strong>Serving layer:</strong> <code>transformers serve</code> duoc cai dat bang FastAPI/Uvicorn va OpenAI-compatible APIs trong <code>src/transformers/cli/serving</code>.</li>
+<li><strong>Training/fine-tuning layer:</strong> <code>trainer.py</code>, <code>training_args.py</code>, <code>trainer_seq2seq.py</code>, optimization utilities, distributed va integration modules.</li>
+<li><strong>Cau noi ecosystem:</strong> quantization modules, attention implementations, GGUF loading support, export docs, community integration docs va test contracts.</li>
+</ul>
+<p>Trong kien truc serving, Transformers thuong duoc dung ngay ca khi engine cuoi khong phai Transformers. Tokenizers, config files, chat templates, generation config va model class definitions thuong xuat phat tu day.</p>
+<h2 id="ban-do-source-tree">Ban do source tree</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Duong dan</th><th>Vai tro</th></tr></thead>
+<tbody>
+<tr><td><code>README.md</code></td><td>Dinh vi du an, vai tro ecosystem, vi du pipeline, installation va quick start.</td></tr>
+<tr><td><code>setup.py</code></td><td>Package metadata, dependency/extras map, Python 3.10-3.14, console script <code>transformers=transformers.cli.transformers:main</code>.</td></tr>
+<tr><td><code>pyproject.toml</code></td><td>Cau hinh Ruff, pytest, coverage, ty type-checker va test markers.</td></tr>
+<tr><td><code>src/transformers/__init__.py</code></td><td>Public import surface voi lazy availability checks.</td></tr>
+<tr><td><code>src/transformers/configuration_utils.py</code></td><td>Base <code>PreTrainedConfig</code>, serialization, loading va config behavior.</td></tr>
+<tr><td><code>src/transformers/modeling_utils.py</code></td><td>Base <code>PreTrainedModel</code>, loading/saving, device/dtype, weight handling.</td></tr>
+<tr><td><code>src/transformers/core_model_loading.py</code></td><td>Shared model loading helpers.</td></tr>
+<tr><td><code>src/transformers/tokenization_utils_base.py</code>, <code>tokenization_utils_tokenizers.py</code>, <code>tokenization_utils_sentencepiece.py</code></td><td>Tokenizer abstractions va fast/slow tokenizer support.</td></tr>
+<tr><td><code>src/transformers/processing_utils.py</code>, <code>image_processing_utils.py</code>, <code>audio_utils.py</code>, <code>video_processing_utils.py</code></td><td>Nen tang processor, image, audio va video preprocessing.</td></tr>
+<tr><td><code>src/transformers/models/auto/*</code></td><td>AutoConfig, AutoTokenizer, AutoProcessor, AutoModel, mapping factories.</td></tr>
+<tr><td><code>src/transformers/models/*</code></td><td>Per-model implementations cho nhieu architecture text, vision, audio va multimodal.</td></tr>
+<tr><td><code>src/transformers/generation/*</code></td><td>Generation config, logits processors, stopping criteria, streamers, candidate generators, watermarking, utilities.</td></tr>
+<tr><td><code>src/transformers/generation/continuous_batching/*</code></td><td>Continuous batching manager, scheduler, cache manager, model runner, request states, offloading, distributed helpers.</td></tr>
+<tr><td><code>src/transformers/pipelines/*</code></td><td>Task-level inference wrappers cho text, audio, vision, video va multimodal.</td></tr>
+<tr><td><code>src/transformers/quantizers/*</code></td><td>Tich hop quantization methods va automatic quantizer selection.</td></tr>
+<tr><td><code>src/transformers/integrations/*</code></td><td>Accelerate, DeepSpeed, Flash Attention, SDPA, tensor parallel, ggml, PEFT, quantization libraries, TPU/NPU va integrations lien quan.</td></tr>
+<tr><td><code>src/transformers/cli/*</code></td><td>Typer CLI command group, chat/download/system/serve commands.</td></tr>
+<tr><td><code>src/transformers/cli/serving/*</code></td><td>FastAPI serving implementation: server build, model manager, chat completions, completions, responses, transcriptions, utilities.</td></tr>
+<tr><td><code>docs/source/en/*</code></td><td>Docs nguoi dung va developer: continuous batching, serving, add model/pipeline, GGUF, serialization/export, testing, quantization.</td></tr>
+<tr><td><code>tests/*</code></td><td>Common model/test mixins, generation tests, continuous batching tests, quantization tests, pipeline tests, model tests, CLI serving tests.</td></tr>
+<tr><td><code>examples</code>, <code>notebooks</code>, <code>benchmark</code>, <code>benchmark_v2</code></td><td>Vi du su dung va performance workflows.</td></tr>
+</tbody></table></div>
+<h2 id="khai-niem-cot-loi">Khai niem cot loi</h2>
+<p><strong>PreTrainedConfig.</strong> Blueprint cua model. No luu metadata architecture va hyperparameters, ho tro serialization va chi phoi class selection. Base nam trong <code>configuration_utils.py</code>.</p>
+<p><strong>PreTrainedModel.</strong> Base class cho PyTorch models. No cung cap loading, saving, dtype/device handling, weight tying va compatibility utilities. Base nam trong <code>modeling_utils.py</code>.</p>
+<p><strong>Auto classes.</strong> <code>src/transformers/models/auto</code> map configs va model types sang implementation classes. Auto classes cho phep user viet <code>AutoModelForCausalLM.from_pretrained(...)</code> ma khong import architecture class cu the.</p>
+<p><strong>Tokenizer / processor.</strong> Tokenizer chuyen text thanh token IDs; image/audio/video processor chuan hoa input phi text; processor ket hop nhieu modality. Base utilities nam trong <code>tokenization_utils_base.py</code>, <code>processing_utils.py</code> va cac utility theo modality.</p>
+<p><strong>Per-model folders.</strong> Moi model family co cac tep nhu <code>configuration_*.py</code>, <code>modeling_*.py</code>, tokenization/processing files, conversion utilities va tests. Docs them model nhan manh model files tu chua va abstraction it tang.</p>
+<p><strong>Generation.</strong> Hanh vi generation duoc dieu khien boi <code>GenerationConfig</code>, logits processors, stopping criteria, candidate generators, streamers va model methods. Cac thanh phan nay nam trong <code>src/transformers/generation</code>.</p>
+<p><strong>Continuous batching.</strong> <code>docs/source/en/continuous_batching.md</code> va <code>continuous_batching_architecture.md</code> mo ta che do generation cho serving: reschedule request dong, paged KV cache, chunked prefill, CUDA graphs tuy chon, async batching, prefix caching va offloading.</p>
+<p><strong>Pipeline.</strong> <code>src/transformers/pipelines</code> cung cap task-oriented inference wrappers. Pipeline xu ly preprocessing, model invocation va postprocessing cho cac task pho bien.</p>
+<p><strong>Serve CLI.</strong> <code>src/transformers/cli/serve.py</code> expose <code>transformers serve</code>; <code>src/transformers/cli/serving/*</code> cai dat FastAPI routes va model management. <code>setup.py</code> expose console script <code>transformers</code>.</p>
+<h2 id="so-do-thanh-phan-he-thong">So do thanh phan he thong</h2>
+<div class="mermaid">flowchart LR
+    User[User code, pipeline, CLI, server client] --&gt; PublicAPI[transformers public API]
+    PublicAPI --&gt; Auto[src/transformers/models/auto\nAutoConfig, AutoTokenizer, AutoModel]
+    PublicAPI --&gt; Pipelines[src/transformers/pipelines\ntask inference]
+    PublicAPI --&gt; Generation[src/transformers/generation\nGenerationConfig, logits, streamers]
+    Auto --&gt; Config[configuration_utils.py\nPreTrainedConfig]
+    Auto --&gt; Model[modeling_utils.py\nPreTrainedModel]
+    Auto --&gt; Tokenizers[tokenization + processing utils]
+    Model --&gt; ModelFamilies[src/transformers/models/*\nper-architecture code]
+    Generation --&gt; CBC[src/transformers/generation/continuous_batching\nscheduler, cache, manager]
+    Model --&gt; Integrations[src/transformers/integrations\nattention, accelerate, PEFT, ggml]
+    Model --&gt; Quantizers[src/transformers/quantizers\nbnb, GPTQ, AWQ, TorchAO, etc.]
+    CLI[src/transformers/cli/serve.py] --&gt; Serving[src/transformers/cli/serving\nFastAPI OpenAI-compatible server]
+    Serving --&gt; Generation
+    Tests[tests/*] --&gt; PublicAPI</div>
+<h2 id="kien-truc-noi-bo">Kien truc noi bo</h2>
+<p>Transformers dung cac contract thay vi mot runtime loop duy nhat.</p>
+<p><strong>Artifact contract.</strong> Config, model, tokenizer, processor, generation config va safetensors/checkpoint files duoc luu theo layout co the reload local hoac tu Hub. <code>from_pretrained</code> va <code>save_pretrained</code> la contract artifact chinh.</p>
+<p><strong>Auto mapping contract.</strong> Auto classes tranh hardcode ten implementation trong ung dung. Cac file <code>auto_factory.py</code>, <code>configuration_auto.py</code>, <code>modeling_auto.py</code>, <code>tokenization_auto.py</code>, <code>processing_auto.py</code> va mapping files lien quan dieu khien cach metadata model type map sang classes.</p>
+<p><strong>Model implementation contract.</strong> Guide <code>docs/source/en/add_new_model.md</code> noi model files nen de doc, tu chua va phu thuoc truc tiep vao <code>PreTrainedModel</code>. Dieu nay giu architecture moi de tiep can va test.</p>
+<p><strong>Generation contract.</strong> Causal generation dung tap helpers chung, logits processors, stopping criteria, cache helpers va streamers. Model-specific code cung cap forward pass va cache behavior; generation utilities dieu phoi decoding strategies.</p>
+<p><strong>Task inference contract.</strong> Pipelines boc tokenizer/processor, model call va postprocessing thanh cac class theo task nhu text generation, ASR, image classification, object detection va multimodal question answering.</p>
+<p><strong>Serving contract.</strong> CLI serving layer boc model loading va generation sau FastAPI. Tests trong <code>tests/cli/test_serve.py</code> bao phu server startup, health behavior, streaming, responses, chat completions, continuous batching state va error handling.</p>
+<h2 id="luong-dau-cuoi">Luong dau cuoi</h2>
+<div class="mermaid">sequenceDiagram
+    participant U as User / API client
+    participant A as Auto classes hoac pipeline
+    participant H as Hub/local files
+    participant T as Tokenizer/Processor
+    participant M as PreTrainedModel
+    participant G as Generation utilities
+    participant O as Output decoder/postprocessor
+
+    U-&gt;&gt;A: from_pretrained(model_id)
+    A-&gt;&gt;H: doc config, weights, tokenizer/processor files
+    H--&gt;&gt;A: artifacts
+    A-&gt;&gt;M: instantiate architecture class
+    A-&gt;&gt;T: instantiate tokenizer/processor
+    U-&gt;&gt;T: prompt, image, audio, video, hoac chat messages
+    T--&gt;&gt;M: tensors va model inputs
+    M-&gt;&gt;G: generate hoac forward pass
+    G-&gt;&gt;M: lap model calls, cache updates, logits processing
+    G--&gt;&gt;O: token ids / scores / raw outputs
+    O--&gt;&gt;U: text, labels, boxes, transcription, embeddings, hoac JSON</div>
+<p>Voi <code>transformers serve</code>, API layer dung cung cac khai niem do:</p>
+<div class="mermaid">sequenceDiagram
+    participant C as OpenAI-compatible client
+    participant S as FastAPI server
+    participant MM as ModelManager
+    participant CB as ContinuousBatchingManager
+    participant M as Model + tokenizer
+
+    C-&gt;&gt;S: /v1/responses, chat, completion, transcription
+    S-&gt;&gt;MM: resolve hoac load model duoc yeu cau
+    MM-&gt;&gt;M: from_pretrained artifacts
+    alt continuous batching bat
+        S-&gt;&gt;CB: add request
+        CB-&gt;&gt;M: scheduled prefill/decode steps
+        CB--&gt;&gt;S: streamed hoac final result
+    else direct generation
+        S-&gt;&gt;M: generate / pipeline-style call
+        M--&gt;&gt;S: result
+    end
+    S--&gt;&gt;C: JSON hoac streaming response</div>
+<h2 id="runtime-va-data-flow">Runtime va data flow</h2>
+<ol>
+<li><strong>Chon artifact.</strong> Model ID hoac local path duoc dua vao Auto class, pipeline, Trainer hoac server.</li>
+<li><strong>Load config.</strong> <code>AutoConfig</code> doc <code>config.json</code> va xac dinh model type cung architecture mapping.</li>
+<li><strong>Resolve class.</strong> Auto factories chon model/tokenizer/processor classes tu mappings trong <code>src/transformers/models/auto</code>.</li>
+<li><strong>Load weights.</strong> <code>PreTrainedModel.from_pretrained</code> load safetensors/PyTorch hoac format thay the duoc ho tro, ap dung dtype/device/quantization va khoi tao class.</li>
+<li><strong>Preprocessing.</strong> Tokenizer/processor utilities chuyen input thanh tensors. Chat templates va multimodal processors co the transform role/content structures truoc tokenization.</li>
+<li><strong>Forward/generate.</strong> Forward pass chay qua PyTorch va integrations tuy chon nhu SDPA, Flash Attention, tensor parallel, quantization hoac custom kernels.</li>
+<li><strong>Generation loop.</strong> <code>GenerationConfig</code> va logits processors dieu khien token selection, stopping, streaming, assisted decoding, watermarking hoac continuous batching.</li>
+<li><strong>Postprocessing.</strong> Pipelines hoac serving utilities decode tokens, format labels/boxes/timestamps, chuan hoa response OpenAI-compatible va xu ly streaming chunks.</li>
+<li><strong>Persistence/export.</strong> <code>save_pretrained</code>, safetensors, GGUF loading docs va serialization/export docs dinh nghia cach artifact di sang runtime khac.</li>
+</ol>
+<h2 id="topology-trien-khai-va-van-hanh">Topology trien khai va van hanh</h2>
+<div class="mermaid">flowchart TB
+    subgraph Clients
+        Python[Python app / notebook]
+        APIClient[OpenAI-compatible client]
+        Batch[Batch job / dataset iterator]
+    end
+    subgraph RuntimeNode[&quot;Python runtime hoac service&quot;]
+        Pipeline[pipeline task wrapper]
+        Serve[transformers serve\nFastAPI + Uvicorn]
+        Auto[Auto classes]
+        Model[PyTorch PreTrainedModel]
+        Gen[Generation / continuous batching]
+    end
+    subgraph Artifacts
+        Hub[Hugging Face Hub]
+        Local[Local checkpoint directory]
+        Safe[safetensors / config / tokenizer files]
+        GGUF[GGUF file cho loading duoc ho tro]
+    end
+    subgraph Acceleration
+        Torch[PyTorch]
+        Accelerate[Accelerate / device_map]
+        Quant[Quantizers]
+        Attention[SDPA / Flash Attention / paged attention integrations]
+    end
+    subgraph Ops
+        Tests[pytest suites]
+        Logs[Python logging / server health]
+        Export[ONNX / ExecuTorch qua Optimum]
+    end
+
+    Python --&gt; Pipeline --&gt; Auto
+    APIClient --&gt; Serve --&gt; Gen
+    Batch --&gt; Pipeline
+    Auto --&gt; Hub
+    Auto --&gt; Local
+    Hub --&gt; Safe
+    Local --&gt; Safe
+    GGUF --&gt; Auto
+    Auto --&gt; Model --&gt; Torch
+    Gen --&gt; Model
+    Model --&gt; Accelerate
+    Model --&gt; Quant
+    Model --&gt; Attention
+    Tests --&gt; Model
+    Logs --&gt; Serve
+    Export --&gt; Safe</div>
+<p>Ve van hanh, Transformers co the chay trong notebook, batch job, web server, training job va direct serving process. <code>docs/source/en/pipeline_webserver.md</code> canh bao web server co concurrency trong khi PyTorch model execution ton memory va blocking; doc goi y pattern queue va mot model worker cho pipeline server don gian. Voi production <code>transformers serve</code>, docs khuyen dung CLI serving path va nhac continuous batching nhu mot toi uu.</p>
+<h2 id="vong-doi-quyet-dinh-va-phu-thuoc-module">Vong doi, quyet dinh va phu thuoc module</h2>
+<div class="mermaid">stateDiagram-v2
+    [*] --&gt; ChooseArtifact
+    ChooseArtifact --&gt; LoadConfig
+    LoadConfig --&gt; ResolveAutoClass
+    ResolveAutoClass --&gt; LoadWeights
+    LoadWeights --&gt; LoadPreprocessor
+    LoadPreprocessor --&gt; Ready
+    Ready --&gt; Inference
+    Inference --&gt; Generate: text generation
+    Inference --&gt; Forward: classification, embeddings, ASR, vision
+    Generate --&gt; PostProcess
+    Forward --&gt; PostProcess
+    PostProcess --&gt; Ready
+    Ready --&gt; SaveOrExport
+    SaveOrExport --&gt; [*]
+    LoadWeights --&gt; Error: missing deps, incompatible shape, memory
+    Generate --&gt; Error: OOM, cache, stopping, device mismatch</div>
+<div class="mermaid">flowchart LR
+    ConfigBase[configuration_utils.py] --&gt; AutoConfig[models/auto/configuration_auto.py]
+    AutoConfig --&gt; AutoFactory[models/auto/auto_factory.py]
+    AutoFactory --&gt; ModelBase[modeling_utils.py]
+    ModelBase --&gt; ModelFamily[models/&lt;architecture&gt;/modeling_*.py]
+    TokenBase[tokenization_utils_base.py] --&gt; AutoTokenizer[models/auto/tokenization_auto.py]
+    ProcBase[processing_utils.py] --&gt; AutoProcessor[models/auto/processing_auto.py]
+    ModelFamily --&gt; Generation[generation/utils.py]
+    Generation --&gt; CB[generation/continuous_batching/*]
+    ModelBase --&gt; Quant[quantizers/*]
+    ModelBase --&gt; Integrations[integrations/*]
+    CLI[cli/serve.py] --&gt; Serving[cli/serving/*]
+    Serving --&gt; Generation</div>
+<h2 id="diem-mo-rong">Diem mo rong</h2>
+<ul>
+<li><strong>Them model:</strong> <code>docs/source/en/add_new_model.md</code> mo ta them config, modeling, tests, conversion, docs va Auto mappings. Guide nhan manh model files de doc va tu chua.</li>
+<li><strong>Them modular model:</strong> <code>docs/source/en/modular_transformers.md</code> la duong moi hon de giam lap implementation.</li>
+<li><strong>Them pipeline:</strong> <code>docs/source/en/add_new_pipeline.md</code> va <code>src/transformers/pipelines/base.py</code> dinh nghia conventions cho task pipeline.</li>
+<li><strong>Them tokenizer/processor support:</strong> tokenizer va processor base utilities cong <code>models/auto/*_auto.py</code> xu ly discovery va loading.</li>
+<li><strong>Them quantization support:</strong> <code>src/transformers/quantizers/base.py</code>, <code>auto.py</code> va quantizer theo tung method dinh nghia cach quantization config map sang implementation.</li>
+<li><strong>Them integrations:</strong> <code>src/transformers/integrations/*</code> la pattern cho attention backends, accelerators, tensor parallelism, GGUF, PEFT va hardware-specific paths.</li>
+<li><strong>Mo rong generation:</strong> <code>generation/logits_process.py</code>, <code>stopping_criteria.py</code>, <code>candidate_generator.py</code>, <code>streamers.py</code>, <code>continuous_batching/*</code> la extension points cho decoding behavior.</li>
+<li><strong>Mo rong serve CLI:</strong> <code>src/transformers/cli/serving/*</code> chua route va model-manager code cho server behavior.</li>
+</ul>
+<h2 id="tich-hop">Tich hop</h2>
+<p>Transformers tich hop voi:</p>
+<ul>
+<li>Hugging Face Hub de lay model, tokenizer, processor va artifact tuong tu dataset.</li>
+<li>PyTorch la execution backend chinh trong snapshot nay.</li>
+<li>Accelerate, DeepSpeed, FSDP, tensor parallel, TPU/NPU va tooling distributed/hardware khac qua <code>src/transformers/integrations</code>.</li>
+<li>Quantization libraries nhu bitsandbytes, AWQ, GPTQ, HQQ, TorchAO, Quanto, Quark, MXFP4, FP8-related methods va cac thu vien khac qua <code>src/transformers/quantizers</code>.</li>
+<li>Attention implementations nhu SDPA, Flash Attention, paged attention/eager paged integrations va flex attention.</li>
+<li>GGUF loading support qua <code>docs/source/en/gguf.md</code>, <code>modeling_gguf_pytorch_utils.py</code>, <code>integrations/ggml.py</code>; docs noi GGUF duoc load cho training/fine-tuning tiep bang cach dequantize sang fp32.</li>
+<li>Serving dependencies trong extras cua <code>setup.py</code>: <code>openai</code>, <code>pydantic</code>, <code>uvicorn</code>, <code>fastapi</code>, <code>starlette</code>, <code>rich</code>, cong torch/accelerate.</li>
+<li>Export paths trong <code>docs/source/en/serialization.md</code>, gom ONNX va ExecuTorch qua Optimum.</li>
+</ul>
+<h2 id="cau-hinh-trien-khai-va-ops">Cau hinh, trien khai va ops</h2>
+<p>Nguon cau hinh gom:</p>
+<ul>
+<li><code>config.json</code> qua <code>PreTrainedConfig</code>.</li>
+<li>tokenizer va processor JSON/model files.</li>
+<li><code>generation_config.json</code> va runtime <code>GenerationConfig</code>.</li>
+<li><code>TrainingArguments</code> / <code>Seq2SeqTrainingArguments</code> cho training jobs.</li>
+<li>CLI flags cho <code>transformers serve</code> trong <code>src/transformers/cli/serve.py</code>.</li>
+<li>Quantization configs va attention/dtype/device-map parameters.</li>
+</ul>
+<p>Cac pattern trien khai:</p>
+<ul>
+<li><strong>Library inference:</strong> <code>AutoTokenizer</code> + <code>AutoModelFor*</code> + <code>generate</code> hoac forward calls.</li>
+<li><strong>Pipeline inference:</strong> <code>pipeline(...)</code> theo task cho text/audio/vision/multimodal.</li>
+<li><strong>Dataset/batch inference:</strong> pipelines tren iterator hoac dataset, can batching than trong.</li>
+<li><strong>Simple web service:</strong> pipeline server co queue nhu mo ta trong <code>pipeline_webserver.md</code>.</li>
+<li><strong>Transformers serve:</strong> FastAPI/Uvicorn OpenAI-compatible server voi continuous batching tuy chon.</li>
+<li><strong>Exported runtime:</strong> ONNX hoac ExecuTorch qua Optimum cho runtime production toi uu.</li>
+<li><strong>External serving engines:</strong> vLLM, SGLang, TGI, llama.cpp va engine khac tieu thu config/model definitions/tokenizers cua Transformers.</li>
+</ul>
+<p>Can nhac ops:</p>
+<ul>
+<li>Optional dependencies theo tung feature. Thieu <code>tokenizers</code>, <code>sentencepiece</code>, <code>torch</code>, <code>fastapi</code>, quantization packages hoac attention libraries co the doi behavior.</li>
+<li><code>device_map=&quot;auto&quot;</code>, dtype, quantization va attention implementation anh huong truc tiep memory va latency.</li>
+<li>Pipeline batching khong phai luc nao nhanh hon; <code>pipeline_webserver.md</code> canh bao dynamic batching can thiet ke queue va timeout ky.</li>
+<li>Continuous batching can GPU memory budgeting, cache sizing, scheduler choice va attention compatibility.</li>
+<li>Serving can health checks va overload behavior; tests co case continuous-batching worker unhealthy tra 503.</li>
+</ul>
+<h2 id="observability-testing-evaluation-va-failure-modes">Observability, testing, evaluation va failure modes</h2>
+<p>Testing la mot phan lon cua kien truc repo.</p>
+<ul>
+<li><code>tests/test_modeling_common.py</code>, <code>test_configuration_common.py</code>, <code>test_tokenization_common.py</code>, <code>test_processing_common.py</code> va mixins lien quan enforce behavior chung qua cac model.</li>
+<li><code>tests/models/*</code> chua tests theo tung model.</li>
+<li><code>tests/generation/*</code> bao phu generation utilities, logits processors, stopping criteria, streamers, paged attention, flash attention parity va continuous batching.</li>
+<li><code>tests/pipelines/*</code> bao phu task-level pipeline behavior.</li>
+<li><code>tests/quantization/*</code> bao phu quantization paths.</li>
+<li><code>tests/cli/test_serve.py</code>, <code>test_chat.py</code>, <code>test_download.py</code>, <code>test_system.py</code> bao phu CLI va serving behavior.</li>
+<li><code>pyproject.toml</code> dinh nghia pytest markers nhu <code>generate</code>, <code>is_training_test</code>, <code>is_tensor_parallel_test</code> va flash attention markers.</li>
+</ul>
+<p>Observability phu thuoc ung dung hon so voi dedicated serving engine. Cac diem neo huu ich:</p>
+<ul>
+<li>Python logging va warnings trong model loading, generation, integrations va serving utilities.</li>
+<li>Health behavior va HTTP error handling cua <code>transformers serve</code> trong <code>cli/serving</code>.</li>
+<li>Pipeline/webserver docs khuyen error handling, queue limits va circuit breaking ro rang.</li>
+<li>Benchmark folders va Optimum benchmark integration cho performance evaluation.</li>
+</ul>
+<p>Failure modes pho bien:</p>
+<ul>
+<li><strong>Thieu optional dependencies:</strong> tokenizer, processor, quantizer, audio/video, serving hoac attention package chua cai.</li>
+<li><strong>Model/config mismatch:</strong> sai architecture class, thieu Auto mapping, config xau, hoac checkpoint shape khong compatible.</li>
+<li><strong>Tokenizer/processor mismatch:</strong> text hoac multimodal input tao IDs/pixel/audio features sai.</li>
+<li><strong>Memory errors:</strong> model qua lon, dtype qua rong, device map sai, cache qua lon, hoac batching qua manh.</li>
+<li><strong>Generation bat ngo:</strong> EOS/stopping criteria, chat template, logits processors hoac generation config khong khop ky vong.</li>
+<li><strong>Quantization issues:</strong> device/backend khong ho tro, accuracy regression, hoac module layout incompatible.</li>
+<li><strong>Serving overload:</strong> PyTorch block main thread, queue tang, continuous batching worker fail, hoac cancel request xu ly sai.</li>
+<li><strong>Remote artifact risk:</strong> untrusted model files hoac remote code settings co the thuc thi hay load behavior khong mong muon.</li>
+</ul>
+<h2 id="rui-ro-bao-mat-va-governance">Rui ro bao mat va governance</h2>
+<ul>
+<li><strong>Provenance va license cua model:</strong> Hub models rat da dang; governance can theo doi model card, license, source weights, revisions va intended use.</li>
+<li><strong>Remote code:</strong> <code>trust_remote_code</code> co the execute code trong repo. Xem nhu privileged code va pin revision.</li>
+<li><strong>Du lieu nhay cam:</strong> prompts, completions, audio, images va logs co the chua regulated data.</li>
+<li><strong>Serving API exposure:</strong> <code>transformers serve</code> nen chay sau authentication, TLS, rate limiting va request size controls.</li>
+<li><strong>Dependency supply chain:</strong> nhieu optional dependencies duoc load cho quantization, serving, tokenization, audio/video va acceleration.</li>
+<li><strong>Quantization va export drift:</strong> doi dtype, quantization, ONNX/ExecuTorch export hoac GGUF conversion co the doi hanh vi model.</li>
+<li><strong>Evaluation governance:</strong> unit tests pass khong chung minh model an toan, dung su that, cong bang hay phu hop domain.</li>
+<li><strong>Multimodal input risk:</strong> image/audio/video parsers lam tang attack surface va rui ro can kiet tai nguyen.</li>
+</ul>
+<h2 id="huong-dan-doc-source">Huong dan doc source</h2>
+<ol>
+<li>Bat dau voi <code>README.md</code> de hieu vai tro ecosystem va vi du nguoi dung.</li>
+<li>Doc <code>setup.py</code> de hieu extras, optional dependencies va entry point CLI <code>transformers</code>.</li>
+<li>Doc <code>configuration_utils.py</code>, <code>modeling_utils.py</code>, <code>tokenization_utils_base.py</code>, <code>processing_utils.py</code>.</li>
+<li>Doc <code>src/transformers/models/auto/*</code> de hieu class resolution.</li>
+<li>Chon mot model folder, vi du <code>models/llama</code>, va so sanh config/model/tokenizer files voi tests.</li>
+<li>Doc <code>generation/configuration_utils.py</code>, <code>generation/utils.py</code>, <code>logits_process.py</code>, <code>stopping_criteria.py</code>, <code>streamers.py</code>.</li>
+<li>Doc <code>generation/continuous_batching/*</code> va hai docs continuous batching neu hoc serving throughput.</li>
+<li>Doc <code>pipelines/base.py</code> va mot vai task pipeline.</li>
+<li>Doc <code>cli/serve.py</code> va <code>cli/serving/*</code> cho direct serving behavior.</li>
+<li>Review common tests truoc khi sua contracts.</li>
+</ol>
+<h2 id="lo-trinh-hoc">Lo trinh hoc</h2>
+<ol>
+<li>Load mot tiny model voi <code>AutoTokenizer</code> va <code>AutoModelForCausalLM</code>.</li>
+<li>Kiem tra <code>config.json</code>, tokenizer files va generation config da tai.</li>
+<li>Trace <code>AutoModelForCausalLM.from_pretrained</code> vao Auto mappings va <code>PreTrainedModel</code>.</li>
+<li>Chay generation va xac dinh noi logits processors va stopping criteria ap dung.</li>
+<li>Dung pipeline cho cung task va trace preprocessing/postprocessing.</li>
+<li>Hoc mot per-model implementation va tests cua no.</li>
+<li>Review quantization va attention integration options cho deployment.</li>
+<li>Kham pha <code>transformers serve</code> va continuous batching sau khi da hieu generation co ban.</li>
+<li>Validate ung vien production bang task metrics, latency, memory va safety evaluations.</li>
+</ol>
+<h2 id="checklist-production-v-c-ng-quy-t-nh-serving">Checklist production và cổng quyết định serving</h2>
+<p>Readiness production của Transformers bắt đầu từ artifact contract: <code>config.json</code>, weights, tokenizer, processor, generation config và optional remote code. Sau đó đường serving phụ thuộc workload dùng direct <code>generate</code>, <code>pipeline</code>, <code>transformers serve</code> hay một external serving engine vẫn tiêu thụ artifact của Transformers. Hãy review <code>src/transformers/configuration_utils.py</code>, <code>modeling_utils.py</code>, <code>models/auto/*</code>, <code>generation/*</code>, <code>generation/continuous_batching/*</code>, <code>pipelines/*</code>, <code>cli/serving/*</code>, <code>quantizers/*</code>, <code>integrations/*</code> và <code>tests/cli/test_serve.py</code>.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Khu vực quyết định</th><th>Cần xác minh</th></tr></thead>
+<tbody>
+<tr><td>Khóa artifact</td><td>Pin model revision, config, tokenizer/processor files, generation config, safetensors và quyết định custom code.</td></tr>
+<tr><td>Dependency set</td><td>Chỉ cài extras cần thiết: tokenizers, sentencepiece, audio/video, serving, quantization, attention hoặc acceleration packages.</td></tr>
+<tr><td>Serving mode</td><td>Chọn direct library, queue-backed pipeline service, <code>transformers serve</code>, export path hoặc external engine theo latency/throughput.</td></tr>
+<tr><td>Generation contract</td><td>Test chat template, EOS/stop tokens, logits processors, streamers, cache implementation và structured response expectation.</td></tr>
+<tr><td>Memory/performance</td><td>Validate dtype, device map, quantization, attention implementation, batch sizes và continuous batching cache budget.</td></tr>
+<tr><td>Governance</td><td>Xem <code>trust_remote_code</code>, Hub artifacts, multimodal parsers, logs và model licenses là quyết định production có quyền cao.</td></tr>
+</tbody></table></div>
+<div class="mermaid">flowchart LR
+  Artifact[Hub hoac local artifact set] --&gt; Config[PreTrainedConfig]
+  Artifact --&gt; Tokenizer[Tokenizer hoac processor]
+  Artifact --&gt; Weights[Model weights]
+  Config --&gt; Auto[Auto classes]
+  Tokenizer --&gt; Auto
+  Weights --&gt; Model[PreTrainedModel]
+  Auto --&gt; Mode{Serving mode}
+  Mode --&gt; Pipeline[pipeline service voi queue]
+  Mode --&gt; Direct[Direct generate hoac forward]
+  Mode --&gt; Serve[transformers serve]
+  Mode --&gt; External[vLLM, TGI, llama.cpp, export runtime]
+  Pipeline --&gt; Eval[Latency, memory, task metrics]
+  Direct --&gt; Eval
+  Serve --&gt; Eval
+  External --&gt; Eval
+  Eval --&gt; Release{Dat SLO va governance?}
+  Release --&gt;|Khong| Tune[Retune artifact, dtype, quant, generation, engine]
+  Tune --&gt; Mode
+  Release --&gt;|Co| Canary[Canary va monitor]</div>
+<h2 id="b-n-c-l-p-l-i">Bản đồ cô lập lỗi</h2>
+<p>Một lỗi Transformers có thể xảy ra trước khi model chạy: Auto mapping, optional dependency, tokenizer files, remote code, shape loading và processor behavior đều nằm trước inference. Triage nên cô lập domain artifact, preprocessing, model execution, generation, serving và security.</p>
+<div class="mermaid">flowchart TD
+  Symptom[Trieu chung Transformers] --&gt; Domain{Domain}
+  Domain --&gt; Artifact[Config, weights, Auto mapping]
+  Domain --&gt; Preprocess[Tokenizer, processor, chat template]
+  Domain --&gt; Execution[Model forward, dtype, device map]
+  Domain --&gt; Generation[Cache, logits, stopping, streamer]
+  Domain --&gt; Quant[Quantizer hoac attention backend]
+  Domain --&gt; Serving[CLI serving, queue, health, streaming]
+  Domain --&gt; Security[Remote code, Hub trust, multimodal input]
+  Artifact --&gt; Files1[configuration_utils, modeling_utils, models/auto]
+  Preprocess --&gt; Files2[tokenization_utils, processing_utils, image/audio/video utils]
+  Execution --&gt; Files3[modeling files, integrations, distributed]
+  Generation --&gt; Files4[generation utils va continuous_batching]
+  Quant --&gt; Files5[quantizers va integrations]
+  Serving --&gt; Files6[cli/serve.py va cli/serving]
+  Security --&gt; Files7[dynamic_module_utils va Hub artifact policy]
+  Files1 --&gt; Fix[Pin, patch, retest hoac switch engine]
+  Files2 --&gt; Fix
+  Files3 --&gt; Fix
+  Files4 --&gt; Fix
+  Files5 --&gt; Fix
+  Files6 --&gt; Fix
+  Files7 --&gt; Fix</div>
+<h2 id="bang-chu-giai">Bang chu giai</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Thuat ngu</th><th>Nghia</th></tr></thead>
+<tbody>
+<tr><td>PreTrainedConfig</td><td>Blueprint model co the serialize, chua hyperparameters.</td></tr>
+<tr><td>PreTrainedModel</td><td>Base model class voi loading, saving, weight, dtype va device utilities.</td></tr>
+<tr><td>Auto class</td><td>Factory class chon config/model/tokenizer/processor cu the tu metadata.</td></tr>
+<tr><td>Tokenizer</td><td>Thanh phan map text sang token IDs va nguoc lai.</td></tr>
+<tr><td>Processor</td><td>Thanh phan boc mot hoac nhieu modality preprocessors, thuong cho multimodal models.</td></tr>
+<tr><td>Pipeline</td><td>Task-level inference wrapper xu ly preprocessing, model call va postprocessing.</td></tr>
+<tr><td>GenerationConfig</td><td>Object cau hinh dieu khien decoding behavior.</td></tr>
+<tr><td>LogitsProcessor</td><td>Hook sua logits trong generation.</td></tr>
+<tr><td>StoppingCriteria</td><td>Hook quyet dinh khi nao dung generation.</td></tr>
+<tr><td>Streamer</td><td>Utility phat text sinh ra theo thoi gian thuc.</td></tr>
+<tr><td>Continuous batching</td><td>Che do serving dong them/loai request generation moi step.</td></tr>
+<tr><td>Paged KV cache</td><td>Cache design luu key/value state trong pages/blocks co kich thuoc co dinh.</td></tr>
+<tr><td>device_map</td><td>Mapping module sang device, thuong do Accelerate quan ly.</td></tr>
+<tr><td>safetensors</td><td>Dinh dang serialize tensor an toan, pho bien cho model weights.</td></tr>
+<tr><td>GGUF</td><td>Dinh dang single-file cua ggml/llama.cpp, Transformers ho tro loading cho mot so model.</td></tr>
+</tbody></table></div>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

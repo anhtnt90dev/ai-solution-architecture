@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>llama.cpp Architecture | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/02-model-serving-inference/llama.cpp/README.en.md">View source</a>
+      <h1 id="llama-cpp-architecture">llama.cpp Architecture</h1>
+<p>Source snapshot: <code>github-repos/02-model-serving-inference/llama.cpp</code> at <code>bfb4308</code> (<code>model : support granite multilingual embeddings R2 ... (#22716)</code>, tag <code>b9481</code>). This document is grounded in the repository files present in that snapshot.</p>
+<h2 id="executive-summary">Executive Summary</h2>
+<p>llama.cpp is a native C/C++ inference stack for running large language models with minimal setup across local machines, edge devices, and cloud instances. The README summarizes the goal as &quot;LLM inference in C/C++&quot; and emphasizes low dependency count, Apple Silicon support, CPU SIMD paths, many quantization formats, CUDA/HIP/Vulkan/SYCL/OpenCL/Metal and other backends, and CPU/GPU hybrid inference.</p>
+<p>The core product is the <code>llama</code> library, whose public C API is in <code>include/llama.h</code> and C++ RAII helpers are in <code>include/llama-cpp.h</code>. Around that core, the repository includes model conversion to GGUF, quantization tools, a command-line client, an OpenAI-compatible HTTP server, benchmarking tools, multimodal support, tests, and the <code>ggml</code> tensor/runtime backend library.</p>
+<p>For solution architects, llama.cpp is most valuable when the deployment target needs portability, small operational footprint, local or edge execution, strong quantized-model support, or native integration. It can run as a local CLI, embedded library, Docker container, web server, mobile demo, or multi-GPU backend-dependent service. Its tradeoff is that model support, runtime features, and hardware acceleration are tightly coupled to GGUF metadata, graph construction code, backend kernels, and build flags.</p>
+<h2 id="problem-solved">Problem Solved</h2>
+<p>Model serving often assumes a Python runtime, GPU-heavy deployment, and a managed serving stack. llama.cpp addresses a different operating model:</p>
+<ul>
+<li>Run LLMs from a native executable or library without a full Python serving stack.</li>
+<li>Use single-file GGUF models that bundle metadata and tensors.</li>
+<li>Reduce memory through aggressive quantization.</li>
+<li>Run on CPUs, Apple Silicon, consumer GPUs, mobile devices, and heterogeneous CPU/GPU systems.</li>
+<li>Expose both local CLI workflows and HTTP APIs.</li>
+<li>Provide tooling to convert, quantize, benchmark, inspect, and test models.</li>
+</ul>
+<p>Repository anchors include <code>include/llama.h</code>, <code>src/llama.cpp</code>, <code>src/llama-context.cpp</code>, <code>src/llama-model.cpp</code>, <code>src/llama-kv-cache.cpp</code>, <code>tools/server/*</code>, <code>tools/cli/*</code>, <code>tools/quantize/*</code>, <code>convert_hf_to_gguf.py</code>, <code>gguf-py/gguf/*</code>, <code>ggml/src/*</code>, and <code>tests/*</code>.</p>
+<h2 id="ai-stack-role">AI Stack Role</h2>
+<p>llama.cpp is an inference runtime and model-serving toolkit. It does not primarily define models for training like Transformers, and it is not a Python-first high-throughput server like vLLM. Its role is closer to a portable native execution layer:</p>
+<ul>
+<li><strong>Model input:</strong> Hugging Face models converted to GGUF, existing GGUF repos, LoRA GGUF adapters, multimodal projector files.</li>
+<li><strong>Runtime:</strong> <code>libllama</code> plus <code>ggml</code> graph execution and backend scheduling.</li>
+<li><strong>Serving:</strong> <code>llama-cli</code>, <code>llama-server</code>, OpenAI-compatible routes, Anthropic-compatible messages, web UI, embeddings, reranking, function calling.</li>
+<li><strong>Operations:</strong> CMake builds, Docker images, backend-specific build flags, benchmarking, Prometheus-compatible server metrics, tests.</li>
+<li><strong>Ecosystem bridge:</strong> Python conversion scripts depend on <code>transformers</code>, <code>torch</code>, <code>sentencepiece</code>, and the local <code>gguf-py</code> package; runtime consumes the converted GGUF assets.</li>
+</ul>
+<h2 id="source-tree-map">Source Tree Map</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Path</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td><code>README.md</code></td><td>Project overview, quick start, supported model families, hardware support, install/build links.</td></tr>
+<tr><td><code>include/llama.h</code></td><td>Public C API: model/context params, backend init/free, model loading, <code>llama_batch</code>, <code>llama_encode</code>, <code>llama_decode</code>, samplers, embeddings, KV operations.</td></tr>
+<tr><td><code>include/llama-cpp.h</code></td><td>C++ RAII helpers for <code>llama_model</code>, <code>llama_context</code>, and <code>llama_sampler</code>.</td></tr>
+<tr><td><code>src/llama.cpp</code></td><td>Core exported implementation glue for public API.</td></tr>
+<tr><td><code>src/llama-model.cpp</code>, <code>src/llama-model.h</code></td><td>Model representation, architecture-specific graph construction, RoPE/model logic.</td></tr>
+<tr><td><code>src/llama-model-loader.cpp</code></td><td>GGUF model loading and metadata/tensor handling.</td></tr>
+<tr><td><code>src/llama-context.cpp</code></td><td>Runtime context, decode/encode execution, output extraction, embeddings, logits, performance behavior.</td></tr>
+<tr><td><code>src/llama-batch.cpp</code></td><td>Batch allocation and splitting into micro-batches.</td></tr>
+<tr><td><code>src/llama-kv-cache*.cpp</code>, <code>src/llama-memory*.cpp</code></td><td>KV-cache and memory implementations, including hybrid and recurrent paths.</td></tr>
+<tr><td><code>src/llama-sampler.cpp</code></td><td>Sampling chain and token selection.</td></tr>
+<tr><td><code>src/llama-vocab.cpp</code>, <code>src/unicode*.cpp</code></td><td>Tokenization, vocabulary, Unicode handling.</td></tr>
+<tr><td><code>src/llama-adapter.cpp</code></td><td>LoRA/control-vector adapter loading and backend buffer handling.</td></tr>
+<tr><td><code>common/*</code></td><td>Shared utilities for CLI/tools/server: args, sampling, chat templates, HF cache/download, logging, JSON/grammar helpers, speculative decoding.</td></tr>
+<tr><td><code>tools/server/*</code></td><td>HTTP server based on <code>httplib</code> and <code>nlohmann::json</code>; OpenAI-compatible, Anthropic-compatible, web UI, slots, queue, model routing.</td></tr>
+<tr><td><code>tools/cli/*</code>, <code>tools/completion/*</code></td><td>Main interactive CLI and completion utilities.</td></tr>
+<tr><td><code>tools/quantize/*</code>, <code>tools/imatrix/*</code>, <code>tools/gguf-split/*</code></td><td>Quantization, importance matrix, GGUF splitting, and model tooling.</td></tr>
+<tr><td><code>tools/llama-bench/*</code>, <code>tools/perplexity/*</code></td><td>Benchmarking and quality/perplexity utilities.</td></tr>
+<tr><td><code>tools/mtmd/*</code></td><td>Multimodal library and model-specific encoder/projector support.</td></tr>
+<tr><td><code>examples/*</code></td><td>Minimal library usage, batched inference, embeddings, retrieval, speculative decoding, Android/Swift demos, training examples.</td></tr>
+<tr><td><code>ggml/include</code>, <code>ggml/src</code></td><td>Tensor library, graph execution, backend registry, CPU/CUDA/HIP/Metal/Vulkan/SYCL/OpenCL/RPC and other backends.</td></tr>
+<tr><td><code>gguf-py/gguf/*</code></td><td>Python GGUF reader/writer, constants, quant helpers, metadata utilities, tensor mapping.</td></tr>
+<tr><td><code>conversion/*</code>, <code>convert_hf_to_gguf.py</code>, <code>convert_lora_to_gguf.py</code></td><td>Model and adapter conversion from HF/PyTorch formats to GGUF.</td></tr>
+<tr><td><code>docs/*</code></td><td>Build, install, Docker, multi-GPU, function calling, multimodal, speculative, backend, and model-development guides.</td></tr>
+<tr><td><code>tests/*</code></td><td>C/C++ and Python tests for backends, GGUF, quantization, tokenizers, chat templates, grammar, thread safety, model load cancel, server tests.</td></tr>
+<tr><td><code>CMakeLists.txt</code>, <code>CMakePresets.json</code>, <code>Makefile</code></td><td>Native build system and presets.</td></tr>
+<tr><td><code>pyproject.toml</code></td><td>Python scripts package metadata; scripts like <code>llama-convert-hf-to-gguf</code>; dependencies for conversion tooling.</td></tr>
+</tbody></table></div>
+<h2 id="core-concepts">Core Concepts</h2>
+<p><strong>GGUF.</strong> GGUF is the single-file model format used by llama.cpp and ggml. The conversion code reads original model configs, tokenizer data, tensor names, and tensor values, then writes standardized metadata and tensors. <code>gguf-py/gguf/constants.py</code> and <code>tensor_mapping.py</code> are central to this contract.</p>
+<p><strong>libllama API.</strong> <code>include/llama.h</code> is the external contract for embedding llama.cpp into other applications. It exposes backend initialization, model/context creation, batches, encode/decode, samplers, embeddings, and metadata APIs.</p>
+<p><strong>ggml graph execution.</strong> llama.cpp builds a graph for the model architecture and delegates tensor operations to <code>ggml</code>. Backend implementations under <code>ggml/src/ggml-cpu</code>, <code>ggml-cuda</code>, <code>ggml-metal</code>, <code>ggml-vulkan</code>, <code>ggml-sycl</code>, and others execute the graph.</p>
+<p><strong>Context.</strong> A <code>llama_context</code> owns runtime state for inference: KV cache, backend scheduler, logits/embeddings buffers, batch handling, and decode state.</p>
+<p><strong>Batch and micro-batch.</strong> <code>llama_batch</code> can hold one or many sequences. <code>src/llama-batch.cpp</code> splits work into micro-batches (<code>ubatch</code>) to fit execution and memory constraints.</p>
+<p><strong>KV cache and memory.</strong> <code>src/llama-kv-cache.cpp</code>, <code>llama-memory.cpp</code>, <code>llama-memory-hybrid.cpp</code>, <code>llama-memory-recurrent.cpp</code>, and related files manage context memory. Server flags such as <code>--ctx-size</code>, <code>--cache-type-k</code>, <code>--cache-type-v</code>, <code>--kv-offload</code>, <code>--kv-unified</code>, <code>--cache-prompt</code>, and slot controls expose this behavior.</p>
+<p><strong>Quantization.</strong> The project supports many quantization types, reducing memory and improving local feasibility. Runtime quantized ops live in ggml backends, while tools such as <code>tools/quantize</code> and scripts such as <code>convert_hf_to_gguf.py</code> produce quantized assets.</p>
+<p><strong>Backend selection.</strong> Build flags and runtime flags determine whether CPU, Metal, CUDA, HIP, Vulkan, SYCL, OpenCL, RPC, or other paths are available. <code>docs/build.md</code> and <code>docs/multi-gpu.md</code> document operational choices.</p>
+<p><strong>Server slots and continuous batching.</strong> <code>tools/server</code> supports parallel decoding, multi-user serving, continuous batching, slots monitoring, prompt caching, metrics, and model routing.</p>
+<h2 id="component-system-diagram">Component/System Diagram</h2>
+<div class="mermaid">flowchart LR
+    User[CLI, HTTP client, native app] --&gt; Tools[tools/cli, tools/server, examples]
+    Tools --&gt; Common[common\nargs, chat, sampling, HF cache, grammar]
+    Tools --&gt; API[include/llama.h\nlibllama C API]
+    API --&gt; Context[src/llama-context.cpp\nruntime context]
+    Context --&gt; Model[src/llama-model.cpp\narchitecture graph]
+    Context --&gt; KV[src/llama-kv-cache + llama-memory\ncache and state]
+    Context --&gt; Sampler[src/llama-sampler.cpp\nsampling chain]
+    Model --&gt; Loader[src/llama-model-loader.cpp\nGGUF tensors and metadata]
+    Loader --&gt; GGUF[gguf-py + ggml gguf\nsingle-file model format]
+    Context --&gt; GGML[ggml graph scheduler]
+    GGML --&gt; Backends[CPU, CUDA, HIP, Metal,\nVulkan, SYCL, OpenCL, RPC]
+    Conversion[convert_hf_to_gguf.py\nconversion/*] --&gt; GGUF
+    Tests[tests + server tests] --&gt; API</div>
+<h2 id="internal-architecture">Internal Architecture</h2>
+<p>llama.cpp has a native runtime core surrounded by tools.</p>
+<p><strong>Public API layer.</strong> <code>include/llama.h</code> is the stable interface consumers compile against. Applications call <code>llama_backend_init</code>, load a model, create a context, build batches, call <code>llama_decode</code> or <code>llama_encode</code>, and inspect logits, embeddings, or tokens. <code>include/llama-cpp.h</code> adds C++ ownership helpers.</p>
+<p><strong>Model and metadata layer.</strong> <code>src/llama-model-loader.cpp</code> reads GGUF files, tensor metadata, architecture-specific keys, and weight data. <code>src/llama-arch.h</code> and <code>src/llama-arch.cpp</code> define architecture constants, tensor names, and metadata mappings that must align with <code>gguf-py/gguf/constants.py</code>.</p>
+<p><strong>Graph construction layer.</strong> <code>src/llama-model.cpp</code> builds ggml graphs for supported architectures. The development guide <code>docs/development/HOWTO-add-model.md</code> says new models require conversion support, architecture metadata, graph implementation, and optional multimodal encoder support.</p>
+<p><strong>Runtime context layer.</strong> <code>src/llama-context.cpp</code> holds execution state, manages decode/encode calls, extracts logits/embeddings, applies output handling, and calls into the backend scheduler.</p>
+<p><strong>Memory/KV layer.</strong> KV cache and memory are separated into several implementation files so recurrent, hybrid, sliding-window, and standard attention models can be handled.</p>
+<p><strong>Shared tool layer.</strong> <code>common/arg.cpp</code>, <code>common/common.cpp</code>, <code>common/sampling.cpp</code>, <code>common/chat.cpp</code>, <code>common/hf-cache.cpp</code>, and <code>common/download.cpp</code> are reused by CLI, server, and tools. This avoids each binary reimplementing argument parsing, sampling, chat templates, Hugging Face downloads, or logging.</p>
+<p><strong>Backend layer.</strong> <code>ggml</code> owns low-level tensor execution and backend registration. <code>ggml/src/ggml-backend-reg.cpp</code>, <code>ggml-backend.cpp</code>, and backend directories provide implementation-specific ops.</p>
+<h2 id="end-to-end-runtime-flow">End-to-End Runtime Flow</h2>
+<div class="mermaid">sequenceDiagram
+    participant C as User/client
+    participant T as llama-cli or llama-server
+    participant A as common args/chat/sampling
+    participant L as libllama API
+    participant M as model loader
+    participant X as llama_context
+    participant G as ggml backend scheduler
+    participant S as sampler
+
+    C-&gt;&gt;T: prompt, chat request, or API call
+    T-&gt;&gt;A: parse flags, chat template, sampling config
+    A-&gt;&gt;L: llama_backend_init + load model/context
+    L-&gt;&gt;M: read GGUF metadata and tensors
+    M--&gt;&gt;L: llama_model
+    L--&gt;&gt;X: context with KV cache and backend scheduler
+    loop generation
+        T-&gt;&gt;X: build llama_batch and call llama_decode
+        X-&gt;&gt;G: execute model graph on selected backend
+        G--&gt;&gt;X: logits / embeddings / updated KV
+        X--&gt;&gt;S: logits
+        S--&gt;&gt;T: next token
+        T--&gt;&gt;C: token text, stream chunk, or JSON delta
+    end</div>
+<h2 id="runtime-and-data-flow">Runtime and Data Flow</h2>
+<ol>
+<li><strong>Model acquisition.</strong> A user passes <code>-m model.gguf</code>, <code>-hf user/repo</code>, <code>--model-url</code>, or Docker model arguments. <code>common/hf-cache.cpp</code>, <code>common/download.cpp</code>, and <code>common_get_model_endpoint()</code> support model cache and endpoint selection.</li>
+<li><strong>Model load.</strong> <code>llama_model_loader</code> reads GGUF metadata and tensors, often using memory mapping unless disabled by flags such as <code>--no-mmap</code>.</li>
+<li><strong>Context initialization.</strong> <code>llama_context</code> is created with context parameters, backend devices, KV cache settings, Flash Attention choice, thread settings, and optional offload.</li>
+<li><strong>Prompt processing.</strong> CLI/server code tokenizes input, applies chat templates from <code>common/chat.cpp</code>, handles grammars/JSON schema, and forms <code>llama_batch</code>.</li>
+<li><strong>Graph execution.</strong> The architecture-specific graph is constructed and run through ggml. The backend scheduler places tensors and ops on CPU/GPU backends according to build/runtime availability.</li>
+<li><strong>KV update.</strong> Attention state is stored in the cache and may be offloaded, quantized, unified, shifted, saved, or restored depending on flags and server slot state.</li>
+<li><strong>Sampling.</strong> <code>src/llama-sampler.cpp</code> and <code>common/sampling.cpp</code> apply sampler chains such as penalties, top-k, top-p, min-p, temperature, Mirostat, grammar constraints, and logit bias.</li>
+<li><strong>Output.</strong> CLI prints tokens; server streams or returns JSON through <code>tools/server/server-http.cpp</code>, <code>server-task.cpp</code>, <code>server-context.cpp</code>, and route-specific code.</li>
+</ol>
+<h2 id="deployment-and-operations-topology">Deployment and Operations Topology</h2>
+<div class="mermaid">flowchart TB
+    subgraph Local
+        CLI[llama-cli / llama-completion]
+        Lib[Native application embedding libllama]
+    end
+    subgraph ServerNode[&quot;llama-server node&quot;]
+        HTTP[tools/server\nhttplib HTTP server]
+        Queue[server queue and slots]
+        Contexts[llama_context instances]
+        UI[Web UI / static assets]
+    end
+    subgraph Models
+        HF[Hugging Face repo]
+        GGUF[Local GGUF files]
+        LoRA[LoRA GGUF adapters]
+        MMProj[Multimodal projector]
+    end
+    subgraph Runtime
+        GGML[ggml backend registry]
+        CPU[CPU SIMD / BLAS]
+        GPU[CUDA/HIP/Metal/Vulkan/SYCL/OpenCL]
+        RPC[RPC backend]
+    end
+    subgraph Ops
+        Docker[GHCR images\nfull/light/server variants]
+        Metrics[Prometheus metrics endpoint]
+        Bench[llama-bench / perplexity]
+    end
+
+    CLI --&gt; GGUF
+    Lib --&gt; GGUF
+    HTTP --&gt; Queue --&gt; Contexts --&gt; GGML
+    HTTP --&gt; UI
+    HF --&gt; GGUF
+    LoRA --&gt; Contexts
+    MMProj --&gt; Contexts
+    GGML --&gt; CPU
+    GGML --&gt; GPU
+    GGML --&gt; RPC
+    Docker --&gt; HTTP
+    Metrics --&gt; HTTP
+    Bench --&gt; GGML</div>
+<p>Deployment patterns:</p>
+<ul>
+<li><strong>Single binary local inference:</strong> <code>llama-cli -m model.gguf</code>.</li>
+<li><strong>OpenAI-compatible local service:</strong> <code>llama-server -m model.gguf --host 0.0.0.0 --port 8080</code>.</li>
+<li><strong>Containerized service:</strong> <code>ghcr.io/ggml-org/llama.cpp:server</code> or backend-specific images such as <code>server-cuda</code>, <code>server-rocm</code>, <code>server-vulkan</code>, <code>server-intel</code>.</li>
+<li><strong>Embedded native library:</strong> application links against <code>libllama</code> and calls <code>include/llama.h</code>.</li>
+<li><strong>Multi-GPU:</strong> <code>docs/multi-gpu.md</code> describes <code>--split-mode none|layer|row|tensor</code>, <code>--tensor-split</code>, <code>--device</code>, <code>--n-gpu-layers</code>, and backend caveats.</li>
+<li><strong>Mobile/edge:</strong> examples include Android and SwiftUI demos, and backend docs cover device-specific builds.</li>
+</ul>
+<h2 id="lifecycle-decisions-and-module-dependencies">Lifecycle, Decisions, and Module Dependencies</h2>
+<div class="mermaid">stateDiagram-v2
+    [*] --&gt; Build
+    Build --&gt; SelectBackend: CMake flags decide available backends
+    SelectBackend --&gt; AcquireModel: local GGUF, HF cache, URL, Docker volume
+    AcquireModel --&gt; LoadGGUF: metadata and tensors
+    LoadGGUF --&gt; InitContext: context params, KV cache, devices
+    InitContext --&gt; PromptReady: tokenize and apply chat template
+    PromptReady --&gt; DecodeLoop
+    DecodeLoop --&gt; DecodeLoop: batch -&gt; graph -&gt; logits -&gt; sample
+    DecodeLoop --&gt; Finished: EOS, max tokens, reverse prompt, stop
+    DecodeLoop --&gt; Error: OOM, invalid GGUF, backend unsupported
+    Finished --&gt; [*]
+    Error --&gt; [*]</div>
+<div class="mermaid">flowchart LR
+    Convert[convert_hf_to_gguf.py\nconversion/*] --&gt; GGUFConstants[gguf-py/gguf/constants.py]
+    GGUFConstants --&gt; Arch[src/llama-arch.h/.cpp]
+    Arch --&gt; Loader[src/llama-model-loader.cpp]
+    Loader --&gt; Model[src/llama-model.cpp]
+    Model --&gt; Context[src/llama-context.cpp]
+    Context --&gt; Batch[src/llama-batch.cpp]
+    Context --&gt; Memory[src/llama-kv-cache*.cpp\nllama-memory*.cpp]
+    Context --&gt; GGML[ggml/src/ggml-backend*.cpp]
+    GGML --&gt; BackendDirs[ggml/src/ggml-cpu\ncuda, metal, vulkan, sycl]</div>
+<h2 id="extension-points">Extension Points</h2>
+<ul>
+<li><strong>Add a model architecture:</strong> <code>docs/development/HOWTO-add-model.md</code> defines the path: update conversion, GGUF constants/tensor mappings, <code>src/llama-arch.*</code>, <code>src/llama-model-loader.cpp</code>, RoPE logic if needed, and <code>src/llama-model.cpp</code> graph construction.</li>
+<li><strong>Add conversion support:</strong> implement a <code>TextModel</code> or <code>MmprojModel</code> subclass in <code>conversion</code>, update <code>gguf-py/gguf/constants.py</code> and <code>tensor_mapping.py</code>, and validate tokenizer/tensor mapping.</li>
+<li><strong>Add backend support:</strong> implement or extend backend code under <code>ggml/src/ggml-*</code> and expose it through the backend registry.</li>
+<li><strong>Add server routes/features:</strong> follow <code>tools/server/server-http.cpp</code>, <code>server-task.cpp</code>, <code>server-context.cpp</code>, <code>server-queue.cpp</code>, and protocol-specific helpers.</li>
+<li><strong>Add multimodal support:</strong> use <code>tools/mtmd</code>, its <code>models</code> directory, and <code>docs/multimodal.md</code>; avoid model-specific CLI behavior when a model-agnostic preprocessor/projector can be used.</li>
+<li><strong>Add tools:</strong> new tools can reuse <code>common</code> for argument parsing, logging, model loading, sampling, and chat templates.</li>
+<li><strong>Add grammars/function calling:</strong> <code>common/json-schema-to-grammar.cpp</code>, <code>common/llguidance.cpp</code>, <code>grammars</code>, and <code>docs/function-calling.md</code> provide the extension area.</li>
+</ul>
+<h2 id="integrations">Integrations</h2>
+<ul>
+<li>Hugging Face model downloads and cache through <code>-hf</code>, <code>HF_TOKEN</code>, <code>HF_ENDPOINT</code>/<code>MODEL_ENDPOINT</code>, and <code>common/hf-cache.cpp</code>.</li>
+<li>GGUF conversion from Transformers/PyTorch through <code>convert_hf_to_gguf.py</code>, <code>conversion</code>, and Python dependencies in <code>pyproject.toml</code>.</li>
+<li>OpenAI-compatible server routes documented in <code>tools/server/README.md</code>.</li>
+<li>Anthropic Messages API compatibility in server features.</li>
+<li>Prometheus-compatible metrics endpoint behind <code>--metrics</code>.</li>
+<li>Docker images for full, light, server, and backend-specific variants documented in <code>docs/docker.md</code>.</li>
+<li>Multimodal projector support through <code>tools/mtmd</code> and <code>docs/multimodal.md</code>.</li>
+<li>LoRA and control vectors through <code>src/llama-adapter.cpp</code> and CLI/server flags.</li>
+<li>Speculative decoding through <code>common/speculative.cpp</code>, <code>examples/speculative</code>, and <code>docs/speculative.md</code>.</li>
+</ul>
+<h2 id="configuration-deployment-and-ops">Configuration, Deployment, and Ops</h2>
+<p>llama.cpp configuration is split between build-time and runtime.</p>
+<p><strong>Build-time:</strong> CMake options select backend availability. <code>docs/build.md</code> covers CPU, BLAS, Metal, SYCL, CUDA, MUSA, HIP, Vulkan, CANN, ZenDNN, KleidiAI, OpenCL, Android, and OpenVINO. Build flags determine whether a binary can use a backend at all.</p>
+<p><strong>Runtime:</strong> <code>common/arg.cpp</code> centralizes flags for threads, CPU affinity, context size, batch/micro-batch size, Flash Attention, RoPE scaling, KV cache types, mmap/mlock/direct I/O, devices, GPU layers, split mode, LoRA, model source, logging, sampling, grammar, server host/port, API key, TLS, metrics, slots, props, prompt cache, and model routing.</p>
+<p>Operational practices:</p>
+<ul>
+<li>Use <code>--list-devices</code> to validate visible accelerators.</li>
+<li>Tune <code>--ctx-size</code>, <code>--batch-size</code>, <code>--ubatch-size</code>, <code>--n-gpu-layers</code>, and KV cache types before exposing a server.</li>
+<li>Use Docker images as a deployment shortcut, but rebuild locally if backend/library versions differ.</li>
+<li>For multi-GPU, prefer <code>layer</code> for compatibility and <code>tensor</code> only after validating architecture/backend support and interconnect performance.</li>
+<li>Protect server endpoints with <code>--api-key</code>, TLS, network policy, and reverse proxy controls.</li>
+<li>Keep <code>--props</code>, <code>--tools</code>, local media paths, and write-capable tools disabled in untrusted environments unless explicitly governed.</li>
+</ul>
+<h2 id="observability-testing-evaluation-and-failure-modes">Observability, Testing, Evaluation, and Failure Modes</h2>
+<p>Observability and benchmarking:</p>
+<ul>
+<li><code>tools/server/README.md</code> documents <code>--metrics</code> for a Prometheus-compatible endpoint.</li>
+<li><code>common/log.cpp</code>, logging flags, verbosity, timestamps, and log files support runtime diagnosis.</li>
+<li><code>--perf</code> and <code>--no-perf</code> control internal libllama timing output.</li>
+<li><code>tools/llama-bench</code>, <code>tools/batched-bench</code>, <code>tools/perplexity</code>, <code>examples/llama-eval</code>, and benchmark scripts measure speed and quality.</li>
+<li><code>tools/server/bench/prometheus.yml</code> and server bench files show a monitoring/benchmark setup.</li>
+</ul>
+<p>Testing anchors:</p>
+<ul>
+<li><code>tests/test-backend-ops.cpp</code> covers backend operation behavior.</li>
+<li><code>tests/test-gguf.cpp</code>, <code>tests/test-gguf-model-data.cpp</code>, and <code>gguf-py/tests/*</code> cover GGUF behavior.</li>
+<li><code>tests/test-quantize-fns.cpp</code>, <code>test-quantize-perf.cpp</code>, and <code>test-quant-type-selection.cpp</code> cover quantization.</li>
+<li><code>tests/test-tokenizer-*</code> and <code>tests/test-tokenizers-repo.sh</code> cover tokenizer correctness.</li>
+<li><code>tests/test-chat-template.cpp</code>, <code>test-chat.cpp</code>, and <code>test-chat-auto-parser.cpp</code> cover chat formatting and parsing.</li>
+<li><code>tools/server/tests/*</code> covers server behavior.</li>
+<li><code>tests/test-thread-safety.cpp</code>, <code>test-save-load-state.cpp</code>, and <code>test-model-load-cancel.cpp</code> cover runtime reliability scenarios.</li>
+</ul>
+<p>Common failure modes:</p>
+<ul>
+<li><strong>Invalid or unsupported GGUF:</strong> metadata keys, tensor names, architecture mapping, or tokenizer info do not match runtime expectations.</li>
+<li><strong>Backend not built:</strong> a flag such as <code>-ngl all</code> cannot use a GPU if the binary lacks CUDA/Metal/HIP/Vulkan/SYCL support.</li>
+<li><strong>OOM or poor fit:</strong> model, context, KV cache, parallel slots, or GPU offload exceed memory.</li>
+<li><strong>Multi-GPU mismatch:</strong> <code>tensor</code> split unsupported for an architecture, missing NCCL/RCCL, slow interconnect, or incompatible KV cache type.</li>
+<li><strong>Quantization quality loss:</strong> smaller formats may reduce output quality or break specific workloads.</li>
+<li><strong>Chat template mismatch:</strong> function calling, tool use, or role formatting fails if model template is wrong.</li>
+<li><strong>Server overload:</strong> queue growth, long generations, too many slots, or insufficient circuit breaking.</li>
+<li><strong>Security exposure:</strong> API keys missing, tools enabled, local media paths exposed, or CORS/web UI deployed broadly.</li>
+</ul>
+<h2 id="security-and-governance-risks">Security and Governance Risks</h2>
+<ul>
+<li><strong>Model licensing and provenance:</strong> GGUF files may come from many publishers. Track source, license, quantization method, and conversion script version.</li>
+<li><strong>Supply chain:</strong> conversion tooling uses Python dependencies and model files; runtime loads native binary data from GGUF.</li>
+<li><strong>HTTP API exposure:</strong> <code>llama-server</code> can expose chat, responses, embeddings, reranking, monitoring, slots, props, static UI, and model routing. Limit surface area.</li>
+<li><strong>Built-in tools:</strong> server flags can enable file read/write, shell execution, grep, patch, and datetime tools. The server README warns these are experimental and should not be enabled in untrusted environments.</li>
+<li><strong>Local media paths:</strong> multimodal <code>file://</code> access can leak files if <code>--media-path</code> is too broad.</li>
+<li><strong>Prompt/output logging:</strong> logs and metrics can reveal sensitive prompts, completions, model names, and traffic patterns.</li>
+<li><strong>Quantized safety regression:</strong> changing quantization can change behavior. Governance should include evaluation, not just throughput tests.</li>
+<li><strong>Native memory safety:</strong> C/C++ serving needs patching discipline, fuzzing/tests, and conservative exposure behind reverse proxies.</li>
+</ul>
+<h2 id="reading-guide">Reading Guide</h2>
+<ol>
+<li>Start with <code>README.md</code> for goals, quick start, and supported model/hardware claims.</li>
+<li>Read <code>docs/build.md</code>, <code>docs/docker.md</code>, and <code>docs/multi-gpu.md</code> to understand deployment constraints.</li>
+<li>Read <code>include/llama.h</code> before reading internal implementation.</li>
+<li>Trace model loading through <code>src/llama-model-loader.cpp</code> and architecture constants in <code>src/llama-arch.*</code>.</li>
+<li>Study <code>src/llama-context.cpp</code>, <code>src/llama-batch.cpp</code>, and <code>src/llama-kv-cache.cpp</code> for runtime behavior.</li>
+<li>Read <code>src/llama-model.cpp</code> for graph construction.</li>
+<li>Read <code>ggml/include/ggml.h</code>, <code>ggml/include/ggml-backend.h</code>, and backend directories for execution.</li>
+<li>Read <code>tools/server/README.md</code> and <code>tools/server/*.cpp</code> for service operation.</li>
+<li>Read <code>docs/development/HOWTO-add-model.md</code> before adding model support.</li>
+<li>Use <code>tests/*</code> to understand expected behavior before modifying internals.</li>
+</ol>
+<h2 id="learning-path">Learning Path</h2>
+<ol>
+<li>Build a CPU-only mental model with <code>examples/simple/simple.cpp</code>.</li>
+<li>Follow <code>tools/cli/main.cpp</code> into common argument parsing and <code>libllama</code>.</li>
+<li>Inspect how <code>llama_batch</code> is created and decoded.</li>
+<li>Read the sampling chain in <code>src/llama-sampler.cpp</code> and <code>common/sampling.cpp</code>.</li>
+<li>Load the server architecture from <code>tools/server/server.cpp</code>, queue, context, task, HTTP, and model files.</li>
+<li>Study GGUF conversion and constants before touching architecture support.</li>
+<li>Compare backend implementations only after understanding the ggml backend API.</li>
+<li>Use benchmarks and tests to validate any performance or model-support change.</li>
+</ol>
+<h2 id="production-readiness-and-native-runtime-gate">Production Readiness And Native Runtime Gate</h2>
+<p>llama.cpp readiness is split across build-time, model-time, and runtime gates. The important source anchors are <code>include/llama.h</code>, <code>src/llama-model-loader.cpp</code>, <code>src/llama-context.cpp</code>, <code>src/llama-kv-cache*.cpp</code>, <code>src/llama-sampler.cpp</code>, <code>common/arg.cpp</code>, <code>tools/server/*</code>, <code>ggml/src/*</code>, <code>convert_hf_to_gguf.py</code>, <code>gguf-py/gguf/*</code>, and <code>docs/build.md</code>.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Gate</th><th>What to verify</th></tr></thead>
+<tbody>
+<tr><td>Build</td><td>Binary was compiled with the intended backend: CPU BLAS, CUDA, HIP, Metal, Vulkan, SYCL, OpenCL, RPC, or vendor-specific options.</td></tr>
+<tr><td>GGUF provenance</td><td>Source model, conversion script version, tokenizer metadata, quantization type, and license are recorded.</td></tr>
+<tr><td>Memory fit</td><td><code>--ctx-size</code>, <code>--batch-size</code>, <code>--ubatch-size</code>, KV cache type, <code>--n-gpu-layers</code>, slots, and split mode fit RAM/VRAM.</td></tr>
+<tr><td>Server exposure</td><td><code>llama-server</code> is behind auth, TLS/reverse proxy, rate limits, and only required routes/features are enabled.</td></tr>
+<tr><td>Tool surface</td><td>Experimental server tools, local media paths, file access, shell-like actions, and static UI are disabled unless explicitly governed.</td></tr>
+<tr><td>Observability</td><td><code>--metrics</code>, logs, <code>llama-bench</code>, perplexity checks, and model-load diagnostics are captured before canary traffic.</td></tr>
+</tbody></table></div>
+<div class="mermaid">flowchart LR
+  Build[CMake build flags] --&gt; Backend[ggml backend registry]
+  Backend --&gt; Binary[llama-cli, llama-server, libllama]
+  Model[HF or local model] --&gt; Convert[convert_hf_to_gguf.py and gguf-py]
+  Convert --&gt; GGUF[GGUF metadata and tensors]
+  GGUF --&gt; Loader[src/llama-model-loader.cpp]
+  Binary --&gt; Loader
+  Loader --&gt; Context[src/llama-context.cpp]
+  Context --&gt; KV[src/llama-kv-cache and memory files]
+  Context --&gt; Sampler[src/llama-sampler.cpp]
+  Context --&gt; Server[tools/server queue, slots, routes]
+  Server --&gt; Metrics[Prometheus metrics and logs]</div>
+<h2 id="failure-isolation-map">Failure Isolation Map</h2>
+<p>Native runtimes fail differently from Python serving stacks. A single symptom such as &quot;slow generation&quot; can be caused by build flags, model format, backend placement, KV cache settings, sampler configuration, server queue pressure, or client misuse.</p>
+<div class="mermaid">flowchart TD
+  Symptom[llama.cpp symptom] --&gt; Domain{Domain}
+  Domain --&gt; Build[Backend not compiled or wrong binary]
+  Domain --&gt; GGUF[Invalid GGUF or tokenizer metadata]
+  Domain --&gt; Memory[RAM, VRAM, KV, context, slots]
+  Domain --&gt; Backend[Backend op or split-mode issue]
+  Domain --&gt; Sampler[Chat template, grammar, sampling]
+  Domain --&gt; Server[Queue, route, auth, streaming]
+  Domain --&gt; Security[Tools, media path, API exposure]
+  Build --&gt; Files1[docs/build.md and CMake files]
+  GGUF --&gt; Files2[gguf-py, conversion, llama-model-loader]
+  Memory --&gt; Files3[llama-context, llama-kv-cache, common/arg.cpp]
+  Backend --&gt; Files4[ggml/src backends and docs/multi-gpu.md]
+  Sampler --&gt; Files5[common/chat.cpp, common/sampling.cpp, llama-sampler.cpp]
+  Server --&gt; Files6[tools/server server-http, queue, context]
+  Security --&gt; Files7[tools/server README and runtime flags]
+  Files1 --&gt; Remediate[Rebuild, reconvert, retune, or isolate]
+  Files2 --&gt; Remediate
+  Files3 --&gt; Remediate
+  Files4 --&gt; Remediate
+  Files5 --&gt; Remediate
+  Files6 --&gt; Remediate
+  Files7 --&gt; Remediate</div>
+<h2 id="glossary">Glossary</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>GGUF</td><td>Single-file model format containing metadata and tensors for ggml/llama.cpp inference.</td></tr>
+<tr><td>ggml</td><td>Tensor and graph execution library used by llama.cpp.</td></tr>
+<tr><td>libllama</td><td>Native library interface exposed through <code>include/llama.h</code>.</td></tr>
+<tr><td>llama_context</td><td>Runtime state for inference, including KV cache, backend scheduler, logits, and embeddings.</td></tr>
+<tr><td>llama_batch</td><td>Input structure containing tokens/embeddings, positions, sequence IDs, and output flags.</td></tr>
+<tr><td>KV cache</td><td>Attention key/value memory from previous tokens.</td></tr>
+<tr><td>ubatch</td><td>Micro-batch produced from a larger <code>llama_batch</code>.</td></tr>
+<tr><td>mmap</td><td>Memory mapping model files to reduce load overhead and memory copying.</td></tr>
+<tr><td>mlock</td><td>Request to keep model pages in RAM.</td></tr>
+<tr><td>n-gpu-layers</td><td>Runtime option controlling how many layers are offloaded to GPU.</td></tr>
+<tr><td>split mode</td><td>Multi-GPU strategy such as <code>layer</code> or <code>tensor</code>.</td></tr>
+<tr><td>LoRA adapter</td><td>Low-rank adapter loaded to modify model behavior without replacing the base model.</td></tr>
+<tr><td>imatrix</td><td>Importance matrix used to guide quantization choices.</td></tr>
+<tr><td>mtmd</td><td>llama.cpp multimodal library/tool area.</td></tr>
+<tr><td>slot</td><td>Server-side concurrent sequence/context lane.</td></tr>
+</tbody></table></div>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bản Đồ Repository | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../en/index.html">English</a>
+        <a href="index.html">Tiếng Việt</a>
+        <a href="../en/curriculum.html">Curriculum</a>
+        <a href="../../templates/index.html">Toolkit</a>
+        <a href="../../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../en/index.html">English course</a>
+      <a href="index.html">Trang tiếng Việt</a>
+      <a href="../en/curriculum.html">Curriculum</a>
+      <a href="../en/projects.html">Projects</a>
+      <a href="../../templates/index.html">Architecture toolkit</a>
+      <a href="../../capstone/index.html">Capstone</a>
+      <a href="../../assessments/index.html">Assessments</a>
+      <a href="../../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/vi/reference-atlas.md">View source</a>
+      <h1 id="b-n-repository">Bản Đồ Repository</h1>
+<p>Dùng atlas này khi chọn thư viện hoặc giải thích 17 repository khớp vào kiến trúc AI hoàn chỉnh như thế nào.</p>
+<h2 id="v-tr-c-p-h-th-ng">Vị Trí Ở Cấp Hệ Thống</h2>
+<div class="mermaid">flowchart TB
+  subgraph App[AI app và agent architecture]
+    OA[OpenAI Agents Python]
+    LC[LangChain]
+    AG[AutoGen]
+    LI[LlamaIndex]
+  end
+  subgraph Serving[Model serving và inference]
+    HF[Transformers]
+    VLLM[vLLM]
+    LCPP[llama.cpp]
+  end
+  subgraph Train[Training và adaptation]
+    PEFT[PEFT]
+    DS[DeepSpeed]
+  end
+  subgraph RAG[RAG và vector data]
+    QD[Qdrant]
+    CH[Chroma]
+  end
+  subgraph Ops[Observability và LLMOps]
+    LF[Langfuse]
+    PX[Phoenix]
+    MF[MLflow]
+    TL[TruLens]
+  end
+  subgraph Platform[Tools và platform]
+    MCP[MCP Servers]
+    OW[Open WebUI]
+  end
+  App --&gt; Serving
+  App --&gt; RAG
+  Train --&gt; Serving
+  App --&gt; Ops
+  Serving --&gt; Ops
+  RAG --&gt; Ops
+  Platform --&gt; App
+  Platform --&gt; Ops</div>
+<h2 id="ma-tr-n-repository">Ma Trận Repository</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Repository</th><th>Vai trò chính</th><th>Dùng khi</th><th>Cần chú ý</th></tr></thead>
+<tbody>
+<tr><td>OpenAI Agents Python</td><td>Agent runtime với tool, handoff, guardrail, tracing</td><td>Bạn cần agent SDK tập trung với semantics rõ cho handoff/tool</td><td>Permission tool, độ phủ guardrail, trace completeness</td></tr>
+<tr><td>LangChain</td><td>Framework composable cho app và workflow</td><td>Bạn cần chain, retriever, tool, model abstraction, LangGraph workflow</td><td>Over-composition, state boundary không rõ, dependency sprawl</td></tr>
+<tr><td>AutoGen</td><td>Multi-agent framework với Core, AgentChat, extension</td><td>Bạn cần collaboration theo vai trò hoặc asset AutoGen hiện hữu</td><td>Maintenance mode, rủi ro code execution, governance extension</td></tr>
+<tr><td>LlamaIndex</td><td>Framework data-centric cho agent và retrieval</td><td>Knowledge ingestion, index, query engine, RAG workflow</td><td>Chunking quality, index freshness, retrieval confidence</td></tr>
+<tr><td>Transformers</td><td>Nền tảng model API và compatibility</td><td>Thử nghiệm model, nạp tokenizer/model, pipeline, training utility</td><td>Runtime performance, artifact trust, remote code, memory use</td></tr>
+<tr><td>vLLM</td><td>Runtime high-throughput LLM serving</td><td>Token throughput, concurrent serving, OpenAI-compatible endpoint</td><td>Capacity planning, scheduler behavior, model support, GPU memory</td></tr>
+<tr><td>llama.cpp</td><td>Runtime local và edge inference</td><td>CPU/edge/local serving, quantized model, binary portable</td><td>Quantization quality, context limit, API exposure, model conversion</td></tr>
+<tr><td>PEFT</td><td>Parameter-efficient fine-tuning</td><td>Domain/task adaptation bằng adapter thay vì full fine-tuning</td><td>Adapter compatibility, artifact không an toàn, evaluation trước promote</td></tr>
+<tr><td>DeepSpeed</td><td>Tối ưu distributed training</td><td>Training job lớn, ZeRO, memory partitioning, checkpoint scale</td><td>Độ tin cậy cluster, optimizer state, checkpoint recovery</td></tr>
+<tr><td>Qdrant</td><td>Vector database có search và ops model mạnh</td><td>Vector search bền vững, payload filtering, sharding, distributed operation</td><td>WAL/segment recovery, filter correctness, tenant boundary</td></tr>
+<tr><td>Chroma</td><td>Vector database thân thiện với developer và RAG</td><td>Local/server RAG development, workflow Python-first</td><td>Chọn mode, persistence setting, distributed maturity</td></tr>
+<tr><td>Langfuse</td><td>LLM tracing, prompt, dataset, evaluation, feedback</td><td>Product team cần nhìn thấy trace và score</td><td>PII retention, project isolation, ClickHouse/Postgres ops</td></tr>
+<tr><td>Phoenix</td><td>LLM observability và evaluation</td><td>Trace analysis, dataset, annotation, evaluator</td><td>Auth, evaluator safety, trace volume, database isolation</td></tr>
+<tr><td>MLflow</td><td>Experiment tracking, model registry, artifact</td><td>Cần ML lifecycle lineage cho experiment và model</td><td>Artifact access, auth, registry policy, tracking server security</td></tr>
+<tr><td>TruLens</td><td>Feedback function và LLM app evaluation</td><td>Cần kiểm tra groundedness, relevance và app-level eval</td><td>Eval cost, hiệu chỉnh feedback, dùng metric sai</td></tr>
+<tr><td>MCP Servers</td><td>Pattern tham chiếu cho tool server</td><td>Cần tool contract giữa model/client và external system</td><td>Least privilege, schema quality, sandboxing, audit log</td></tr>
+<tr><td>Open WebUI</td><td>Self-hosted AI workspace và provider gateway</td><td>Cần UI, model routing, RAG, tool, admin control</td><td>Admin boundary, tool execution, provider secret, CORS/auth</td></tr>
+</tbody></table></div>
+<h2 id="h-ng-d-n-quy-t-nh">Hướng Dẫn Quyết Định</h2>
+<div class="mermaid">flowchart TB
+  Start[Câu hỏi kiến trúc] --&gt; AppQ{Cần app orchestration?}
+  AppQ --&gt;|Có| AgentChoice{Control model chính}
+  AgentChoice --&gt;|Agent SDK| OA
+  AgentChoice --&gt;|Workflow graph| LC
+  AgentChoice --&gt;|Multi-agent team| AG
+  AgentChoice --&gt;|RAG/query engine| LI
+  Start --&gt; RuntimeQ{Cần model runtime?}
+  RuntimeQ --&gt;|Compatibility| HF
+  RuntimeQ --&gt;|Throughput| VLLM
+  RuntimeQ --&gt;|Local/edge| LCPP
+  Start --&gt; DataQ{Cần knowledge retrieval?}
+  DataQ --&gt;|Vector DB vận hành mạnh| QD
+  DataQ --&gt;|RAG store thân thiện developer| CH
+  Start --&gt; EvalQ{Cần evidence loop?}
+  EvalQ --&gt;|LLM traces| LF
+  EvalQ --&gt;|Observability/evals| PX
+  EvalQ --&gt;|Experiment lineage| MF
+  EvalQ --&gt;|Feedback metrics| TL</div>
+<h2 id="r-i-ro-production-c-t-ngang">Rủi Ro Production Cắt Ngang</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Rủi ro</th><th>Xuất hiện ở</th><th>Phản ứng kiến trúc</th></tr></thead>
+<tbody>
+<tr><td>Tool side effect</td><td>Agent, AutoGen, MCP servers, Open WebUI</td><td>Dùng schema rõ, approval, audit log, sandboxing và least privilege.</td></tr>
+<tr><td>Model artifact trust</td><td>Transformers, PEFT, llama.cpp, vLLM</td><td>Pin artifact, ưu tiên safe format, review remote code, theo dõi provenance.</td></tr>
+<tr><td>Retrieval drift</td><td>LlamaIndex, LangChain, Qdrant, Chroma</td><td>Version embedding, chunk, metadata và query config; evaluate retrieval riêng.</td></tr>
+<tr><td>Trace và PII exposure</td><td>Langfuse, Phoenix, TruLens, MLflow</td><td>Redact input, định nghĩa retention, tách tenant, mã hóa secret.</td></tr>
+<tr><td>Serving overload</td><td>vLLM, llama.cpp, Open WebUI</td><td>Thêm admission control, capacity metric, scaling policy, fallback routing.</td></tr>
+<tr><td>Training không tái lập</td><td>PEFT, DeepSpeed, MLflow</td><td>Track dataset, seed, config, checkpoint, adapter, tokenizer và evaluation run.</td></tr>
+</tbody></table></div>
+<h2 id="c-ch-d-ng-atlas-trong-design-review">Cách Dùng Atlas Trong Design Review</h2>
+<ol>
+<li>Bắt đầu từ product workflow, không bắt đầu từ thư viện yêu thích.</li>
+<li>Gán từng requirement vào một layer.</li>
+<li>Dùng ma trận để xác định repository ứng viên.</li>
+<li>Kiểm tra deep dive docs để xem source tree, extension point và failure mode.</li>
+<li>Ghi rõ vì sao phương án bị loại.</li>
+<li>Định nghĩa bằng chứng cần có để xem lại quyết định trong tương lai.</li>
+</ol>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

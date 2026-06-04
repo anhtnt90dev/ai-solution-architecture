@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bảng Thuật Ngữ | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../en/index.html">English</a>
+        <a href="index.html">Tiếng Việt</a>
+        <a href="../en/curriculum.html">Curriculum</a>
+        <a href="../../templates/index.html">Toolkit</a>
+        <a href="../../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../en/index.html">English course</a>
+      <a href="index.html">Trang tiếng Việt</a>
+      <a href="../en/curriculum.html">Curriculum</a>
+      <a href="../en/projects.html">Projects</a>
+      <a href="../../templates/index.html">Architecture toolkit</a>
+      <a href="../../capstone/index.html">Capstone</a>
+      <a href="../../assessments/index.html">Assessments</a>
+      <a href="../../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/vi/glossary.md">View source</a>
+      <h1 id="b-ng-thu-t-ng">Bảng Thuật Ngữ</h1>
+<p>Glossary này chuẩn hóa từ vựng giữa agent framework, serving runtime, vector database, training library và LLMOps tool.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Thuật ngữ</th><th>Ý nghĩa</th></tr></thead>
+<tbody>
+<tr><td>Agent</td><td>Thực thể runtime chọn hành động, gọi tool, quản lý context và tạo output.</td></tr>
+<tr><td>Agent loop</td><td>Chu trình lặp observe, plan, act, kiểm tra kết quả, rồi tiếp tục hoặc dừng.</td></tr>
+<tr><td>Workflow graph</td><td>Luồng node/edge có cấu trúc, thường deterministic hơn agent loop.</td></tr>
+<tr><td>Tool</td><td>Capability callable được expose cho model hoặc agent, thường có schema và side effect.</td></tr>
+<tr><td>Handoff</td><td>Chuyển quyền điều khiển từ agent hoặc vai trò này sang agent/vai trò khác.</td></tr>
+<tr><td>Guardrail</td><td>Lớp policy hoặc validation để block, route hoặc sửa hành vi không an toàn/không hợp lệ.</td></tr>
+<tr><td>Memory</td><td>State ở mức session hoặc persistent được agent/application dùng.</td></tr>
+<tr><td>RAG</td><td>Retrieval-augmented generation: retrieve context ngoài trước hoặc trong lúc generate.</td></tr>
+<tr><td>Embedding</td><td>Vector biểu diễn text, image hoặc dữ liệu khác để similarity search.</td></tr>
+<tr><td>Chunk</td><td>Đoạn tài liệu được index cho retrieval.</td></tr>
+<tr><td>Vector database</td><td>Hệ thống lưu trữ và query embedding kèm metadata.</td></tr>
+<tr><td>Hybrid search</td><td>Retrieval kết hợp vector similarity với lexical hoặc structured filtering.</td></tr>
+<tr><td>Payload / metadata</td><td>Trường không phải vector dùng cho filtering, tenancy, access control hoặc ranking.</td></tr>
+<tr><td>Inference runtime</td><td>Phần mềm nạp model và thực thi generation/prediction.</td></tr>
+<tr><td>Token streaming</td><td>Trả token sinh ra theo từng phần về caller.</td></tr>
+<tr><td>KV cache</td><td>Cache attention key/value để tăng tốc autoregressive decoding.</td></tr>
+<tr><td>Quantization</td><td>Giảm độ chính xác số của model để tiết kiệm memory hoặc tăng tốc.</td></tr>
+<tr><td>Adapter</td><td>Module trainable nhỏ gắn vào base model để adaptation theo task/domain.</td></tr>
+<tr><td>PEFT</td><td>Parameter-efficient fine-tuning, gồm các phương pháp adapter kiểu LoRA.</td></tr>
+<tr><td>ZeRO</td><td>Nhóm tối ưu DeepSpeed chia optimizer, gradient và parameter.</td></tr>
+<tr><td>Checkpoint</td><td>Model/training state được lưu để recovery hoặc deployment.</td></tr>
+<tr><td>Trace</td><td>Bản ghi có cấu trúc của interaction AI, gồm span cho model call, tool, retrieval và score.</td></tr>
+<tr><td>Span</td><td>Một operation có thời lượng trong trace.</td></tr>
+<tr><td>Evaluation dataset</td><td>Bộ example dùng để đo chất lượng hoặc regression.</td></tr>
+<tr><td>Feedback function</td><td>Hàm scoring đo các thuộc tính như groundedness hoặc relevance.</td></tr>
+<tr><td>Lineage</td><td>Chuỗi provenance nối dataset, prompt, model, adapter, retrieval config, run và deployment.</td></tr>
+<tr><td>MCP</td><td>Model Context Protocol, giao diện chuẩn kết nối model/agent với tool và resource.</td></tr>
+<tr><td>Gateway</td><td>Lớp route request tới provider, tool, model hoặc policy.</td></tr>
+<tr><td>Production readiness</td><td>Bằng chứng rằng hệ thống đủ an toàn, observable, governable, scalable và recoverable để vận hành.</td></tr>
+</tbody></table></div>
+<h2 id="t-v-ng-theo-layer">Từ Vựng Theo Layer</h2>
+<div class="mermaid">mindmap
+  root((Từ vựng))
+    Agent layer
+      Agent loop
+      Tool
+      Handoff
+      Guardrail
+      Memory
+    Serving layer
+      Runtime
+      Tokenizer
+      Streaming
+      KV cache
+      Quantization
+    Data layer
+      RAG
+      Embedding
+      Chunk
+      Metadata
+      Hybrid search
+    Training layer
+      Adapter
+      PEFT
+      ZeRO
+      Checkpoint
+    LLMOps layer
+      Trace
+      Span
+      Score
+      Dataset
+      Lineage
+    Platform layer
+      MCP
+      Gateway
+      Policy
+      Audit log</div>
+<h2 id="c-c-c-p-thu-t-ng-hay-b-nh-m">Các Cặp Thuật Ngữ Hay Bị Nhầm</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Cặp</th><th>Khác biệt</th></tr></thead>
+<tbody>
+<tr><td>Agent vs workflow</td><td>Agent chọn hành động động; workflow encode control flow rõ hơn.</td></tr>
+<tr><td>RAG vs fine-tuning</td><td>RAG đổi context ở runtime; fine-tuning đổi hành vi model bằng training.</td></tr>
+<tr><td>Trace vs log</td><td>Trace giữ quan hệ nhân quả có cấu trúc qua các span; log thường là event stream.</td></tr>
+<tr><td>Evaluation vs monitoring</td><td>Evaluation đo quality theo example/criteria; monitoring theo dõi health và drift ở runtime.</td></tr>
+<tr><td>Adapter vs checkpoint</td><td>Adapter là module học nhỏ; checkpoint có thể chứa toàn bộ model/training state.</td></tr>
+<tr><td>Vector search vs hybrid search</td><td>Vector search dùng embedding similarity; hybrid search trộn vector, lexical và structured signal.</td></tr>
+<tr><td>Tool server vs gateway</td><td>Tool server expose action/resource; gateway route và govern access tới model/tool/provider.</td></tr>
+</tbody></table></div>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

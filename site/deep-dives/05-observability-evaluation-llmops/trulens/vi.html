@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ghi chú kiến trúc TruLens | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/05-observability-evaluation-llmops/trulens/README.vi.md">View source</a>
+      <h1 id="ghi-ch-ki-n-tr-c-trulens">Ghi chú kiến trúc TruLens</h1>
+<h2 id="t-m-t-t-i-u-h-nh">Tóm tắt điều hành</h2>
+<p>TruLens là hệ sinh thái thư viện và dashboard ưu tiên Python để trace, evaluate và so sánh ứng dụng LLM một cách có hệ thống. README nhấn mạnh fine-grained stack-agnostic instrumentation, tracing dựa trên OpenTelemetry, feedback functions, đánh giá RAG, agentic evaluations, batch và inline evaluation, hỗ trợ MCP span và Selector API. Khác với các platform đặt server làm trung tâm, TruLens thường được nhúng trực tiếp vào ứng dụng hoặc notebook cần đánh giá, sau đó log record, span, feedback definition, feedback result, dataset và run vào database local hoặc bên ngoài để dashboard đọc.</p>
+<p>File gốc <code>pyproject.toml</code> xác định <code>trulens</code> phiên bản <code>2.8.1</code>, Python <code>^3.10</code>, license MIT và layout package module hóa. Package top-level phụ thuộc <code>trulens-core</code>, <code>trulens-feedback</code>, <code>trulens-dashboard</code>, <code>trulens-otel-semconv</code> và package tương thích cũ <code>trulens_eval</code>. Các dependency group cho thấy kiến trúc thực: app integration dưới <code>src/apps/</code>, provider dưới <code>src/providers/</code>, connector dưới <code>src/connectors/</code>, core dưới <code>src/core/</code>, feedback dưới <code>src/feedback/</code>, dashboard dưới <code>src/dashboard/</code>, semantic convention dưới <code>src/otel/semconv/</code> và test dưới <code>tests/</code>.</p>
+<h2 id="b-i-to-n-c-gi-i-quy-t">Bài toán được giải quyết</h2>
+<p>TruLens giải quyết câu hỏi &quot;ứng dụng LLM của tôi có thực sự tốt không&quot; ngay gần workflow của developer. Nó instrument call của ứng dụng, capture record hoặc OpenTelemetry span, cho phép team định nghĩa feedback function trên các phần được chọn của trace, chạy feedback inline, deferred hoặc batch, rồi cung cấp dashboard để so sánh app version và record. Điều này đặc biệt hữu ích cho RAG và agent system, nơi chất lượng câu trả lời phụ thuộc retrieval relevance, groundedness, tool behavior, reasoning consistency, safety và cost.</p>
+<h2 id="vai-tr-trong-ai-stack">Vai trò trong AI stack</h2>
+<p>TruLens nên được hiểu là SDK instrumentation và evaluation kèm UI tùy chọn:</p>
+<ul>
+<li>Nằm bên trong Python application code, notebook hoặc evaluation job.</li>
+<li>Bọc framework như LangChain, LangGraph, LlamaIndex, custom Python app và virtual/existing trace.</li>
+<li>Gọi LLM provider để tính feedback qua provider package.</li>
+<li>Lưu evaluation data vào SQLite, database tương thích SQLAlchemy, Postgres hoặc connector Snowflake.</li>
+<li>Có thể export hoặc tương tác qua OpenTelemetry semantic conventions.</li>
+<li>Bổ sung cho công cụ observability đặt server làm trung tâm bằng một lớp evaluation lập trình được.</li>
+</ul>
+<h2 id="b-n-source-tree">Bản đồ source tree</h2>
+<p>Bằng chứng trong repository:</p>
+<ul>
+<li><code>README.md</code> giới thiệu TruLens cho tracking và evaluation experiment LLM, OpenTelemetry-based tracing, agentic evaluator, inline/batch evaluation, MCP span support và Selector API.</li>
+<li><code>pyproject.toml</code> định nghĩa package tổng hợp <code>trulens</code> và các workspace dependency group cho apps, providers, connectors, dashboard, feedback, core và Snowflake.</li>
+<li><code>src/core/trulens/core/session.py</code> định nghĩa <code>TruSession</code>, entrypoint chính để log prompt/output/metadata của app, feedback function và dashboard. Mặc định dùng <code>default.sqlite</code> nhưng chấp nhận <code>database_url</code> tương thích SQLAlchemy qua connector.</li>
+<li><code>src/core/trulens/core/app.py</code> định nghĩa base <code>App</code> recorder, app metadata, feedbacks, instrumented methods, recording contexts, pending feedback queue và run support.</li>
+<li><code>src/core/trulens/core/instruments.py</code> và <code>src/core/trulens/core/otel/instrument.py</code> triển khai instrumentation callback và decorator OpenTelemetry <code>instrument</code>.</li>
+<li><code>src/core/trulens/core/schema/</code> định nghĩa schema app, record, feedback, event, dataset, groundtruth và selection.</li>
+<li><code>src/core/trulens/core/database/</code> chứa database abstraction, SQLAlchemy implementation, ORM definition và Alembic migration cho record, event, ground truth, app version và run.</li>
+<li><code>src/core/trulens/core/feedback/</code> và <code>src/core/trulens/core/metric/</code> định nghĩa <code>Feedback</code>, <code>Metric</code>, selector, provider và endpoint abstraction.</li>
+<li><code>src/feedback/trulens/feedback/computer.py</code> tính feedback bằng cách chọn input từ graph span/record, chạy feedback function, track chi phí provider và ghi span của feedback computation.</li>
+<li><code>src/feedback/trulens/feedback/templates/</code> chứa template safety, RAG, quality và agent.</li>
+<li><code>src/apps/langchain/</code>, <code>src/apps/langgraph/</code>, <code>src/apps/llamaindex/</code>, <code>src/apps/gepa/</code> và <code>src/core/trulens/apps/</code> cung cấp wrapper theo framework và wrapper tổng quát như <code>TruChain</code>, <code>TruLlama</code>, <code>TruBasicApp</code>, <code>TruApp</code>, <code>TruVirtual</code>.</li>
+<li><code>src/providers/</code> chứa package provider cho OpenAI, LiteLLM, Google, Bedrock, Cortex, Hugging Face và LangChain.</li>
+<li><code>src/connectors/snowflake/</code> cung cấp Snowflake connector, Snowflake event table support, artifact cho server-side evaluation và artifact cho Streamlit-in-Snowflake dashboard.</li>
+<li><code>src/dashboard/</code> định nghĩa <code>trulens-dashboard</code>, dựa trên Streamlit, Plotly, pandas và Jupyter dependencies.</li>
+<li><code>docs/blog/posts/trulens_otel.md</code> và release posts mô tả hướng OpenTelemetry, hỗ trợ Postgres, dashboard update và cải tiến Run API.</li>
+<li><code>tests/</code> chứa test unit, integration, e2e, legacy, load, util và docs notebook.</li>
+</ul>
+<h2 id="kh-i-ni-m-c-t-l-i">Khái niệm cốt lõi</h2>
+<ul>
+<li><strong>TruSession</strong>: entrypoint kiểu singleton sở hữu database connector, vòng đời feedback evaluator, dashboard process và optional OpenTelemetry exporter.</li>
+<li><strong>App recorder</strong>: wrapper quanh target app để instrument call và record hành vi.</li>
+<li><strong>Record</strong>: invocation của ứng dụng đã capture, trước đây lưu như structured record và ngày càng được biểu diễn qua OTEL span/event.</li>
+<li><strong>Span</strong>: đơn vị OpenTelemetry với semantic attribute TruLens cho app, record, input, output, retrieval, tool, MCP và feedback computation.</li>
+<li><strong>Feedback hoặc Metric</strong>: evaluator function có selector để trích input từ record/span và tạo score hoặc score kèm metadata.</li>
+<li><strong>Selector</strong>: mapping khai báo từ thuộc tính record/span sang argument của feedback function.</li>
+<li><strong>Provider</strong>: backend LLM hoặc embedding dùng để tính feedback.</li>
+<li><strong>Run API</strong>: đường batch evaluation trên dataset hoặc table với concurrency riêng cho invocation worker và metric worker.</li>
+<li><strong>Dashboard</strong>: UI Streamlit để so sánh app, record, trace và feedback score.</li>
+</ul>
+<h2 id="ki-n-tr-c-n-i-b">Kiến trúc nội bộ</h2>
+<div class="mermaid">graph TB
+  App[Ung dung LLM cua nguoi dung] --&gt; Wrapper[TruApp, TruChain, TruLlama, TruBasicApp, TruVirtual]
+  Wrapper --&gt; Instrument[Instrumentation callbacks va OTEL decorator]
+  Instrument --&gt; Session[TruSession]
+  Session --&gt; DBConnector[DBConnector]
+  DBConnector --&gt; DB[(SQLite, Postgres, Snowflake, SQLAlchemy DB)]
+  Wrapper --&gt; FeedbackQueue[Inline hoac deferred feedback queue]
+  FeedbackQueue --&gt; Computer[feedback.computer]
+  Computer --&gt; Selectors[Selector va Metric inputs]
+  Computer --&gt; Providers[OpenAI, LiteLLM, Bedrock, Cortex, Google, HF]
+  Computer --&gt; DBConnector
+  Session --&gt; Dashboard[Streamlit dashboard]
+  Session --&gt; OTel[Optional OTEL exporter]</div>
+<p>Kiến trúc của TruLens là library-first. <code>TruSession</code> là coordinator cấp process, không phải remote server. <code>App</code> trong <code>src/core/trulens/core/app.py</code> bọc target app, gắn instrumentation, quản lý context variable cho recording, theo dõi pending feedback result và có thể kết nối run-level DAO. Các package framework subclass hoặc adapt base này cho LangChain, LangGraph, LlamaIndex, function cơ bản, object tùy biến, virtual trace và workflow tối ưu GEPA.</p>
+<p>Feedback computation được tách khỏi recording. <code>src/feedback/trulens/feedback/computer.py</code> dựng record graph từ event, map <code>record_id</code> tới root, dùng selector để tạo feedback input, validate ambiguity, gọi feedback function, track chi phí provider và ghi evaluation span qua <code>OtelFeedbackComputationRecordingContext</code>. Sự tách biệt này cho phép TruLens chạy feedback inline cùng app, trong background/deferred evaluator hoặc trong offline batch run.</p>
+<h2 id="lu-ng-runtime-v-d-li-u">Luồng runtime và dữ liệu</h2>
+<div class="mermaid">sequenceDiagram
+  participant User as Developer hoac eval job
+  participant App as LLM app
+  participant Tru as TruLens wrapper
+  participant DB as Database connector
+  participant Provider as LLM provider
+  participant Dash as Dashboard
+
+  User-&gt;&gt;Tru: Tao TruSession va wrapped app
+  User-&gt;&gt;Tru: Dinh nghia Feedback hoac Metric voi Selectors
+  User-&gt;&gt;App: Goi ung dung
+  App-&gt;&gt;Tru: Instrumented calls tao record hoac span
+  Tru-&gt;&gt;DB: Persist app, record, event, run metadata
+  Tru-&gt;&gt;Provider: Chay feedback function khi can
+  Provider--&gt;&gt;Tru: Tra ve score va metadata
+  Tru-&gt;&gt;DB: Persist feedback result va cost metadata
+  Dash-&gt;&gt;DB: Doc apps, records, traces, feedbacks</div>
+<p>Workflow local phổ biến bắt đầu với <code>TruSession</code>, một wrapper framework và một hoặc nhiều feedback. Khi app chạy, instrumentation capture main method và các call nội bộ đã chọn. Feedback có thể chạy ngay, trong app thread, deferred bởi evaluator thread/process hoặc muộn hơn qua batch run configuration. Dashboard đọc cùng database; không cần collector service bên ngoài.</p>
+<h2 id="topology-tri-n-khai-v-v-n-h-nh">Topology triển khai và vận hành</h2>
+<div class="mermaid">graph LR
+  subgraph Runtime
+    Notebook[Jupyter hoac script]
+    Service[Instrumented Python service]
+    Batch[Offline eval job]
+  end
+  subgraph TruLens
+    Core[trulens-core]
+    Feedback[trulens-feedback]
+    Providers[provider packages]
+    Dashboard[trulens-dashboard Streamlit]
+  end
+  subgraph Storage
+    SQLite[(default.sqlite)]
+    Postgres[(PostgreSQL)]
+    Snowflake[(Snowflake event tables)]
+  end
+  subgraph External
+    LLM[LLM providers]
+    OTLP[OTLP backend]
+  end
+  Notebook --&gt; Core
+  Service --&gt; Core
+  Batch --&gt; Core
+  Core --&gt; Feedback
+  Feedback --&gt; Providers
+  Providers --&gt; LLM
+  Core --&gt; SQLite
+  Core --&gt; Postgres
+  Core --&gt; Snowflake
+  Dashboard --&gt; SQLite
+  Dashboard --&gt; Postgres
+  Dashboard --&gt; Snowflake
+  Core --&gt; OTLP</div>
+<p>Triển khai TruLens thường là chọn package và database chứ không dựng web service trung tâm. Local và notebook workflow có thể dùng <code>default.sqlite</code>. Team dùng chung có thể dùng SQLAlchemy URL, Postgres hoặc Snowflake connector. Dashboard là process Streamlit được khởi động từ session hoặc import qua <code>trulens.dashboard.run</code>. Deployment Snowflake có artifact connector cho server-side evaluation và đường Streamlit-in-Snowflake, dù một số đường setup SiS dashboard đã được đánh dấu deprecated trong code connector và release notes.</p>
+<h2 id="v-ng-i-v-ph-thu-c-module">Vòng đời và phụ thuộc module</h2>
+<div class="mermaid">stateDiagram-v2
+  [*] --&gt; WrapApp
+  WrapApp --&gt; InstrumentCalls
+  InstrumentCalls --&gt; CaptureRecord
+  CaptureRecord --&gt; SelectFeedbackInputs
+  SelectFeedbackInputs --&gt; ComputeFeedback
+  ComputeFeedback --&gt; PersistResults
+  PersistResults --&gt; CompareDashboard
+  CompareDashboard --&gt; ReviseApp
+  ReviseApp --&gt; WrapApp
+  PersistResults --&gt; BatchRun
+  BatchRun --&gt; ComputeFeedback</div>
+<p>Vòng đời này ánh xạ trực tiếp vào module. App wrapping nằm trong <code>src/core/trulens/core/app.py</code> và <code>src/apps/</code>. Instrumentation nằm trong <code>src/core/trulens/core/instruments.py</code> và <code>src/core/trulens/core/otel/instrument.py</code>. Persistence nằm trong <code>src/core/trulens/core/database/</code> và connector. Feedback selection và computation nằm trong <code>src/core/trulens/core/feedback/</code>, <code>src/core/trulens/core/metric/</code> và <code>src/feedback/trulens/feedback/computer.py</code>. Visualization nằm trong <code>src/dashboard/</code>.</p>
+<h2 id="i-m-m-r-ng">Điểm mở rộng</h2>
+<ul>
+<li>Thêm app integration mới dưới <code>src/apps/&lt;framework&gt;/</code>, thường adapt base <code>App</code> recorder.</li>
+<li>Thêm custom app bằng <code>TruApp</code> hoặc <code>@instrument</code> ở cấp method thay vì viết package mới.</li>
+<li>Thêm feedback metric bằng cách triển khai <code>Metric</code> hoặc <code>Feedback</code> với selector.</li>
+<li>Thêm prompt template dưới <code>src/feedback/trulens/feedback/templates/</code>.</li>
+<li>Thêm provider support dưới <code>src/providers/&lt;provider&gt;/</code> với provider và endpoint implementation.</li>
+<li>Thêm database hoặc warehouse integration dưới <code>src/connectors/</code>.</li>
+<li>Thêm OTEL semantic attribute trong <code>src/otel/semconv/</code> khi có span concept mới.</li>
+<li>Thêm behavior dashboard trong <code>src/dashboard/trulens/dashboard/</code> khi UI cần view mới.</li>
+</ul>
+<h2 id="t-ch-h-p">Tích hợp</h2>
+<p>TruLens tích hợp với LangChain, LangGraph, LlamaIndex, custom Python app, virtual trace, GEPA optimization, OpenAI/Azure OpenAI, LiteLLM, Google Gemini, Bedrock, Snowflake Cortex, Hugging Face, LangChain models, Snowflake connector, MCP span semantics và backend tracing tương thích OpenTelemetry. Package deprecated <code>trulens_eval</code> vẫn là cầu tương thích, trong khi import mới nằm dưới <code>trulens.core</code>, <code>trulens.feedback</code>, <code>trulens.dashboard</code>, <code>trulens.apps</code>, <code>trulens.providers</code> và <code>trulens.connectors</code>.</p>
+<h2 id="c-u-h-nh-tri-n-khai-v-v-n-h-nh">Cấu hình, triển khai và vận hành</h2>
+<p>Các lựa chọn cấu hình quan trọng:</p>
+<ul>
+<li>Database connector: SQLite mặc định, SQLAlchemy URL, Postgres hoặc Snowflake connector.</li>
+<li>Feedback mode: inline, app-thread, deferred hoặc batch.</li>
+<li>Provider credentials: OpenAI, LiteLLM, Bedrock, Cortex, Google, Hugging Face hoặc LangChain providers.</li>
+<li>OpenTelemetry: theo tài liệu/blog hiện tại được bật mặc định, có điều khiển môi trường như <code>TRULENS_OTEL_TRACING</code>.</li>
+<li>Dashboard: process Streamlit local, hiển thị notebook hoặc triển khai hướng Snowflake.</li>
+<li>Concurrency: tùy chọn Run API như số worker invocation và metric, cùng retry interval của deferred evaluator trong <code>TruSession</code>.</li>
+</ul>
+<p>Vận hành chủ yếu là vận hành ứng dụng: đảm bảo instrumentation không tạo latency quá mức, feedback call tôn trọng rate limit và cost budget của provider, database migration chạy trước khi dashboard đọc, và evaluation job có thể tái lập theo app version, prompt version, dataset và metric version.</p>
+<h2 id="observability-testing-evaluation-v-failure-modes">Observability, testing, evaluation và failure modes</h2>
+<p>Test TruLens được tổ chức dưới <code>tests/docs_notebooks</code>, <code>tests/e2e</code>, <code>tests/integration</code>, <code>tests/unit</code>, <code>tests/load</code>, <code>tests/legacy</code> và các thư mục tiện ích. Root <code>pyproject.toml</code> cấu hình pytest marker cho required-only, optional, Snowflake và Hugging Face tests. Repository cũng có <code>docker/test-database.yaml</code> cho test database với Postgres và MySQL.</p>
+<p>Failure mode:</p>
+<ul>
+<li><strong>Missed instrumentation</strong>: nếu main method hoặc call framework lồng nhau không được wrap, record sẽ thiếu.</li>
+<li><strong>Selector ambiguity</strong>: selector có thể match nhiều span hoặc không match span nào, làm input feedback mơ hồ.</li>
+<li><strong>Provider instability</strong>: LLM judge call có thể fail, rate limit, drift hoặc tốn chi phí.</li>
+<li><strong>Deferred evaluator stall</strong>: <code>TruSession</code> có retry interval cho feedback job đang chạy hoặc đã fail vì background work có thể đứng.</li>
+<li><strong>Database mismatch</strong>: dashboard và evaluator code cần migration schema tương thích với package version.</li>
+<li><strong>Dashboard performance</strong>: bảng record lớn cần query limit, aggregation và tuning database.</li>
+<li><strong>Độ phức tạp chuyển đổi OTEL</strong>: đường record-based cũ và đường span/event mới có thể cùng tồn tại trong giai đoạn migration.</li>
+</ul>
+<h2 id="r-i-ro-b-o-m-t-v-qu-n-tr">Rủi ro bảo mật và quản trị</h2>
+<p>TruLens thường thấy prompt thô, retrieved context, tool argument, model output, định danh người dùng và reasoning của evaluator. Feedback function có thể gửi các phần dữ liệu được selector chọn tới external LLM provider. Team cần review selector cẩn thận, redact field nhạy cảm, kiểm soát provider credential, hạn chế truy cập dashboard, đặt retention cho database và giữ credential Snowflake/Postgres theo least privilege.</p>
+<p>Governance nên xem feedback definition như policy evaluation có version. Một groundedness score từ provider, model hoặc prompt template này không tự động so sánh được với cái khác. Dataset specification, app version, prompt version và metric definition nên được log cùng nhau.</p>
+<h2 id="h-ng-d-n-c">Hướng dẫn đọc</h2>
+<ol>
+<li>Đọc <code>README.md</code> cho workflow sản phẩm và ví dụ nhanh.</li>
+<li>Đọc <code>pyproject.toml</code> để hiểu layout package module hóa.</li>
+<li>Đọc <code>src/core/trulens/core/session.py</code> cho <code>TruSession</code>.</li>
+<li>Đọc <code>src/core/trulens/core/app.py</code> cho hành vi app recording.</li>
+<li>Đọc <code>src/core/trulens/core/otel/instrument.py</code> cho OpenTelemetry instrumentation.</li>
+<li>Đọc <code>src/core/trulens/core/schema/</code> và <code>src/core/trulens/core/database/</code> cho persistence.</li>
+<li>Đọc <code>src/feedback/trulens/feedback/computer.py</code> và template cho feedback execution.</li>
+<li>Đọc một framework package dưới <code>src/apps/</code> và một provider package dưới <code>src/providers/</code>.</li>
+<li>Đọc <code>src/dashboard/</code> và docs/blog posts cho dashboard và hướng vận hành.</li>
+</ol>
+<h2 id="l-tr-nh-h-c">Lộ trình học</h2>
+<ol>
+<li>Wrap một function đơn giản bằng <code>TruBasicApp</code> hoặc <code>@instrument</code>.</li>
+<li>Thêm một feedback metric với selector đơn giản.</li>
+<li>Chuyển sang bộ RAG triad: context relevance, groundedness, answer relevance.</li>
+<li>Chạy dashboard trên SQLite local.</li>
+<li>Thử wrapper framework như LangChain hoặc LlamaIndex.</li>
+<li>Chuyển storage sang Postgres hoặc Snowflake cho evaluation dùng chung.</li>
+<li>Thêm batch run và concurrency control cho regression testing.</li>
+</ol>
+<h2 id="thu-t-ng">Thuật ngữ</h2>
+<ul>
+<li><strong>Feedback function</strong>: evaluator callable trả về score hoặc score kèm metadata.</li>
+<li><strong>Selector</strong>: biểu thức chọn field record/span làm input evaluator.</li>
+<li><strong>RAG Triad</strong>: mẫu đánh giá context relevance, groundedness và answer relevance.</li>
+<li><strong>TruSession</strong>: coordinator cho database, dashboard, feedback evaluator và OTEL exporter.</li>
+<li><strong>TruApp</strong>: wrapper tổng quát cho custom app.</li>
+<li><strong>TruVirtual</strong>: wrapper cho dữ liệu đã capture mà không có live app object.</li>
+<li><strong>OTEL semantic conventions</strong>: tên attribute và span type dùng cho telemetry liên thông.</li>
+<li><strong>Deferred feedback</strong>: chế độ evaluation chạy sau app call.</li>
+</ul>
+<h2 id="deep-dive-b-m-theo-repository">Deep Dive Bám Theo Repository</h2>
+<p>TruLens là framework instrumentation và feedback-computation hơn là một trace warehouse tập trung. Repository thể hiện điều này qua các package dưới <code>github-repos/05-observability-evaluation-llmops/trulens/src/core/</code>, <code>src/feedback/</code>, <code>src/providers/</code>, <code>src/dashboard/</code>, <code>src/connectors/</code> và <code>src/otel/semconv/</code>. Core package chứa app wrappers, sessions, database abstractions, selectors, schema objects và instrumentation. Feedback package chứa evaluator prompts, output schemas, LLM provider abstractions, RAG/quality/safety templates và feedback computers. Provider packages tích hợp model APIs, còn connectors và dashboard code làm kết quả có thể xem và chia sẻ.</p>
+<div class="mermaid">flowchart LR
+  App[&quot;User LLM hoac RAG app&quot;] --&gt; Wrapper[&quot;TruApp wrappers src/core/trulens/apps&quot;]
+  Wrapper --&gt; Instr[&quot;instrumentation src/core/trulens/core/instruments.py&quot;]
+  Instr --&gt; Record[&quot;records va spans core schema&quot;]
+  Record --&gt; DB[&quot;database layer src/core/trulens/core/database&quot;]
+  Record --&gt; Feedback[&quot;feedback definitions va selectors&quot;]
+  Feedback --&gt; Providers[&quot;providers openai, cortex, google, langchain&quot;]
+  Providers --&gt; Scores[&quot;feedback results&quot;]
+  Scores --&gt; DB
+  DB --&gt; Dashboard[&quot;dashboard va React record viewers&quot;]
+  DB --&gt; Connectors[&quot;Snowflake va connectors khac&quot;]</div>
+<p>Vấn đề thiết kế chính là feedback functions có runtime behavior riêng. Một feedback có thể synchronous, deferred, batched, LLM-backed, embedding-backed hoặc ground-truth-backed. Nó có thể chọn context chunks, generated answers, tool outputs hoặc toàn bộ records. Vì vậy độ đúng của selector và chi phí evaluator quan trọng không kém việc capture trace. Các file nên đọc gồm <code>src/core/trulens/core/feedback/selector.py</code>, <code>src/core/trulens/core/feedback/feedback.py</code>, <code>src/feedback/trulens/feedback/templates/rag.py</code>, <code>src/feedback/trulens/feedback/llm_provider.py</code> và <code>src/feedback/trulens/feedback/groundtruth.py</code>.</p>
+<div class="mermaid">stateDiagram-v2
+  [*] --&gt; Instrumented
+  Instrumented --&gt; Recorded: app call captured
+  Recorded --&gt; Selected: selector extracts inputs
+  Selected --&gt; Evaluating: feedback function runs
+  Evaluating --&gt; Persisted: score and metadata stored
+  Evaluating --&gt; Failed: provider or parser error
+  Failed --&gt; Retried: retry or deferred worker
+  Retried --&gt; Persisted
+  Persisted --&gt; Dashboarded: leaderboard or record viewer</div>
+<div class="mermaid">flowchart TD
+  Risk[&quot;Rui ro production&quot;] --&gt; Selector[&quot;selector drift&quot;]
+  Risk --&gt; Provider[&quot;LLM provider dependency&quot;]
+  Risk --&gt; DB[&quot;database migration hoac connector&quot;]
+  Risk --&gt; Cost[&quot;batch evaluation cost&quot;]
+  Risk --&gt; Privacy[&quot;captured prompt/context data&quot;]
+  Risk --&gt; Concurrency[&quot;deferred feedback concurrency&quot;]
+  Selector --&gt; S1[&quot;score tinh tren sai field&quot;]
+  Provider --&gt; P1[&quot;judge prompt hoac model lam doi score&quot;]
+  DB --&gt; D1[&quot;dashboard khong so sanh duoc records&quot;]
+  Cost --&gt; C1[&quot;regression job vuot budget&quot;]
+  Privacy --&gt; R1[&quot;records chua sensitive retrieval context&quot;]
+  Concurrency --&gt; F1[&quot;feedback backlog lam tre release gate&quot;]</div>
+<h3 id="checklist-s-n-s-ng-production">Checklist Sẵn Sàng Production</h3>
+<ul>
+<li>Version feedback definitions, selectors, evaluator prompts, provider model names và output schemas cùng nhau. Một score chỉ có nghĩa khi tất cả thành phần này ổn định.</li>
+<li>Test selectors trên records thật, gồm missing context, streaming outputs, tool calls và multi-step agent traces.</li>
+<li>Đặt giới hạn cost và concurrency cho LLM-backed feedback, nhất là batch và deferred evaluations.</li>
+<li>Chọn storage có chủ đích: SQLite local hữu ích cho development, còn Postgres hoặc Snowflake-backed workflows cần review migration và access control.</li>
+<li>Review <code>src/otel/semconv/</code> và experimental OTEL tracing trước khi tích hợp TruLens vào observability platform rộng hơn.</li>
+<li>Đưa dashboard và connector behavior vào validation. Feedback result persist thành công nhưng không so sánh được trong dashboard thì chưa hữu ích về vận hành.</li>
+<li>Dùng <code>tests/e2e/</code>, <code>tests/integration/</code> và ví dụ dưới <code>examples/quickstart/</code> và <code>examples/experimental/</code> làm tham chiếu scenario coverage.</li>
+</ul>
+<h3 id="h-ng-d-n-c-cho-senior-architect">Hướng Dẫn Đọc Cho Senior Architect</h3>
+<p>Bắt đầu ở <code>src/core/trulens/apps/</code> và <code>src/core/trulens/core/instruments.py</code> để hiểu capture. Tiếp theo đọc <code>src/core/trulens/core/schema/</code> và <code>src/core/trulens/core/database/</code> cho persisted objects. Sau đó đọc <code>src/core/trulens/core/feedback/</code> và <code>src/feedback/trulens/feedback/</code> để hiểu evaluator definition và execution. Cuối cùng inspect <code>src/providers/</code>, <code>src/connectors/snowflake/</code>, <code>src/dashboard/</code> và <code>src/otel/semconv/</code> để hiểu các bề mặt tích hợp production.</p>
+<h3 id="k-ch-b-n-v-n-h-nh-c-n-di-n-t-p">Kịch Bản Vận Hành Cần Diễn Tập</h3>
+<p>Diễn tập TruLens bằng cách chứng minh ý nghĩa score, không chỉ chứng minh score được tạo. Capture một RAG call, inspect record tree và xác nhận thủ công selectors chọn đúng context và answer fields. Chạy cùng feedback set với judge model hoặc prompt đã đổi và so sánh distributions trước khi chấp nhận evaluator version mới. Cuối cùng, chạy deferred feedback trong tình huống provider throttling và kiểm tra backlog, retry behavior, persisted metadata, dashboard comparison và release-gate decisions.</p>
+<h3 id="d-u-hi-u-c-n-review-l-i-ki-n-tr-c">Dấu Hiệu Cần Review Lại Kiến Trúc</h3>
+<p>Cần review lại kiến trúc TruLens nếu selector phụ thuộc vào cấu trúc record không ổn định, nếu feedback function vừa đổi prompt vừa đổi model nhưng vẫn dùng cùng tên metric, hoặc nếu dashboard chỉ hiển thị score mà không cho biết evaluator version. Với RAG và agent, score sai field có thể nguy hiểm hơn không có score, vì nó tạo cảm giác kiểm soát giả. Vì vậy release gate nên kiểm tra cả trace capture, selector binding, evaluator configuration, provider availability và dashboard comparison.</p>
+<p>Một kịch bản thực tế là cùng một câu hỏi RAG có context bị thiếu, context sai và context đúng. Bộ feedback phải phân biệt được ba trường hợp này qua selector và evaluator, không chỉ trả về một score trung bình. Khi kết quả dùng cho quyết định release, hãy lưu cả record mẫu, cấu hình feedback, provider version và dashboard query để người khác tái kiểm tra sau này.</p>
+<p>Ngoài ra, cần phân biệt lỗi ứng dụng với lỗi evaluator. Nếu app trả lời sai nhưng evaluator cũng chọn sai context, kết quả review sẽ không giúp cải thiện hệ thống. Vì vậy log vận hành nên giữ trạng thái app call, trạng thái feedback call, lỗi provider, thời gian chạy và metadata selector trong cùng một chuỗi điều tra.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

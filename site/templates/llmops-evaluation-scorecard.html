@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LLMOps Evaluation Scorecard | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../learn/en/index.html">English</a>
+        <a href="../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../learn/en/curriculum.html">Curriculum</a>
+        <a href="index.html">Toolkit</a>
+        <a href="../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../learn/en/index.html">English course</a>
+      <a href="../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../learn/en/curriculum.html">Curriculum</a>
+      <a href="../learn/en/projects.html">Projects</a>
+      <a href="index.html">Architecture toolkit</a>
+      <a href="../capstone/index.html">Capstone</a>
+      <a href="../assessments/index.html">Assessments</a>
+      <a href="../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/templates/llmops-evaluation-scorecard.md">View source</a>
+      <h1 id="llmops-evaluation-scorecard">LLMOps Evaluation Scorecard</h1>
+<p>Use this template as a promotion gate for prompts, retrieval configs, model versions, adapters, tools, or workflow changes.</p>
+<h2 id="change-under-review">Change Under Review</h2>
+<p>Change type: Prompt / Model / Adapter / Retrieval / Tool / Workflow / Runtime</p>
+<p>Owner:</p>
+<p>Version:</p>
+<p>Rollback target:</p>
+<h2 id="evaluation-inputs">Evaluation Inputs</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Input</th><th>Version / Link</th><th>Owner</th></tr></thead>
+<tbody>
+<tr><td>Evaluation dataset</td><td></td><td></td></tr>
+<tr><td>Prompt version</td><td></td><td></td></tr>
+<tr><td>Model or adapter</td><td></td><td></td></tr>
+<tr><td>Retrieval config</td><td></td><td></td></tr>
+<tr><td>Tool policy</td><td></td><td></td></tr>
+<tr><td>Runtime config</td><td></td><td></td></tr>
+</tbody></table></div>
+<h2 id="scorecard">Scorecard</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Dimension</th><th>Metric</th><th>Baseline</th><th>Candidate</th><th>Threshold</th><th>Pass</th></tr></thead>
+<tbody>
+<tr><td>Task success</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Groundedness</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Citation quality</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Safety/policy</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Latency</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Cost</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Tool correctness</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Regression count</td><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h2 id="trace-requirements">Trace Requirements</h2>
+<div class="mermaid">flowchart LR
+  User[User input] --&gt; Trace[Trace root]
+  Trace --&gt; Retrieval[Retrieval spans]
+  Trace --&gt; Tool[Tool spans]
+  Trace --&gt; Model[Model spans]
+  Trace --&gt; Safety[Safety/guardrail spans]
+  Trace --&gt; Output[Final output]
+  Output --&gt; Score[Scores and feedback]
+  Score --&gt; Decision{Promote?}</div>
+<p>Required trace fields:</p>
+<ul>
+<li>User/session ID policy.</li>
+<li>Prompt version.</li>
+<li>Model/runtime version.</li>
+<li>Retrieval config version.</li>
+<li>Tool names and inputs/outputs.</li>
+<li>Scores and evaluator versions.</li>
+<li>Cost and latency.</li>
+</ul>
+<h2 id="promotion-decision">Promotion Decision</h2>
+<p>Decision: Promote / Hold / Reject</p>
+<p>Reason:</p>
+<p>Follow-up work:</p>
+<h2 id="review-checklist">Review Checklist</h2>
+<ul>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Candidate beats or matches baseline on required dimensions.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Any quality improvement is not offset by unacceptable cost/latency/security regression.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Human review covers high-risk examples.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Rollback target is tested.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Traces are sufficient for post-release incident review.</li>
+</ul>
+<h2 id="evaluation-design-notes">Evaluation Design Notes</h2>
+<p>Evaluation should represent the product risk, not just a convenient sample of prompts. Include common successful tasks, difficult edge cases, ambiguous requests, adversarial prompts, stale knowledge requests, retrieval misses, tool failures, and policy-sensitive scenarios. For RAG systems, include questions that should be answered, questions that should be refused, and questions that require citations from multiple sources. For agents, include tool permission boundaries, invalid tool arguments, partial failures, and handoff mistakes.</p>
+<p>Use a baseline for every promotion decision. The baseline can be the current production prompt, the previous retrieval configuration, the prior model version, or a simpler workflow. Without a baseline, the team cannot distinguish improvement from noise. Track evaluator versions as carefully as prompt and model versions, because a changed evaluator can make historical comparisons misleading.</p>
+<h2 id="release-policy">Release Policy</h2>
+<p>Promote only when the candidate passes required quality thresholds and does not introduce unacceptable regressions in cost, latency, safety, or operational complexity. A candidate that improves answer quality but doubles cost may still be rejected if the product cannot absorb the change. A candidate that improves average quality but fails high-risk compliance examples should be held until the failure mode is understood.</p>
+<p>After release, keep monitoring the same dimensions. Production traffic may reveal prompt distributions and retrieval patterns that the offline dataset missed. Feed incidents, user corrections, low-confidence traces, and support escalations back into the evaluation set. The scorecard should become a living promotion gate, not a one-time launch document.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

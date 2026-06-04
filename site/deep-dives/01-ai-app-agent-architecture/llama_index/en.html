@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LlamaIndex Architecture | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/01-ai-app-agent-architecture/llama_index/README.en.md">View source</a>
+      <h1 id="llamaindex-architecture">LlamaIndex Architecture</h1>
+<h2 id="executive-summary">Executive Summary</h2>
+<p>LlamaIndex is an open-source framework for data-backed and agentic LLM applications. The root <code>README.md</code> describes it as a toolkit for augmenting LLMs with private data through connectors, indexes, graphs, retrieval/query interfaces, and integrations. In this checkout, the starter distribution <code>llama-index</code> is a thin package that depends on <code>llama-index-core</code>, OpenAI LLM/embedding integrations, and <code>nltk</code>. The architectural center is <code>llama-index-core/llama_index/core</code>, while <code>llama-index-integrations/</code> contains hundreds of provider-specific packages for LLMs, embeddings, vector stores, readers, tools, memory, graph stores, and more.</p>
+<p><code>pyproject.toml</code> publishes <code>llama-index</code> version <code>0.14.22</code>. <code>llama-index-core/pyproject.toml</code> publishes <code>llama-index-core</code> version <code>0.14.22</code>, requiring Python <code>&gt;=3.10,&lt;4.0</code> and depending on SQLAlchemy, fsspec, httpx, nltk, numpy, tenacity, tiktoken, aiohttp, networkx, PyYAML, pydantic, <code>llama-index-workflows</code>, and other runtime libraries. <code>llama-index-instrumentation</code> is a separate package for observability and spans.</p>
+<h2 id="problem-solved">Problem Solved</h2>
+<p>LlamaIndex solves the &quot;LLM over my data&quot; problem. It provides ingestion, transformation, indexing, storage, retrieval, query synthesis, chat engines, agents, workflows, evaluation, and observability primitives. A team can use it as a simple five-line RAG framework or as a modular architecture where every step can be replaced: readers, node parsers, embedding models, vector stores, retrievers, rerankers, response synthesizers, tools, memory, and workflow agents.</p>
+<h2 id="ai-stack-role">AI Stack Role</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Layer</th><th>Repository role</th><th>Grounding in repo</th></tr></thead>
+<tbody>
+<tr><td>Data ingestion</td><td>Readers, documents, nodes, transformations, node parsers</td><td><code>llama-index-core/llama_index/core/readers</code>, <code>schema.py</code>, <code>node_parser/</code></td></tr>
+<tr><td>Index and retrieval</td><td>BaseIndex, VectorStoreIndex, retrievers, query engines</td><td><code>indices/base.py</code>, <code>indices/vector_store/base.py</code>, <code>retrievers/</code>, <code>query_engine/</code></td></tr>
+<tr><td>Storage</td><td>Document store, index store, vector stores, graph stores, storage context</td><td><code>storage/storage_context.py</code>, <code>storage/</code>, <code>vector_stores/</code>, <code>graph_stores/</code></td></tr>
+<tr><td>Agentic apps</td><td>Workflow agents, FunctionAgent, ReAct, CodeAct, tools, memory</td><td><code>agent/workflow/</code>, <code>tools/</code>, <code>memory/</code>, <code>workflow/</code></td></tr>
+<tr><td>Integration ecosystem</td><td>Provider-specific packages across many categories</td><td><code>llama-index-integrations/</code></td></tr>
+<tr><td>Observability/evaluation</td><td>Callbacks, instrumentation, evaluators, retrieval metrics</td><td><code>callbacks/</code>, <code>instrumentation/</code>, <code>evaluation/</code>, <code>llama-index-instrumentation/</code></td></tr>
+</tbody></table></div>
+<h2 id="source-tree-map">Source Tree Map</h2>
+<pre><code class="language-text">llama_index/
+  README.md                              # framework overview and examples
+  pyproject.toml                         # starter package metadata
+  docs/                                  # framework docs, examples, use cases, optimization
+  llama-index-core/
+    pyproject.toml                       # core package metadata
+    llama_index/core/
+      schema.py                          # Document, BaseNode, metadata/resource schemas
+      settings.py                        # global Settings for LLM, embedding, transformations
+      indices/                           # BaseIndex, VectorStoreIndex, graph/list/tree/etc.
+      storage/                           # StorageContext, docstore, index_store, chat_store
+      vector_stores/                     # core vector store types and simple store
+      query_engine/                      # query orchestration modules
+      retrievers/                        # retrieval strategies
+      response_synthesizers/             # generation over retrieved context
+      agent/workflow/                    # workflow-based agents and events
+      workflow/                          # event-driven workflow engine
+      tools/                             # BaseTool, FunctionTool, query/retriever tools
+      evaluation/                        # correctness, faithfulness, relevancy, retrieval metrics
+      callbacks/ and instrumentation/     # observability hooks
+  llama-index-integrations/
+    llms/ embeddings/ vector_stores/ readers/ tools/ memory/ graph_stores/ ...
+  llama-index-instrumentation/           # standalone instrumentation package
+  llama-index-utils/                     # utility integration packages
+  llama-dev/                             # release, package, and CLI tooling
+  scripts/                               # publishing, docs sync, integration health checks</code></pre>
+<h2 id="component-diagram">Component Diagram</h2>
+<div class="mermaid">flowchart TB
+  App[Application] --&gt; Core[llama-index-core]
+  Core --&gt; Settings[Settings&lt;br/&gt;settings.py]
+  Core --&gt; Ingestion[Readers / Documents / Nodes]
+  Ingestion --&gt; Transform[Transformations / Node parsers]
+  Transform --&gt; Indexes[Indexes&lt;br/&gt;BaseIndex, VectorStoreIndex]
+  Indexes --&gt; Storage[StorageContext&lt;br/&gt;docstore, index_store, vector_store, graph_store]
+  Indexes --&gt; Retrieval[Retrievers]
+  Retrieval --&gt; QueryEngine[Query engines]
+  QueryEngine --&gt; Synth[Response synthesizers]
+  Core --&gt; Agents[Workflow agents&lt;br/&gt;FunctionAgent, ReAct, CodeAct]
+  Agents --&gt; Tools[Tools and memory]
+  Integrations[llama-index-integrations] --&gt; Core
+  Integrations --&gt; Providers[LLMs, embeddings, vector DBs, readers]
+  Core --&gt; Eval[Evaluation]
+  Core --&gt; Obs[Callbacks / instrumentation]</div>
+<h2 id="core-concepts">Core Concepts</h2>
+<ul>
+<li><code>Document</code> and <code>BaseNode</code>: data objects in <code>llama_index/core/schema.py</code>. Documents are ingested and transformed into nodes that can be indexed and retrieved.</li>
+<li><code>Settings</code>: global configuration in <code>llama_index/core/settings.py</code>, including default LLM, embedding model, tokenizer, callback manager, and transformations.</li>
+<li><code>BaseIndex</code>: abstract index in <code>indices/base.py</code>. It builds index structures from nodes, writes index structures into the <code>StorageContext</code>, supports insertion/deletion, and exposes query/chat/retriever conversions.</li>
+<li><code>VectorStoreIndex</code>: concrete vector index in <code>indices/vector_store/base.py</code>. It resolves an embedding model, embeds nodes in batches, writes embeddings to a vector store, and can initialize from an existing text-storing vector store.</li>
+<li><code>StorageContext</code>: dataclass in <code>storage/storage_context.py</code> that groups docstore, index store, vector stores, graph store, and optional property graph store. It can initialize from in-memory defaults or persisted directories.</li>
+<li><code>BaseRetriever</code> and <code>BaseQueryEngine</code>: core query abstractions in <code>base/base_retriever.py</code> and <code>base/base_query_engine.py</code>.</li>
+<li><code>BaseTool</code> and <code>AsyncBaseTool</code>: tool contracts in <code>tools/types.py</code>, with metadata, schema, output, sync/async execution, and adapters.</li>
+<li>Workflow agents: <code>agent/workflow/base_agent.py</code> combines <code>Workflow</code>, Pydantic config, tools, tool retriever, handoff targets, memory, LLM, structured output, streaming, and early stopping.</li>
+</ul>
+<h2 id="internal-architecture">Internal Architecture</h2>
+<p>LlamaIndex core is built as a pipeline of replaceable components. <code>BaseIndex.from_documents</code> records document hashes in the docstore, runs configured transformations, constructs nodes, builds an index struct, and stores that struct in the index store. <code>VectorStoreIndex</code> specializes this by resolving an embedding model, embedding batches of nodes, adding them to the configured vector store, and storing node metadata in docstore/index structures when the vector store does not store text.</p>
+<p>The query side decomposes retrieval from synthesis. Indexes produce retrievers; retrievers return candidate nodes; postprocessors and rerankers can adjust candidates; response synthesizers generate final answers with an LLM. Chat engines add conversational memory over the same data. Agent workflow modules add tool selection, state, handoffs, structured outputs, and event-driven workflow execution.</p>
+<h2 id="runtime-and-data-flow">Runtime and Data Flow</h2>
+<div class="mermaid">sequenceDiagram
+  participant U as User/App
+  participant R as Reader
+  participant T as Transformations
+  participant I as Index
+  participant S as StorageContext
+  participant Q as QueryEngine
+  participant L as LLM/Embedding
+  participant O as Observability
+
+  U-&gt;&gt;R: load data source
+  R--&gt;&gt;T: Documents
+  T--&gt;&gt;I: Nodes
+  I-&gt;&gt;L: embed nodes if vector index
+  I-&gt;&gt;S: persist docstore, index_store, vector_store
+  U-&gt;&gt;Q: natural language query
+  Q-&gt;&gt;I: get retriever from index
+  I-&gt;&gt;S: read vectors/nodes/index structs
+  Q-&gt;&gt;L: synthesize response from retrieved context
+  Q-&gt;&gt;O: callbacks/spans/evaluation hooks
+  Q--&gt;&gt;U: response with source context</div>
+<h2 id="extension-points">Extension Points</h2>
+<ul>
+<li>Add readers under <code>llama-index-integrations/readers/</code> or implement reader contracts in core.</li>
+<li>Add LLMs or embeddings under <code>llama-index-integrations/llms/</code> and <code>embeddings/</code>.</li>
+<li>Add vector stores under <code>llama-index-integrations/vector_stores/</code> by implementing core vector store types.</li>
+<li>Add retrievers, postprocessors, response synthesizers, output parsers, or selectors under the corresponding core packages.</li>
+<li>Add tools via <code>BaseTool</code>, <code>FunctionTool</code>, query engine tools, retriever tools, or integration packages.</li>
+<li>Add workflow agents by extending <code>BaseWorkflowAgent</code>, <code>FunctionAgent</code>, <code>ReActAgent</code>, <code>CodeActAgent</code>, or <code>MultiAgentWorkflow</code>.</li>
+<li>Add instrumentation handlers using <code>llama-index-instrumentation</code> or core callbacks.</li>
+</ul>
+<h2 id="integrations">Integrations</h2>
+<p>The local integration tree is broad. <code>llama-index-integrations/llms/</code> includes OpenAI, Azure OpenAI, Anthropic, Bedrock, Cohere, DeepSeek, Fireworks, Google GenAI, Groq, HuggingFace, LangChain, LiteLLM, llama.cpp, Mistral, NVIDIA, Ollama, OpenRouter, Perplexity, Vertex, and many others. <code>vector_stores/</code> includes Azure AI Search, Chroma, Elasticsearch, FAISS, LanceDB, Milvus, MongoDB, Neo4j, OpenSearch, PGVector/Postgres, Pinecone, Qdrant, Redis, Supabase, Timescale, Vespa, Weaviate, Zep, and more. <code>readers/</code> includes connectors for files, cloud storage, databases, GitHub/GitLab, Jira, Confluence, Slack-like systems, LlamaParse, and many SaaS APIs.</p>
+<h2 id="deployment-and-operations-topology">Deployment and Operations Topology</h2>
+<div class="mermaid">flowchart LR
+  subgraph AppRuntime[&quot;Application runtime&quot;]
+    API[API / worker / notebook]
+    LI[LlamaIndex core]
+    Agent[Workflow agent or query/chat engine]
+  end
+  subgraph Storage[&quot;Data and state&quot;]
+    Docs[(Docstore)]
+    Index[(Index store)]
+    Vec[(Vector store)]
+    Graph[(Graph/property graph store)]
+    Memory[(Chat/agent memory)]
+  end
+  subgraph External[&quot;External services&quot;]
+    LLM[LLM provider]
+    Emb[Embedding provider]
+    Reader[Data source connectors]
+    Obs[Callbacks/instrumentation backend]
+    Eval[Evaluation datasets/metrics]
+  end
+  API --&gt; LI --&gt; Agent
+  Reader --&gt; LI
+  LI --&gt; Docs
+  LI --&gt; Index
+  LI --&gt; Vec
+  LI --&gt; Graph
+  Agent --&gt; Memory
+  Agent --&gt; LLM
+  LI --&gt; Emb
+  LI --&gt; Obs
+  LI --&gt; Eval</div>
+<p>For production, select the minimal package set rather than installing every integration. Use persistent storage for docstore/index/vector/graph state; keep ingestion and query workloads separated when data volume is high; align embedding model, vector store dimension, chunking, and retriever settings; and treat <code>Settings</code> as shared global configuration that should be controlled carefully in multi-tenant runtimes.</p>
+<h2 id="observability-testing-evaluation-and-failure-modes">Observability, Testing, Evaluation, and Failure Modes</h2>
+<p>Core observability includes <code>callbacks/</code>, <code>instrumentation/</code>, and the separate <code>llama-index-instrumentation</code> package. The instrumentation package has span handlers, event handlers, dispatcher, base events, and tests for shutdown, propagation, manager, and dispatcher behavior. Core evaluation modules include correctness, faithfulness, relevancy, context relevancy, semantic similarity, pairwise evaluation, batch runner, dataset generation, and retrieval metrics.</p>
+<p>Tests in <code>llama-index-core/tests/</code> cover agents, callbacks, chat engines, embeddings, evaluation, graph stores, ingestion, indices, LLMs, memory, node parsers, postprocessors, programs, prompts, query engines, readers, response synthesizers, retrievers, schema, storage, tools, vector stores, and voice agents. The root and package <code>pyproject.toml</code> files configure pytest, pytest-asyncio, pytest-cov, mypy, ruff, black, pre-commit, and codespell.</p>
+<p>Failure modes to design for:</p>
+<ul>
+<li>ingestion connectors returning malformed or oversized documents;</li>
+<li>chunking strategy losing important context;</li>
+<li>embedding model mismatch with persisted vector dimensions;</li>
+<li>vector store not storing text, requiring docstore/index-store consistency;</li>
+<li>stale indexes after document updates;</li>
+<li>retrieval returning irrelevant context;</li>
+<li>response synthesizer hallucination despite retrieval;</li>
+<li>global <code>Settings</code> leakage across tenants or tests;</li>
+<li>callback/instrumentation overhead or sensitive-data logging;</li>
+<li>package-version drift across core and integration packages.</li>
+</ul>
+<h2 id="security-and-governance-risks">Security and Governance Risks</h2>
+<p>LlamaIndex is commonly used with private data, so governance concerns are central. Risks include exposing private documents to external model or embedding providers, prompt injection from indexed content, unsafe reader connectors, cross-tenant leakage through shared <code>Settings</code> or storage contexts, vector store ACL gaps, stale document deletion, and source attribution failures. The root <code>README.md</code> also notes build asset verification for packaged <code>_static</code> nltk and tiktoken cache files, which is relevant for supply-chain review.</p>
+<p>Production controls should include data classification before ingestion, connector allowlists, tenant-scoped storage contexts, provider-region and retention review, source metadata preservation, retrieval filters, prompt-injection evaluation, trace redaction, and periodic index rebuild or deletion tests.</p>
+<h2 id="lifecycle-and-dependency-diagram">Lifecycle and Dependency Diagram</h2>
+<div class="mermaid">stateDiagram-v2
+  [*] --&gt; ChoosePackage
+  ChoosePackage --&gt; Starter: llama-index
+  ChoosePackage --&gt; Custom: llama-index-core + selected integrations
+  Starter --&gt; ConfigureSettings
+  Custom --&gt; ConfigureSettings
+  ConfigureSettings --&gt; IngestDocuments
+  IngestDocuments --&gt; TransformNodes
+  TransformNodes --&gt; BuildIndex
+  BuildIndex --&gt; PersistStorage
+  PersistStorage --&gt; QueryOrChat
+  QueryOrChat --&gt; Retrieve
+  Retrieve --&gt; Synthesize
+  Synthesize --&gt; Evaluate
+  Evaluate --&gt; TunePipeline
+  TunePipeline --&gt; TransformNodes
+  Evaluate --&gt; [*]</div>
+<h2 id="configuration-deployment-and-ops-notes">Configuration, Deployment, and Ops Notes</h2>
+<ul>
+<li>Use <code>llama-index</code> for quick starts and <code>llama-index-core</code> plus selected integrations for controlled deployments.</li>
+<li>Keep LLM and embedding settings explicit through <code>Settings</code> or object-level constructor arguments.</li>
+<li>Persist <code>StorageContext</code> for production; the default in-memory stores are suitable for prototypes and tests.</li>
+<li>Choose vector store packages based on scale, filtering, metadata, tenancy, and operational ownership.</li>
+<li>Keep ingestion jobs idempotent by tracking document hashes and update/delete behavior.</li>
+<li>Use evaluation modules for faithfulness, relevancy, correctness, semantic similarity, and retrieval metrics before release.</li>
+<li>Review <code>_static</code> packaged assets and build provenance expectations when operating in locked-down environments.</li>
+</ul>
+<h2 id="reading-guide">Reading Guide</h2>
+<ol>
+<li>Read root <code>README.md</code> and <code>docs/src/content/docs/framework/getting_started/concepts.mdx</code>.</li>
+<li>Read <code>llama-index-core/pyproject.toml</code> to understand core dependencies.</li>
+<li>Read <code>llama_index/core/schema.py</code>, <code>settings.py</code>, and <code>storage/storage_context.py</code>.</li>
+<li>Read <code>indices/base.py</code> and <code>indices/vector_store/base.py</code>.</li>
+<li>Read <code>base/base_retriever.py</code>, <code>base/base_query_engine.py</code>, <code>response_synthesizers/</code>, and <code>postprocessor/</code>.</li>
+<li>Read <code>agent/workflow/base_agent.py</code> and <code>workflow/</code> for agentic applications.</li>
+<li>For production, inspect the integration package you plan to use and its tests.</li>
+</ol>
+<h2 id="learning-path">Learning Path</h2>
+<ol>
+<li>Load local files with a reader and inspect <code>Document</code> metadata.</li>
+<li>Build <code>VectorStoreIndex.from_documents</code>.</li>
+<li>Persist and reload <code>StorageContext</code>.</li>
+<li>Tune chunking, embedding model, and vector store settings.</li>
+<li>Convert the index to a retriever, query engine, and chat engine.</li>
+<li>Add postprocessors, rerankers, or custom response synthesis.</li>
+<li>Add a workflow agent with tools and memory.</li>
+<li>Add evaluation and instrumentation before deployment.</li>
+</ol>
+<h2 id="production-readiness-checklist">Production Readiness Checklist</h2>
+<p>LlamaIndex production readiness is the discipline of treating ingestion, storage, retrieval, synthesis, agents, and instrumentation as separate contracts. The source tree makes those contracts explicit in <code>llama-index-core/llama_index/core</code> and in the provider packages under <code>llama-index-integrations/</code>.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Area</th><th>Repository anchor</th><th>Architecture check</th></tr></thead>
+<tbody>
+<tr><td>Package minimalism</td><td><code>pyproject.toml</code>, <code>llama-index-core/pyproject.toml</code>, <code>llama-index-integrations/</code></td><td>Install <code>llama-index-core</code> plus selected integrations for controlled deployments instead of pulling every connector by default.</td></tr>
+<tr><td>Data lineage</td><td><code>schema.py</code>, <code>readers/</code>, <code>node_parser/</code>, <code>ingestion/</code></td><td>Preserve source IDs, metadata, hashes, chunking parameters, and deletion/update semantics.</td></tr>
+<tr><td>Storage consistency</td><td><code>storage/storage_context.py</code>, <code>vector_stores/</code>, <code>graph_stores/</code></td><td>Confirm docstore, index store, vector store, and graph store are persisted and tenant-scoped together.</td></tr>
+<tr><td>Retrieval quality</td><td><code>retrievers/</code>, <code>postprocessor/</code>, <code>response_synthesizers/</code>, <code>evaluation/</code></td><td>Measure retrieval relevance, source attribution, hallucination, and response quality before release.</td></tr>
+<tr><td>Global settings</td><td><code>settings.py</code></td><td>Avoid accidental cross-tenant or cross-test leakage through global LLM, embedding, tokenizer, callback, or transformation defaults.</td></tr>
+<tr><td>Instrumentation</td><td><code>callbacks/</code>, <code>instrumentation/</code>, <code>llama-index-instrumentation/</code></td><td>Decide what spans and events may contain; redact private document text and tenant identifiers.</td></tr>
+</tbody></table></div>
+<div class="mermaid">flowchart LR
+  Documents[schema.py Document and BaseNode] --&gt; Transform[node_parser and ingestion]
+  Transform --&gt; Indexes[indices base and vector_store]
+  Indexes --&gt; Storage[storage_context.py]
+  Storage --&gt; DocStore[docstore]
+  Storage --&gt; IndexStore[index_store]
+  Storage --&gt; VectorStore[vector_stores]
+  Storage --&gt; GraphStore[graph_stores]
+  Indexes --&gt; Retrievers[retrievers]
+  Retrievers --&gt; Post[postprocessor and rerankers]
+  Post --&gt; Synth[response_synthesizers]
+  Synth --&gt; Query[query_engine and chat_engine]
+  Query --&gt; Eval[evaluation]
+  Query --&gt; Obs[callbacks and instrumentation]</div>
+<h2 id="operational-runbook-and-failure-triage">Operational Runbook And Failure Triage</h2>
+<p>Incidents in LlamaIndex commonly arise from stale data, mismatched embeddings, global configuration leakage, or retrieval quality rather than from a single query engine bug. Triage should follow the data path from reader to node to index to store to retriever to synthesizer.</p>
+<div class="mermaid">flowchart TD
+  Incident[Bad answer or RAG outage] --&gt; Stage{Pipeline stage}
+  Stage --&gt; Ingest[Reader or ingestion]
+  Stage --&gt; Chunk[Node parser or transformation]
+  Stage --&gt; Embed[Embedding model or dimension]
+  Stage --&gt; Store[Docstore/index/vector consistency]
+  Stage --&gt; Retrieve[Retriever or filters]
+  Stage --&gt; Synthesize[Response synthesizer or LLM]
+  Stage --&gt; Agent[Workflow agent, memory, tools]
+  Ingest --&gt; Files1[readers, schema.py, ingestion]
+  Chunk --&gt; Files2[node_parser, text_splitter]
+  Embed --&gt; Files3[embeddings and Settings]
+  Store --&gt; Files4[storage_context.py and vector_stores]
+  Retrieve --&gt; Files5[retrievers and postprocessor]
+  Synthesize --&gt; Files6[response_synthesizers and query_engine]
+  Agent --&gt; Files7[agent/workflow and workflow]
+  Files1 --&gt; Fix[Rebuild, retune, or patch]
+  Files2 --&gt; Fix
+  Files3 --&gt; Fix
+  Files4 --&gt; Fix
+  Files5 --&gt; Fix
+  Files6 --&gt; Fix
+  Files7 --&gt; Fix</div>
+<p>For senior architects, the most important design decision is whether the deployment is a simple query engine or a broader data application platform. If ingestion and query workloads share the same process, high-volume data updates can degrade latency and make freshness hard to reason about. Separate ingestion jobs, versioned storage contexts, and evaluation datasets are usually easier to operate.</p>
+<div class="mermaid">sequenceDiagram
+  participant Ingest as Ingestion job
+  participant Store as StorageContext
+  participant Query as Query service
+  participant Eval as Evaluation suite
+  participant Obs as Instrumentation
+  participant User as User
+
+  Ingest-&gt;&gt;Store: write docstore, index_store, vector_store
+  Ingest-&gt;&gt;Eval: record data version and chunk settings
+  User-&gt;&gt;Query: ask question
+  Query-&gt;&gt;Store: retrieve nodes for tenant and version
+  Query-&gt;&gt;Obs: emit spans and source metadata
+  Query--&gt;&gt;User: answer with source context
+  Eval-&gt;&gt;Query: regression questions and retrieval metrics
+  Eval--&gt;&gt;Ingest: tune parser, embeddings, filters, or synthesis</div>
+<h2 id="senior-architect-review-notes">Senior Architect Review Notes</h2>
+<p>Review LlamaIndex as a data application framework, not only as a retrieval helper. The core path from <code>schema.py</code> to <code>node_parser/</code>, <code>indices/</code>, <code>storage/storage_context.py</code>, <code>retrievers/</code>, <code>response_synthesizers/</code>, and <code>query_engine/</code> defines a data product lifecycle. Every production decision should say which data version, parser settings, embedding model, vector store namespace, and response synthesis policy produced a given answer.</p>
+<p>Separate ingestion ownership from query ownership early. Ingestion code handles source connectors, document normalization, chunking, embeddings, and persistence. Query code handles tenant filters, retrieval, reranking, source presentation, and answer synthesis. If both live in one API process, operators will struggle to reason about freshness, partial reindexing, and high-latency connector failures. The repository already reflects this separation through <code>ingestion/</code>, <code>readers/</code>, <code>storage/</code>, <code>retrievers/</code>, and <code>query_engine/</code>; production topology should mirror it.</p>
+<p><code>Settings</code> is convenient but dangerous in shared runtimes. <code>llama_index/core/settings.py</code> can centralize LLM, embedding, tokenizer, callback manager, and transformations, which is helpful for notebooks and simple apps. In multi-tenant services, prefer explicit object-level configuration or tenant-scoped factories so one request cannot inherit another tenant&#x27;s provider, callback policy, or embedding model.</p>
+<p>Finally, treat evaluation as part of the architecture. The modules under <code>evaluation/</code> are not optional polish; they are the feedback loop that tells whether chunking, retrieval filters, reranking, and response synthesis are working. A senior review should ask for retrieval metrics, faithfulness checks, and source-attribution tests before approving a RAG pipeline for user-facing workloads.</p>
+<h2 id="glossary">Glossary</h2>
+<ul>
+<li>Document: top-level data item loaded from a source.</li>
+<li>Node: chunk or structured unit derived from documents for indexing and retrieval.</li>
+<li>Index: structure that organizes nodes for retrieval or synthesis.</li>
+<li>VectorStoreIndex: index backed by embeddings and a vector store.</li>
+<li>StorageContext: container for docstore, index store, vector stores, graph store, and property graph store.</li>
+<li>Retriever: component that returns candidate nodes for a query.</li>
+<li>QueryEngine: end-to-end query flow that retrieves context and synthesizes an answer.</li>
+<li>ResponseSynthesizer: component that generates an answer from retrieved context.</li>
+<li>WorkflowAgent: agent built on the LlamaIndex workflow engine with tools, memory, and state.</li>
+<li>Settings: global defaults for LLM, embedding, callbacks, tokenizer, and transformations.</li>
+</ul>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

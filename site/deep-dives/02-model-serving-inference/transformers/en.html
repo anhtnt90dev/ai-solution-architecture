@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Transformers Architecture | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/02-model-serving-inference/transformers/README.en.md">View source</a>
+      <h1 id="transformers-architecture">Transformers Architecture</h1>
+<p>Source snapshot: <code>github-repos/02-model-serving-inference/transformers</code> at <code>a46a732</code> (<code>[docs] contributing (#45465)</code>). This document is grounded in the repository files present in that snapshot.</p>
+<h2 id="executive-summary">Executive Summary</h2>
+<p>Hugging Face Transformers is the model-definition framework at the center of a large AI ecosystem. The repository README says Transformers centralizes model definitions so they can be reused by training frameworks, inference engines, and adjacent runtimes such as vLLM, SGLang, TGI, llama.cpp, and MLX. It supports text, vision, audio, video, and multimodal models for inference and training.</p>
+<p>Architecturally, Transformers is a layered Python library: configuration classes, pretrained model base classes, tokenizers/processors, Auto classes, per-model implementations, generation utilities, pipelines, trainers, integrations, quantizers, and CLI serving. The core library is in <code>src/transformers</code>; model families are in <code>src/transformers/models</code>; higher-level task inference is in <code>src/transformers/pipelines</code>; generation is in <code>src/transformers/generation</code>; and serving CLI code is in <code>src/transformers/cli</code> and <code>src/transformers/cli/serving</code>.</p>
+<p>For model-serving architects, Transformers is both a direct runtime and a canonical compatibility layer. Many serving systems rely on its configs, tokenizers, chat templates, generation configs, model naming conventions, and checkpoint loading. Its newer <code>generation/continuous_batching</code> and <code>transformers serve</code> code provide an OpenAI-compatible serving path, but the library&#x27;s broader role remains defining and loading models consistently across the ecosystem.</p>
+<h2 id="problem-solved">Problem Solved</h2>
+<p>Before a model can be served, a stack must agree on what the model is, how its weights map to code, how inputs are preprocessed, how generation behaves, and how artifacts are saved and shared. Transformers solves these problems:</p>
+<ul>
+<li>A consistent <code>from_pretrained</code> / <code>save_pretrained</code> interface for models, configs, tokenizers, image processors, feature extractors, and processors.</li>
+<li>Auto classes that map model metadata to implementation classes.</li>
+<li>Per-model code that is readable and self-contained enough for community contribution.</li>
+<li>Generation algorithms, logits processors, stopping criteria, cache utilities, streamers, watermarking, and continuous batching.</li>
+<li>Pipelines for task-oriented inference across text, audio, vision, video, and multimodal workloads.</li>
+<li>Integration points for quantization, distributed training/inference, attention backends, PEFT, Hub, GGUF, ONNX/ExecuTorch export paths, and serving.</li>
+</ul>
+<p>Repository anchors include <code>src/transformers/configuration_utils.py</code>, <code>modeling_utils.py</code>, <code>tokenization_utils_base.py</code>, <code>processing_utils.py</code>, <code>models/auto/*</code>, <code>generation/*</code>, <code>generation/continuous_batching/*</code>, <code>pipelines/*</code>, <code>quantizers/*</code>, <code>integrations/*</code>, <code>cli/serve.py</code>, <code>cli/serving/*</code>, and <code>tests/*</code>.</p>
+<h2 id="ai-stack-role">AI Stack Role</h2>
+<p>Transformers occupies multiple roles:</p>
+<ul>
+<li><strong>Model-definition layer:</strong> per-model config and modeling files under <code>src/transformers/models/*</code>.</li>
+<li><strong>Artifact contract layer:</strong> <code>PreTrainedConfig</code>, <code>PreTrainedModel</code>, tokenizers, processors, <code>save_pretrained</code>, and Hub-compatible layout.</li>
+<li><strong>Inference convenience layer:</strong> <code>pipeline</code>, <code>AutoModelFor*</code>, <code>GenerationMixin</code>, <code>GenerationConfig</code>, streamers, and chat templates.</li>
+<li><strong>Serving layer:</strong> <code>transformers serve</code> implemented with FastAPI/Uvicorn and OpenAI-compatible APIs under <code>src/transformers/cli/serving</code>.</li>
+<li><strong>Training/fine-tuning layer:</strong> <code>trainer.py</code>, <code>training_args.py</code>, <code>trainer_seq2seq.py</code>, optimization utilities, distributed and integration modules.</li>
+<li><strong>Ecosystem bridge:</strong> quantization modules, attention implementations, GGUF loading support, export docs, community integration docs, and test contracts.</li>
+</ul>
+<p>In a serving architecture, Transformers is often used even when the final engine is not Transformers itself. Tokenizers, config files, chat templates, generation config, and model class definitions frequently originate here.</p>
+<h2 id="source-tree-map">Source Tree Map</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Path</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td><code>README.md</code></td><td>Project positioning, ecosystem role, pipeline examples, installation and quick-start material.</td></tr>
+<tr><td><code>setup.py</code></td><td>Package metadata, dependency/extras map, supported Python 3.10-3.14 range, console script <code>transformers=transformers.cli.transformers:main</code>.</td></tr>
+<tr><td><code>pyproject.toml</code></td><td>Ruff, pytest, coverage, ty type-checker configuration and test markers.</td></tr>
+<tr><td><code>src/transformers/__init__.py</code></td><td>Public import surface with lazy availability checks.</td></tr>
+<tr><td><code>src/transformers/configuration_utils.py</code></td><td>Base <code>PreTrainedConfig</code>, serialization, loading, and config behavior.</td></tr>
+<tr><td><code>src/transformers/modeling_utils.py</code></td><td>Base <code>PreTrainedModel</code>, loading/saving, device/dtype behavior, weight handling.</td></tr>
+<tr><td><code>src/transformers/core_model_loading.py</code></td><td>Shared model loading helpers.</td></tr>
+<tr><td><code>src/transformers/tokenization_utils_base.py</code>, <code>tokenization_utils_tokenizers.py</code>, <code>tokenization_utils_sentencepiece.py</code></td><td>Tokenizer abstractions and fast/slow tokenizer support.</td></tr>
+<tr><td><code>src/transformers/processing_utils.py</code>, <code>image_processing_utils.py</code>, <code>audio_utils.py</code>, <code>video_processing_utils.py</code></td><td>Processor, image, audio, and video preprocessing foundations.</td></tr>
+<tr><td><code>src/transformers/models/auto/*</code></td><td>AutoConfig, AutoTokenizer, AutoProcessor, AutoModel, mapping factories.</td></tr>
+<tr><td><code>src/transformers/models/*</code></td><td>Per-model implementations for many text, vision, audio, and multimodal architectures.</td></tr>
+<tr><td><code>src/transformers/generation/*</code></td><td>Generation config, logits processors, stopping criteria, streamers, candidate generators, watermarking, utilities.</td></tr>
+<tr><td><code>src/transformers/generation/continuous_batching/*</code></td><td>Continuous batching manager, scheduler, cache manager, model runner, request states, offloading, distributed helpers.</td></tr>
+<tr><td><code>src/transformers/pipelines/*</code></td><td>Task-level inference wrappers for text, audio, vision, video, and multimodal tasks.</td></tr>
+<tr><td><code>src/transformers/quantizers/*</code></td><td>Quantization method integration and automatic quantizer selection.</td></tr>
+<tr><td><code>src/transformers/integrations/*</code></td><td>Accelerate, DeepSpeed, Flash Attention, SDPA, tensor parallel, ggml, PEFT, quantization libraries, TPU/NPU, and related integrations.</td></tr>
+<tr><td><code>src/transformers/cli/*</code></td><td>Typer CLI command group, chat/download/system/serve commands.</td></tr>
+<tr><td><code>src/transformers/cli/serving/*</code></td><td>FastAPI serving implementation: server build, model manager, chat completions, completions, responses, transcriptions, utilities.</td></tr>
+<tr><td><code>docs/source/en/*</code></td><td>User and developer docs, including continuous batching, serving, adding models/pipelines, GGUF, serialization/export, testing, quantization.</td></tr>
+<tr><td><code>tests/*</code></td><td>Common model/test mixins, generation tests, continuous batching tests, quantization tests, pipeline tests, model tests, CLI serving tests.</td></tr>
+<tr><td><code>examples</code>, <code>notebooks</code>, <code>benchmark</code>, <code>benchmark_v2</code></td><td>Usage examples and performance workflows.</td></tr>
+</tbody></table></div>
+<h2 id="core-concepts">Core Concepts</h2>
+<p><strong>PreTrainedConfig.</strong> A model&#x27;s blueprint. It stores architecture metadata and hyperparameters, supports serialization, and drives class selection. The base is in <code>configuration_utils.py</code>.</p>
+<p><strong>PreTrainedModel.</strong> The base class for PyTorch models. It provides loading, saving, dtype/device handling, weight tying, and compatibility utilities. The base is in <code>modeling_utils.py</code>.</p>
+<p><strong>Auto classes.</strong> <code>src/transformers/models/auto</code> maps configs and model types to implementation classes. Auto classes let users write <code>AutoModelForCausalLM.from_pretrained(...)</code> without importing a specific architecture class.</p>
+<p><strong>Tokenizer / processor.</strong> Tokenizers convert text to token IDs; image/audio/video processors normalize non-text inputs; processors combine multiple modalities. The base utility files are in <code>tokenization_utils_base.py</code>, <code>processing_utils.py</code>, and modality-specific utilities.</p>
+<p><strong>Per-model folders.</strong> Each model family has files such as <code>configuration_*.py</code>, <code>modeling_*.py</code>, tokenization/processing files, conversion utilities, and tests. The docs for adding models emphasize self-contained model files and low abstraction depth.</p>
+<p><strong>Generation.</strong> Generation behavior is controlled by <code>GenerationConfig</code>, logits processors, stopping criteria, candidate generators, streamers, and model methods. These live under <code>src/transformers/generation</code>.</p>
+<p><strong>Continuous batching.</strong> <code>docs/source/en/continuous_batching.md</code> and <code>continuous_batching_architecture.md</code> describe a serving-oriented generation mode that dynamically reschedules requests, uses paged KV cache, chunked prefill, optional CUDA graphs, async batching, prefix caching, and offloading.</p>
+<p><strong>Pipeline.</strong> <code>src/transformers/pipelines</code> provides task-oriented inference wrappers. Pipelines handle preprocessing, model invocation, and postprocessing for common tasks.</p>
+<p><strong>Serve CLI.</strong> <code>src/transformers/cli/serve.py</code> exposes <code>transformers serve</code>; <code>src/transformers/cli/serving/*</code> implements FastAPI routes and model management. <code>setup.py</code> exposes the <code>transformers</code> console script.</p>
+<h2 id="component-system-diagram">Component/System Diagram</h2>
+<div class="mermaid">flowchart LR
+    User[User code, pipeline, CLI, server client] --&gt; PublicAPI[transformers public API]
+    PublicAPI --&gt; Auto[src/transformers/models/auto\nAutoConfig, AutoTokenizer, AutoModel]
+    PublicAPI --&gt; Pipelines[src/transformers/pipelines\ntask inference]
+    PublicAPI --&gt; Generation[src/transformers/generation\nGenerationConfig, logits, streamers]
+    Auto --&gt; Config[configuration_utils.py\nPreTrainedConfig]
+    Auto --&gt; Model[modeling_utils.py\nPreTrainedModel]
+    Auto --&gt; Tokenizers[tokenization + processing utils]
+    Model --&gt; ModelFamilies[src/transformers/models/*\nper-architecture code]
+    Generation --&gt; CBC[src/transformers/generation/continuous_batching\nscheduler, cache, manager]
+    Model --&gt; Integrations[src/transformers/integrations\nattention, accelerate, PEFT, ggml]
+    Model --&gt; Quantizers[src/transformers/quantizers\nbnb, GPTQ, AWQ, TorchAO, etc.]
+    CLI[src/transformers/cli/serve.py] --&gt; Serving[src/transformers/cli/serving\nFastAPI OpenAI-compatible server]
+    Serving --&gt; Generation
+    Tests[tests/*] --&gt; PublicAPI</div>
+<h2 id="internal-architecture">Internal Architecture</h2>
+<p>Transformers uses a set of contracts rather than a single runtime loop.</p>
+<p><strong>Artifact contract.</strong> Config, model, tokenizer, processor, generation config, and safetensors/checkpoint files are saved in a layout that can be reloaded locally or from the Hub. <code>from_pretrained</code> and <code>save_pretrained</code> form the main artifact contract.</p>
+<p><strong>Auto mapping contract.</strong> Auto classes avoid hardcoding implementation names in user applications. The files <code>auto_factory.py</code>, <code>configuration_auto.py</code>, <code>modeling_auto.py</code>, <code>tokenization_auto.py</code>, <code>processing_auto.py</code>, and related mapping files control how model type metadata maps to classes.</p>
+<p><strong>Model implementation contract.</strong> The <code>docs/source/en/add_new_model.md</code> guide states that model files should be readable, self-contained, and depend directly on <code>PreTrainedModel</code>. This keeps new architectures approachable and testable.</p>
+<p><strong>Generation contract.</strong> Causal generation uses a shared set of generation helpers, logits processors, stopping criteria, cache helpers, and streamers. Model-specific code provides forward passes and cache behavior; generation utilities orchestrate decoding strategies.</p>
+<p><strong>Task inference contract.</strong> Pipelines wrap tokenizer/processor, model call, and postprocessing into task-oriented classes such as text generation, ASR, image classification, object detection, and multimodal question answering.</p>
+<p><strong>Serving contract.</strong> The CLI serving layer wraps model loading and generation behind FastAPI. Tests in <code>tests/cli/test_serve.py</code> cover server startup, health behavior, streaming, responses, chat completions, continuous batching state, and error handling.</p>
+<h2 id="end-to-end-flow">End-to-End Flow</h2>
+<div class="mermaid">sequenceDiagram
+    participant U as User / API client
+    participant A as Auto classes or pipeline
+    participant H as Hub/local files
+    participant T as Tokenizer/Processor
+    participant M as PreTrainedModel
+    participant G as Generation utilities
+    participant O as Output decoder/postprocessor
+
+    U-&gt;&gt;A: from_pretrained(model_id)
+    A-&gt;&gt;H: read config, weights, tokenizer/processor files
+    H--&gt;&gt;A: artifacts
+    A-&gt;&gt;M: instantiate architecture class
+    A-&gt;&gt;T: instantiate tokenizer/processor
+    U-&gt;&gt;T: prompt, image, audio, video, or chat messages
+    T--&gt;&gt;M: tensors and model inputs
+    M-&gt;&gt;G: generate or forward pass
+    G-&gt;&gt;M: repeated model calls, cache updates, logits processing
+    G--&gt;&gt;O: token ids / scores / raw outputs
+    O--&gt;&gt;U: text, labels, boxes, transcription, embeddings, or JSON</div>
+<p>For <code>transformers serve</code>, the API layer sits in front of the same concepts:</p>
+<div class="mermaid">sequenceDiagram
+    participant C as OpenAI-compatible client
+    participant S as FastAPI server
+    participant MM as ModelManager
+    participant CB as ContinuousBatchingManager
+    participant M as Model + tokenizer
+
+    C-&gt;&gt;S: /v1/responses, chat, completion, transcription
+    S-&gt;&gt;MM: resolve or load requested model
+    MM-&gt;&gt;M: from_pretrained artifacts
+    alt continuous batching enabled
+        S-&gt;&gt;CB: add request
+        CB-&gt;&gt;M: scheduled prefill/decode steps
+        CB--&gt;&gt;S: streamed or final result
+    else direct generation
+        S-&gt;&gt;M: generate / pipeline-style call
+        M--&gt;&gt;S: result
+    end
+    S--&gt;&gt;C: JSON or streaming response</div>
+<h2 id="runtime-and-data-flow">Runtime and Data Flow</h2>
+<ol>
+<li><strong>Artifact selection.</strong> A model ID or local path is supplied to an Auto class, pipeline, Trainer, or server.</li>
+<li><strong>Config load.</strong> <code>AutoConfig</code> reads <code>config.json</code> and determines model type and architecture mapping.</li>
+<li><strong>Class resolution.</strong> Auto factories choose model/tokenizer/processor classes from mappings in <code>src/transformers/models/auto</code>.</li>
+<li><strong>Weight load.</strong> <code>PreTrainedModel.from_pretrained</code> loads safetensors/PyTorch or supported alternate formats, applies dtype/device/quantization choices, and initializes the class.</li>
+<li><strong>Preprocessing.</strong> Tokenizer/processor utilities convert input into tensors. Chat templates and multimodal processors may transform role/content structures before tokenization.</li>
+<li><strong>Forward/generate.</strong> The model forward pass runs through PyTorch and optional integrations such as SDPA, Flash Attention, tensor parallel, quantization, or custom kernels.</li>
+<li><strong>Generation loop.</strong> <code>GenerationConfig</code> and logits processors govern token selection, stopping, streaming, assisted decoding, watermarking, or continuous batching.</li>
+<li><strong>Postprocessing.</strong> Pipelines or serving utilities decode tokens, format labels/boxes/timestamps, normalize OpenAI-compatible responses, and handle streaming chunks.</li>
+<li><strong>Persistence/export.</strong> <code>save_pretrained</code>, safetensors, GGUF loading docs, and serialization/export docs define how artifacts move to other runtimes.</li>
+</ol>
+<h2 id="deployment-and-operations-topology">Deployment and Operations Topology</h2>
+<div class="mermaid">flowchart TB
+    subgraph Clients
+        Python[Python app / notebook]
+        APIClient[OpenAI-compatible client]
+        Batch[Batch job / dataset iterator]
+    end
+    subgraph RuntimeNode[&quot;Python runtime or service&quot;]
+        Pipeline[pipeline task wrapper]
+        Serve[transformers serve\nFastAPI + Uvicorn]
+        Auto[Auto classes]
+        Model[PyTorch PreTrainedModel]
+        Gen[Generation / continuous batching]
+    end
+    subgraph Artifacts
+        Hub[Hugging Face Hub]
+        Local[Local checkpoint directory]
+        Safe[safetensors / config / tokenizer files]
+        GGUF[GGUF file for supported loading]
+    end
+    subgraph Acceleration
+        Torch[PyTorch]
+        Accelerate[Accelerate / device_map]
+        Quant[Quantizers]
+        Attention[SDPA / Flash Attention / paged attention integrations]
+    end
+    subgraph Ops
+        Tests[pytest suites]
+        Logs[Python logging / server health]
+        Export[ONNX / ExecuTorch via Optimum]
+    end
+
+    Python --&gt; Pipeline --&gt; Auto
+    APIClient --&gt; Serve --&gt; Gen
+    Batch --&gt; Pipeline
+    Auto --&gt; Hub
+    Auto --&gt; Local
+    Hub --&gt; Safe
+    Local --&gt; Safe
+    GGUF --&gt; Auto
+    Auto --&gt; Model --&gt; Torch
+    Gen --&gt; Model
+    Model --&gt; Accelerate
+    Model --&gt; Quant
+    Model --&gt; Attention
+    Tests --&gt; Model
+    Logs --&gt; Serve
+    Export --&gt; Safe</div>
+<p>Operationally, Transformers can run in notebooks, batch jobs, web servers, training jobs, and direct serving processes. <code>docs/source/en/pipeline_webserver.md</code> warns that web servers are concurrent while PyTorch model execution is memory-heavy and blocking; it recommends a queue and single model worker pattern for simple pipeline servers. For production <code>transformers serve</code>, the docs recommend the CLI serving path and mention continuous batching as an optimization.</p>
+<h2 id="lifecycle-decisions-and-module-dependencies">Lifecycle, Decisions, and Module Dependencies</h2>
+<div class="mermaid">stateDiagram-v2
+    [*] --&gt; ChooseArtifact
+    ChooseArtifact --&gt; LoadConfig
+    LoadConfig --&gt; ResolveAutoClass
+    ResolveAutoClass --&gt; LoadWeights
+    LoadWeights --&gt; LoadPreprocessor
+    LoadPreprocessor --&gt; Ready
+    Ready --&gt; Inference
+    Inference --&gt; Generate: text generation
+    Inference --&gt; Forward: classification, embeddings, ASR, vision
+    Generate --&gt; PostProcess
+    Forward --&gt; PostProcess
+    PostProcess --&gt; Ready
+    Ready --&gt; SaveOrExport
+    SaveOrExport --&gt; [*]
+    LoadWeights --&gt; Error: missing deps, incompatible shape, memory
+    Generate --&gt; Error: OOM, cache, stopping, device mismatch</div>
+<div class="mermaid">flowchart LR
+    ConfigBase[configuration_utils.py] --&gt; AutoConfig[models/auto/configuration_auto.py]
+    AutoConfig --&gt; AutoFactory[models/auto/auto_factory.py]
+    AutoFactory --&gt; ModelBase[modeling_utils.py]
+    ModelBase --&gt; ModelFamily[models/&lt;architecture&gt;/modeling_*.py]
+    TokenBase[tokenization_utils_base.py] --&gt; AutoTokenizer[models/auto/tokenization_auto.py]
+    ProcBase[processing_utils.py] --&gt; AutoProcessor[models/auto/processing_auto.py]
+    ModelFamily --&gt; Generation[generation/utils.py]
+    Generation --&gt; CB[generation/continuous_batching/*]
+    ModelBase --&gt; Quant[quantizers/*]
+    ModelBase --&gt; Integrations[integrations/*]
+    CLI[cli/serve.py] --&gt; Serving[cli/serving/*]
+    Serving --&gt; Generation</div>
+<h2 id="extension-points">Extension Points</h2>
+<ul>
+<li><strong>Add a model:</strong> <code>docs/source/en/add_new_model.md</code> describes adding config, modeling, tests, conversion, docs, and Auto mappings. It emphasizes readable, self-contained model files.</li>
+<li><strong>Add a modular model:</strong> <code>docs/source/en/modular_transformers.md</code> gives the newer modular path for reducing repetitive implementation work.</li>
+<li><strong>Add a pipeline:</strong> <code>docs/source/en/add_new_pipeline.md</code> and <code>src/transformers/pipelines/base.py</code> define task pipeline conventions.</li>
+<li><strong>Add tokenizer/processor support:</strong> tokenizer and processor base utilities plus <code>models/auto/*_auto.py</code> handle discovery and loading.</li>
+<li><strong>Add quantization support:</strong> <code>src/transformers/quantizers/base.py</code>, <code>auto.py</code>, and method-specific quantizers define how quantization config maps to implementation.</li>
+<li><strong>Add integrations:</strong> <code>src/transformers/integrations/*</code> provides patterns for attention backends, accelerators, tensor parallelism, GGUF, PEFT, and hardware-specific paths.</li>
+<li><strong>Extend generation:</strong> <code>generation/logits_process.py</code>, <code>stopping_criteria.py</code>, <code>candidate_generator.py</code>, <code>streamers.py</code>, and <code>continuous_batching/*</code> are extension points for decoding behavior.</li>
+<li><strong>Extend serve CLI:</strong> <code>src/transformers/cli/serving/*</code> contains route and model-manager code for server behavior.</li>
+</ul>
+<h2 id="integrations">Integrations</h2>
+<p>Transformers integrates with:</p>
+<ul>
+<li>Hugging Face Hub for model, tokenizer, processor, and dataset-like artifact retrieval.</li>
+<li>PyTorch as the primary model execution backend in this snapshot.</li>
+<li>Accelerate, DeepSpeed, FSDP, tensor parallel, TPU/NPU, and other distributed/hardware tooling through <code>src/transformers/integrations</code>.</li>
+<li>Quantization libraries such as bitsandbytes, AWQ, GPTQ, HQQ, TorchAO, Quanto, Quark, MXFP4, FP8-related methods, and others through <code>src/transformers/quantizers</code>.</li>
+<li>Attention implementations such as SDPA, Flash Attention, paged attention/eager paged integrations, and flex attention.</li>
+<li>GGUF loading support through <code>docs/source/en/gguf.md</code>, <code>modeling_gguf_pytorch_utils.py</code>, and <code>integrations/ggml.py</code>; the docs state GGUF is loaded for further training/fine-tuning by dequantizing to fp32.</li>
+<li>Serving dependencies in <code>setup.py</code> extras: <code>openai</code>, <code>pydantic</code>, <code>uvicorn</code>, <code>fastapi</code>, <code>starlette</code>, <code>rich</code>, plus torch/accelerate.</li>
+<li>Export paths documented in <code>docs/source/en/serialization.md</code>, including ONNX and ExecuTorch via Optimum.</li>
+</ul>
+<h2 id="configuration-deployment-and-ops">Configuration, Deployment, and Ops</h2>
+<p>Configuration sources include:</p>
+<ul>
+<li><code>config.json</code> through <code>PreTrainedConfig</code>.</li>
+<li>tokenizer and processor JSON/model files.</li>
+<li><code>generation_config.json</code> and runtime <code>GenerationConfig</code>.</li>
+<li><code>TrainingArguments</code> / <code>Seq2SeqTrainingArguments</code> for training jobs.</li>
+<li>CLI flags for <code>transformers serve</code> in <code>src/transformers/cli/serve.py</code>.</li>
+<li>Quantization configs and attention/dtype/device-map parameters.</li>
+</ul>
+<p>Deployment patterns:</p>
+<ul>
+<li><strong>Library inference:</strong> <code>AutoTokenizer</code> + <code>AutoModelFor*</code> + <code>generate</code> or forward calls.</li>
+<li><strong>Pipeline inference:</strong> task-specific <code>pipeline(...)</code> for text/audio/vision/multimodal use.</li>
+<li><strong>Dataset/batch inference:</strong> pipelines over iterators or datasets, with careful batching.</li>
+<li><strong>Simple web service:</strong> queue-backed pipeline server as described in <code>pipeline_webserver.md</code>.</li>
+<li><strong>Transformers serve:</strong> FastAPI/Uvicorn OpenAI-compatible server with optional continuous batching.</li>
+<li><strong>Exported runtime:</strong> ONNX or ExecuTorch via Optimum for optimized production runtimes.</li>
+<li><strong>External serving engines:</strong> vLLM, SGLang, TGI, llama.cpp, and others consume Transformers configs/model definitions/tokenizers.</li>
+</ul>
+<p>Ops considerations:</p>
+<ul>
+<li>Optional dependencies are feature-specific. Missing <code>tokenizers</code>, <code>sentencepiece</code>, <code>torch</code>, <code>fastapi</code>, quantization packages, or attention libraries can change behavior.</li>
+<li><code>device_map=&quot;auto&quot;</code>, dtype, quantization, and attention implementation choices directly affect memory and latency.</li>
+<li>Pipeline batching is not always faster; <code>pipeline_webserver.md</code> warns that dynamic batching needs careful queue and timeout design.</li>
+<li>Continuous batching needs GPU memory budgeting, cache sizing, scheduler choice, and attention compatibility.</li>
+<li>Serving should expose health checks and overload behavior; tests include cases for unhealthy continuous-batching worker state returning 503.</li>
+</ul>
+<h2 id="observability-testing-evaluation-and-failure-modes">Observability, Testing, Evaluation, and Failure Modes</h2>
+<p>Testing is a major part of the repository architecture.</p>
+<ul>
+<li><code>tests/test_modeling_common.py</code>, <code>test_configuration_common.py</code>, <code>test_tokenization_common.py</code>, <code>test_processing_common.py</code>, and related mixins enforce common behavior across models.</li>
+<li><code>tests/models/*</code> contains per-model tests.</li>
+<li><code>tests/generation/*</code> covers generation utilities, logits processors, stopping criteria, streamers, paged attention, flash attention parity, and continuous batching.</li>
+<li><code>tests/pipelines/*</code> covers task-level pipeline behavior.</li>
+<li><code>tests/quantization/*</code> covers quantization paths.</li>
+<li><code>tests/cli/test_serve.py</code>, <code>test_chat.py</code>, <code>test_download.py</code>, and <code>test_system.py</code> cover CLI and serving behavior.</li>
+<li><code>pyproject.toml</code> defines pytest markers such as <code>generate</code>, <code>is_training_test</code>, <code>is_tensor_parallel_test</code>, and flash attention markers.</li>
+</ul>
+<p>Observability is more application-dependent than in a dedicated serving engine. Useful anchors are:</p>
+<ul>
+<li>Python logging and warnings in model loading, generation, integrations, and serving utilities.</li>
+<li><code>transformers serve</code> health behavior and HTTP error handling in <code>cli/serving</code>.</li>
+<li>Pipeline/webserver docs recommending explicit error handling, queue limits, and circuit breaking.</li>
+<li>Benchmark folders and Optimum benchmark integration for performance evaluation.</li>
+</ul>
+<p>Common failure modes:</p>
+<ul>
+<li><strong>Missing optional dependencies:</strong> tokenizer, processor, quantizer, audio/video, serving, or attention package not installed.</li>
+<li><strong>Model/config mismatch:</strong> wrong architecture class, missing Auto mapping, bad config, or incompatible checkpoint shape.</li>
+<li><strong>Tokenizer/processor mismatch:</strong> text or multimodal inputs produce wrong IDs/pixel/audio features.</li>
+<li><strong>Memory errors:</strong> model too large, dtype too wide, device map wrong, cache too large, or batching too aggressive.</li>
+<li><strong>Generation surprises:</strong> EOS/stopping criteria, chat template, logits processors, or generation config do not match expected behavior.</li>
+<li><strong>Quantization issues:</strong> unsupported device/backend, accuracy regression, or incompatible module layout.</li>
+<li><strong>Serving overload:</strong> PyTorch blocks the main thread, queue grows, continuous batching worker fails, or request cancellation is mishandled.</li>
+<li><strong>Remote artifact risk:</strong> untrusted model files or remote code settings can execute or load unexpected behavior.</li>
+</ul>
+<h2 id="security-and-governance-risks">Security and Governance Risks</h2>
+<ul>
+<li><strong>Model provenance and license:</strong> Hub models are diverse; governance should track model card, license, weights source, revisions, and intended use.</li>
+<li><strong>Remote code:</strong> <code>trust_remote_code</code> can execute repository code. Treat it as privileged code and pin revisions.</li>
+<li><strong>Sensitive data:</strong> prompts, completions, audio, images, and logs may include regulated data.</li>
+<li><strong>Serving API exposure:</strong> <code>transformers serve</code> should run behind authentication, TLS, rate limiting, and request size controls.</li>
+<li><strong>Dependency supply chain:</strong> many optional dependencies are loaded for quantization, serving, tokenization, audio/video, and acceleration.</li>
+<li><strong>Quantization and export drift:</strong> changing dtype, quantization, ONNX/ExecuTorch export, or GGUF conversion can alter model behavior.</li>
+<li><strong>Evaluation governance:</strong> passing unit tests does not prove model safety, factuality, fairness, or domain suitability.</li>
+<li><strong>Multimodal input risk:</strong> image/audio/video parsers increase attack surface and resource-exhaustion risk.</li>
+</ul>
+<h2 id="reading-guide">Reading Guide</h2>
+<ol>
+<li>Start with <code>README.md</code> for ecosystem role and user-facing examples.</li>
+<li>Read <code>setup.py</code> to understand extras, optional dependencies, and the <code>transformers</code> CLI entry point.</li>
+<li>Read <code>configuration_utils.py</code>, <code>modeling_utils.py</code>, <code>tokenization_utils_base.py</code>, and <code>processing_utils.py</code>.</li>
+<li>Read <code>src/transformers/models/auto/*</code> to understand class resolution.</li>
+<li>Pick one model folder, for example <code>models/llama</code>, and compare config/model/tokenizer files with tests.</li>
+<li>Read <code>generation/configuration_utils.py</code>, <code>generation/utils.py</code>, <code>logits_process.py</code>, <code>stopping_criteria.py</code>, and <code>streamers.py</code>.</li>
+<li>Read <code>generation/continuous_batching/*</code> and the two continuous batching docs if studying serving throughput.</li>
+<li>Read <code>pipelines/base.py</code> and a few task pipeline files.</li>
+<li>Read <code>cli/serve.py</code> and <code>cli/serving/*</code> for direct serving behavior.</li>
+<li>Review common tests before modifying contracts.</li>
+</ol>
+<h2 id="learning-path">Learning Path</h2>
+<ol>
+<li>Load a tiny model with <code>AutoTokenizer</code> and <code>AutoModelForCausalLM</code>.</li>
+<li>Inspect the downloaded <code>config.json</code>, tokenizer files, and generation config.</li>
+<li>Trace <code>AutoModelForCausalLM.from_pretrained</code> into Auto mappings and <code>PreTrainedModel</code>.</li>
+<li>Run generation and identify where logits processors and stopping criteria apply.</li>
+<li>Use a pipeline for the same task and trace preprocessing/postprocessing.</li>
+<li>Study one per-model implementation and its tests.</li>
+<li>Review quantization and attention integration options for deployment.</li>
+<li>Explore <code>transformers serve</code> and continuous batching only after understanding basic generation.</li>
+<li>Validate production candidates with task metrics, latency, memory, and safety evaluations.</li>
+</ol>
+<h2 id="production-readiness-and-serving-decision-gate">Production Readiness And Serving Decision Gate</h2>
+<p>Transformers production readiness starts with the artifact contract: <code>config.json</code>, weights, tokenizer, processor, generation config, and optional remote code. The serving path then depends on whether the workload uses direct <code>generate</code>, <code>pipeline</code>, <code>transformers serve</code>, or an external serving engine that still consumes Transformers artifacts. Review <code>src/transformers/configuration_utils.py</code>, <code>modeling_utils.py</code>, <code>models/auto/*</code>, <code>generation/*</code>, <code>generation/continuous_batching/*</code>, <code>pipelines/*</code>, <code>cli/serving/*</code>, <code>quantizers/*</code>, <code>integrations/*</code>, and <code>tests/cli/test_serve.py</code>.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Decision area</th><th>What to verify</th></tr></thead>
+<tbody>
+<tr><td>Artifact lock</td><td>Pin model revision, config, tokenizer/processor files, generation config, safetensors, and any custom code decision.</td></tr>
+<tr><td>Dependency set</td><td>Install only needed extras: tokenizers, sentencepiece, audio/video, serving, quantization, attention, or acceleration packages.</td></tr>
+<tr><td>Serving mode</td><td>Choose direct library, queue-backed pipeline service, <code>transformers serve</code>, export path, or external engine based on latency and throughput needs.</td></tr>
+<tr><td>Generation contract</td><td>Test chat template, EOS/stop tokens, logits processors, streamers, cache implementation, and structured response expectations.</td></tr>
+<tr><td>Memory/performance</td><td>Validate dtype, device map, quantization, attention implementation, batch sizes, and continuous batching cache budget.</td></tr>
+<tr><td>Governance</td><td>Treat <code>trust_remote_code</code>, Hub artifacts, multimodal parsers, logs, and model licenses as privileged production decisions.</td></tr>
+</tbody></table></div>
+<div class="mermaid">flowchart LR
+  Artifact[Hub or local artifact set] --&gt; Config[PreTrainedConfig]
+  Artifact --&gt; Tokenizer[Tokenizer or processor]
+  Artifact --&gt; Weights[Model weights]
+  Config --&gt; Auto[Auto classes]
+  Tokenizer --&gt; Auto
+  Weights --&gt; Model[PreTrainedModel]
+  Auto --&gt; Mode{Serving mode}
+  Mode --&gt; Pipeline[pipeline service with queue]
+  Mode --&gt; Direct[Direct generate or forward]
+  Mode --&gt; Serve[transformers serve]
+  Mode --&gt; External[vLLM, TGI, llama.cpp, export runtime]
+  Pipeline --&gt; Eval[Latency, memory, task metrics]
+  Direct --&gt; Eval
+  Serve --&gt; Eval
+  External --&gt; Eval
+  Eval --&gt; Release{Meets SLO and governance?}
+  Release --&gt;|No| Tune[Retune artifact, dtype, quant, generation, engine]
+  Tune --&gt; Mode
+  Release --&gt;|Yes| Canary[Canary and monitor]</div>
+<h2 id="failure-isolation-map">Failure Isolation Map</h2>
+<p>A Transformers failure can occur before the model ever runs: Auto mapping, optional dependency resolution, tokenizer files, remote code, shape loading, and processor behavior all sit before inference. Triage should isolate artifact, preprocessing, model execution, generation, serving, and security domains.</p>
+<div class="mermaid">flowchart TD
+  Symptom[Transformers symptom] --&gt; Domain{Domain}
+  Domain --&gt; Artifact[Config, weights, Auto mapping]
+  Domain --&gt; Preprocess[Tokenizer, processor, chat template]
+  Domain --&gt; Execution[Model forward, dtype, device map]
+  Domain --&gt; Generation[Cache, logits, stopping, streamer]
+  Domain --&gt; Quant[Quantizer or attention backend]
+  Domain --&gt; Serving[CLI serving, queue, health, streaming]
+  Domain --&gt; Security[Remote code, Hub trust, multimodal input]
+  Artifact --&gt; Files1[configuration_utils, modeling_utils, models/auto]
+  Preprocess --&gt; Files2[tokenization_utils, processing_utils, image/audio/video utils]
+  Execution --&gt; Files3[modeling files, integrations, distributed]
+  Generation --&gt; Files4[generation utils and continuous_batching]
+  Quant --&gt; Files5[quantizers and integrations]
+  Serving --&gt; Files6[cli/serve.py and cli/serving]
+  Security --&gt; Files7[dynamic_module_utils and Hub artifact policy]
+  Files1 --&gt; Fix[Pin, patch, retest, or switch engine]
+  Files2 --&gt; Fix
+  Files3 --&gt; Fix
+  Files4 --&gt; Fix
+  Files5 --&gt; Fix
+  Files6 --&gt; Fix
+  Files7 --&gt; Fix</div>
+<h2 id="glossary">Glossary</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>PreTrainedConfig</td><td>Serializable model blueprint and hyperparameter container.</td></tr>
+<tr><td>PreTrainedModel</td><td>Base model class with loading, saving, weight, dtype, and device utilities.</td></tr>
+<tr><td>Auto class</td><td>Factory class that selects a concrete config/model/tokenizer/processor from metadata.</td></tr>
+<tr><td>Tokenizer</td><td>Component that maps text to token IDs and back.</td></tr>
+<tr><td>Processor</td><td>Component that wraps one or more modality preprocessors, often for multimodal models.</td></tr>
+<tr><td>Pipeline</td><td>Task-level inference wrapper that handles preprocessing, model call, and postprocessing.</td></tr>
+<tr><td>GenerationConfig</td><td>Configuration object controlling decoding behavior.</td></tr>
+<tr><td>LogitsProcessor</td><td>Hook that modifies logits during generation.</td></tr>
+<tr><td>StoppingCriteria</td><td>Hook that decides when generation should stop.</td></tr>
+<tr><td>Streamer</td><td>Utility for emitting generated text incrementally.</td></tr>
+<tr><td>Continuous batching</td><td>Dynamic serving mode that admits and removes generation requests each step.</td></tr>
+<tr><td>Paged KV cache</td><td>Cache design that stores key/value state in fixed-size pages/blocks.</td></tr>
+<tr><td>device_map</td><td>Mapping of modules to devices, often managed by Accelerate.</td></tr>
+<tr><td>safetensors</td><td>Safe tensor serialization format commonly used for model weights.</td></tr>
+<tr><td>GGUF</td><td>Single-file model format used by ggml/llama.cpp, with loading support in Transformers for selected models.</td></tr>
+</tbody></table></div>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

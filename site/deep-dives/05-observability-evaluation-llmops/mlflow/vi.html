@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ghi chú kiến trúc MLflow | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/05-observability-evaluation-llmops/mlflow/README.vi.md">View source</a>
+      <h1 id="ghi-ch-ki-n-tr-c-mlflow">Ghi chú kiến trúc MLflow</h1>
+<h2 id="t-m-t-t-i-u-h-nh">Tóm tắt điều hành</h2>
+<p>MLflow là nền tảng AI engineering rộng cho agent, ứng dụng LLM và mô hình ML truyền thống. README định vị MLflow như nền tảng cho debugging, evaluation, monitoring, prompt management, prompt optimization, AI Gateway governance, experiment tracking, model registry và deployment. Repository vì vậy rất lớn: <code>mlflow/</code> chứa package Python, <code>docs/</code> chứa tài liệu, <code>examples/</code> minh họa workflow, <code>tests/</code> phản chiếu cấu trúc package, <code>charts/</code> cung cấp triển khai Kubernetes, còn <code>docker-compose/</code> cung cấp setup local với Postgres và object store tương thích S3.</p>
+<p>File <code>pyproject.toml</code> cho biết phiên bản <code>3.13.1.dev0</code>, Python <code>&gt;=3.10</code>, và dependency gồm Flask, FastAPI, SQLAlchemy, Alembic, OpenTelemetry, Huey, Databricks SDK, Docker, Graphene, Pydantic, Uvicorn cùng nhiều thư viện integration. MLflow không phải công cụ observability đơn mục đích. Nó là một platform với tracking server, artifact store, model registry, prompt registry, tracing API, GenAI evaluation, scorer, judge, gateway routing, deployment provider và React UI được phục vụ bởi Python server.</p>
+<h2 id="b-i-to-n-c-gi-i-quy-t">Bài toán được giải quyết</h2>
+<p>MLflow giải quyết sự phân mảnh vòng đời. Nhóm AI cần tracking run và metric, lưu artifact, quản lý model, xem LLM trace, so sánh prompt, đánh giá chất lượng agent, quản trị truy cập model provider và deploy asset. Nếu thiếu nền tảng chung, các mảng này bị tách ra notebook, object store, model API, APM tool, spreadsheet và dashboard tự viết. MLflow cung cấp tracking API, server, storage model, UI và cơ chế extension chung cho cả ML truyền thống và workflow GenAI hiện đại.</p>
+<h2 id="vai-tr-trong-ai-stack">Vai trò trong AI stack</h2>
+<p>Trong kiến trúc giải pháp AI, MLflow có thể đảm nhận nhiều vai trò:</p>
+<ul>
+<li><strong>System of record cho experiment</strong>: parameter, metric, tag, artifact, dataset và run.</li>
+<li><strong>Model và prompt registry</strong>: lifecycle, versioning, alias, lineage và promotion.</li>
+<li><strong>LLM tracing backend</strong>: trace, span, assessment, session và trace metric tương thích OpenTelemetry.</li>
+<li><strong>Evaluation platform</strong>: qua <code>mlflow.genai.evaluation</code>, built-in scorer, integration scorer bên thứ ba và judge.</li>
+<li><strong>Gateway</strong>: routing provider, rate limit, traffic splitting, credential indirection, guardrail và kiểu truy cập tương thích OpenAI.</li>
+<li><strong>Deployment bridge</strong>: kết nối cloud và serving system qua deployment integration và model flavor.</li>
+</ul>
+<h2 id="b-n-source-tree">Bản đồ source tree</h2>
+<p>Bằng chứng trong repository:</p>
+<ul>
+<li><code>README.md</code> mô tả MLflow cho agent, LLM và ML model, với observability, evaluation, prompt management, prompt optimization, AI Gateway, tracking, model registry và deployment.</li>
+<li><code>pyproject.toml</code> định nghĩa package metadata, dependency, optional extra, CLI entrypoint <code>mlflow = &quot;mlflow.cli:cli&quot;</code>, entry point cho <code>mlflow.app</code>, <code>mlflow.app.client</code> và <code>mlflow.deployments</code>.</li>
+<li><code>mlflow/server/__init__.py</code> tạo Flask app, khởi tạo security middleware, đăng ký handler endpoint, phục vụ UI asset, expose health/version endpoint, phục vụ artifact, expose trace artifact và có thể bật Prometheus exporter.</li>
+<li><code>mlflow/server/fastapi_app.py</code> bọc Flask app bằng FastAPI, thêm FastAPI security, workspace middleware, gateway timing middleware, OTEL API router, job API router, gateway router, assistant router, rồi mount Flask ở root để giữ tương thích.</li>
+<li><code>mlflow/gateway/app.py</code> định nghĩa <code>GatewayAPI</code>, dynamic endpoint, traffic route, rate limit, provider lookup, handler chat/completion/embedding, load config từ path hoặc environment và Swagger support.</li>
+<li><code>mlflow/store/tracking/abstract_store.py</code> định nghĩa hợp đồng tracking store cho experiment, run, trace, trace archival, session, assessment, prompt, dataset và trace metric.</li>
+<li><code>mlflow/store/tracking/sqlalchemy_store.py</code>, <code>file_store.py</code> và <code>rest_store.py</code> triển khai backend store.</li>
+<li><code>mlflow/tracking/client.py</code> định nghĩa <code>MlflowClient</code>, còn <code>mlflow/tracking/fluent.py</code> cung cấp API fluent cho người dùng.</li>
+<li><code>mlflow/tracing/</code>, <code>mlflow/entities/span.py</code> và các trace entity module biểu diễn khái niệm tracing.</li>
+<li><code>mlflow/genai/</code> chứa evaluation, scorer, judge, dataset, prompt, prompt optimization, discovery, scheduled scorer và online scoring processor.</li>
+<li><code>mlflow/genai/scorers/</code> gồm built-in scorer cùng integration Phoenix, Ragas, Deepeval, TruLens, Google ADK, guardrails và online trace/session processors.</li>
+<li><code>mlflow/gateway/providers/</code> chứa implementation cho OpenAI, Anthropic, Bedrock, Databricks, Gemini, Groq, Hugging Face, LiteLLM, Mistral, Ollama, OpenRouter, Together AI, Vertex AI và nhiều provider khác.</li>
+<li><code>docker-compose/docker-compose.yml</code> chạy MLflow local với Postgres và RustFS S3-compatible storage.</li>
+<li><code>charts/</code> chứa Helm template và values cho Kubernetes, backend store URI, artifact destination, Prometheus exposure, TLS và cleanup cron job.</li>
+</ul>
+<h2 id="kh-i-ni-m-c-t-l-i">Khái niệm cốt lõi</h2>
+<ul>
+<li><strong>Experiment</strong>: namespace logic cho run và trace.</li>
+<li><strong>Run</strong>: bản ghi thực thi gồm parameter, metric, tag, artifact, dataset và model.</li>
+<li><strong>Artifact</strong>: file hoặc object lưu dưới run hoặc model version; có thể ở local, S3, Azure Blob, GCS, DBFS hoặc store được hỗ trợ khác.</li>
+<li><strong>Tracking store</strong>: backend metadata được triển khai bằng file, SQLAlchemy, REST hoặc workspace-aware store.</li>
+<li><strong>Trace và span</strong>: telemetry thực thi GenAI/agent với call lồng nhau, timing, input, output, attribute, assessment và liên kết prompt/run.</li>
+<li><strong>Assessment hoặc scorer result</strong>: tín hiệu evaluation được log vào trace hoặc span.</li>
+<li><strong>Prompt version</strong>: entity trong prompt registry, thường được link với trace và evaluation.</li>
+<li><strong>Gateway endpoint hoặc route</strong>: điểm truy cập model-provider được cấu hình, có thể có traffic split, rate limit và guardrail.</li>
+<li><strong>Flavor</strong>: integration đóng gói model cho framework hoặc loại model.</li>
+</ul>
+<h2 id="ki-n-tr-c-n-i-b">Kiến trúc nội bộ</h2>
+<div class="mermaid">graph TB
+  User[SDK va CLI users] --&gt; Fluent[mlflow.tracking.fluent]
+  User --&gt; Client[MlflowClient]
+  Fluent --&gt; Client
+  Client --&gt; StoreRegistry[Tracking service registry]
+  StoreRegistry --&gt; LocalStore[FileStore hoac SQLAlchemyStore]
+  StoreRegistry --&gt; RestStore[RestStore]
+  RestStore --&gt; Server[MLflow server]
+  Server --&gt; FastAPI[FastAPI wrapper]
+  FastAPI --&gt; Flask[Flask compatibility app]
+  FastAPI --&gt; OTel[OTEL API router]
+  FastAPI --&gt; GatewayRouter[Gateway router]
+  Flask --&gt; Handlers[server handlers]
+  Handlers --&gt; Backend[(Backend store)]
+  Handlers --&gt; Artifacts[(Artifact repositories)]
+  GatewayRouter --&gt; Providers[Gateway providers]
+  GenAI[mlflow.genai scorers va judges] --&gt; Client
+  UI[React UI static assets] --&gt; Server</div>
+<p>MLflow cố ý giữ tương thích ngược. <code>mlflow/server/__init__.py</code> vẫn sở hữu Flask app và đăng ký các REST/AJAX handler lâu đời. <code>mlflow/server/fastapi_app.py</code> bọc Flask app bằng FastAPI để các router mới có ưu tiên cho OTEL, job, gateway và assistant. Cách phân lớp này cho phép endpoint GenAI hiện đại phát triển mà không phá client tracking cũ.</p>
+<p>Hợp đồng store là trung tâm. <code>AbstractStore</code> định nghĩa operation experiment/run nhưng cũng gồm trace API mới như <code>start_trace</code>, <code>get_trace</code>, <code>search_traces</code>, trace deletion, archival, trace metrics, assessment logging, session query, prompt-to-trace link và run-to-trace link. Store cụ thể quyết định capability nào được hỗ trợ và persistence được thực hiện ra sao.</p>
+<h2 id="lu-ng-runtime-v-d-li-u">Luồng runtime và dữ liệu</h2>
+<div class="mermaid">sequenceDiagram
+  participant App as Ung dung AI hoac ML
+  participant SDK as MLflow SDK
+  participant Server as MLflow FastAPI plus Flask server
+  participant Store as Tracking backend store
+  participant Artifact as Artifact store
+  participant UI as MLflow UI
+  participant Eval as GenAI evaluators va scorers
+
+  App-&gt;&gt;SDK: log params, metrics, artifacts, traces, prompts
+  SDK-&gt;&gt;Server: REST hoac local store calls
+  Server-&gt;&gt;Store: persist experiments, runs, trace metadata
+  Server-&gt;&gt;Artifact: upload models, files, trace artifacts
+  Eval-&gt;&gt;SDK: log assessments va scorer results
+  UI-&gt;&gt;Server: query runs, traces, prompts, models
+  Server-&gt;&gt;Store: search va aggregate metadata
+  Server-&gt;&gt;Artifact: fetch files va trace payloads</div>
+<p>Cùng một lớp client abstraction có thể trỏ đến local file store, database store, store của Databricks hoặc remote MLflow server. Trong script local, store call có thể không đi qua network. Trong deployment dùng chung, SDK nói chuyện với tracking server, server ghi metadata vào backend database và lưu artifact lớn trong object storage.</p>
+<p>Với GenAI tracing, model-provider integration và autologging có thể emit span và trace. Server expose trace artifact để UI render, còn <code>mlflow.genai</code> gắn assessment qua scorer và judge. Prompt version có thể link vào trace để regression chất lượng có lineage rõ ràng.</p>
+<h2 id="topology-tri-n-khai-v-v-n-h-nh">Topology triển khai và vận hành</h2>
+<div class="mermaid">graph LR
+  subgraph Clients
+    Notebook[Notebooks]
+    Services[Production services]
+    CI[CI evaluation jobs]
+  end
+  subgraph MLflowRuntime
+    Server[MLflow server]
+    UI[Web UI]
+    Gateway[AI Gateway]
+  end
+  subgraph Storage
+    DB[(Postgres hoac SQL backend khac)]
+    Artifacts[(S3, RustFS, Azure, GCS, local PV)]
+  end
+  subgraph Ops
+    Prom[Prometheus metrics]
+    TLS[TLS va ingress]
+    Cron[Cleanup cron job]
+    Providers[LLM providers]
+  end
+  Notebook --&gt; Server
+  Services --&gt; Server
+  CI --&gt; Server
+  Server --&gt; DB
+  Server --&gt; Artifacts
+  UI --&gt; Server
+  Gateway --&gt; Providers
+  Server --&gt; Prom
+  TLS --&gt; Server
+  Cron --&gt; DB
+  Cron --&gt; Artifacts</div>
+<p>Topology local trong <code>docker-compose/</code> chạy Postgres, RustFS làm S3-compatible artifact storage, container khởi tạo bucket và MLflow server. Biến chính gồm <code>MLFLOW_BACKEND_STORE_URI</code>, <code>MLFLOW_ARTIFACTS_DESTINATION</code>, <code>MLFLOW_S3_ENDPOINT_URL</code>, <code>AWS_ACCESS_KEY_ID</code>, <code>AWS_SECRET_ACCESS_KEY</code>, <code>MLFLOW_HOST</code> và <code>MLFLOW_PORT</code>.</p>
+<p>Helm chart trong <code>charts/</code> hỗ trợ Kubernetes server với backend store URI, registry store URI, default artifact root, artifacts destination, env injection, Prometheus exposure, TLS, persistence cho local storage và cleanup cron job cho run/experiment/artifact đã xóa. Chart README cảnh báo rõ SQLite và local file storage không phù hợp production hoặc high concurrency.</p>
+<h2 id="v-ng-i-v-ph-thu-c-module">Vòng đời và phụ thuộc module</h2>
+<div class="mermaid">stateDiagram-v2
+  [*] --&gt; Track
+  Track --&gt; Register
+  Track --&gt; Trace
+  Trace --&gt; Evaluate
+  Evaluate --&gt; Compare
+  Compare --&gt; OptimizePrompt
+  OptimizePrompt --&gt; Trace
+  Register --&gt; Deploy
+  Deploy --&gt; Monitor
+  Monitor --&gt; Trace
+  Trace --&gt; ArchiveOrDelete
+  ArchiveOrDelete --&gt; [*]</div>
+<p>Vòng đời này bao phủ cả ML truyền thống và GenAI. Classic tracking log experiment và run. Registry và deployment promote model hoặc prompt. Tracing ghi nhận hành vi online. Evaluation và scorer gắn tín hiệu chất lượng. Prompt optimization và discovery module tạo phiên bản mới quay lại vòng lặp. Archive/delete bảo vệ chi phí lưu trữ và yêu cầu governance.</p>
+<h2 id="i-m-m-r-ng">Điểm mở rộng</h2>
+<ul>
+<li>Thêm tracking behavior bằng cách mở rộng store implementation hoặc store registry dưới <code>mlflow/store/</code> và <code>mlflow/tracking/_tracking_service/</code>.</li>
+<li>Thêm server API qua handler, FastAPI router hoặc app entry point khai báo trong <code>pyproject.toml</code>.</li>
+<li>Thêm AI Gateway provider trong <code>mlflow/gateway/providers/</code> và đăng ký qua provider lookup.</li>
+<li>Thêm scorer, judge hoặc evaluator integration trong <code>mlflow/genai/scorers/</code> và <code>mlflow/genai/judges/</code>.</li>
+<li>Thêm hỗ trợ framework model như một flavor dưới package <code>mlflow/&lt;framework&gt;/</code>.</li>
+<li>Thêm deployment target qua entry point <code>mlflow.deployments</code>.</li>
+<li>Thêm artifact storage bằng cách triển khai artifact repository và đăng ký scheme.</li>
+<li>Thêm hành vi UI qua asset <code>mlflow/server/js/</code> và route server tương ứng.</li>
+</ul>
+<h2 id="t-ch-h-p">Tích hợp</h2>
+<p>MLflow có bề mặt integration rộng nhất trong nhóm này. Source directory bao gồm OpenAI, Anthropic, Bedrock, Gemini, Groq, LiteLLM, LlamaIndex, LangChain, LangGraph, CrewAI, AutoGen, DSPy, Pydantic AI, Semantic Kernel, Transformers, PyTorch, TensorFlow, sklearn, Spark, XGBoost, Azure, SageMaker, Kubernetes, Databricks, MCP và nhiều hệ khác. Gateway provider bao phủ các LLM provider lớn, trong khi GenAI scorer integration gồm Phoenix, Ragas, Deepeval, TruLens, Google ADK, guardrails và online trace/session scoring.</p>
+<h2 id="c-u-h-nh-tri-n-khai-v-v-n-h-nh">Cấu hình, triển khai và vận hành</h2>
+<p>Các nhóm cấu hình quan trọng:</p>
+<ul>
+<li>Tracking server: backend store URI, registry store URI, artifact root, artifacts destination, serve-artifacts mode, host, port, worker/server options.</li>
+<li>Security: allowed hosts, CORS/host protection, Flask và FastAPI security middleware, basic auth plugin entrypoint, request auth/header provider.</li>
+<li>Artifacts: S3, Azure Blob, GCS, DBFS, local filesystem, endpoint tương thích RustFS/MinIO.</li>
+<li>Gateway: gateway config path, dynamic endpoint, traffic route, rate limits storage URI, cách resolve API key từ env hoặc file.</li>
+<li>Observability: Prometheus exporter path, OpenTelemetry APIs, gateway timing headers, server health endpoint.</li>
+<li>Cleanup và retention: trace archival, cleanup run/artifact đã xóa, cron job template.</li>
+</ul>
+<p>Production nên dùng relational backend như Postgres hoặc MySQL cho metadata, object storage cho artifact, TLS tại ingress, allowed hosts được cấu hình, authentication rõ ràng và credential qua secret. SQLite và artifact local hữu ích cho thí nghiệm nhưng không phải thiết kế production.</p>
+<h2 id="observability-testing-evaluation-v-failure-modes">Observability, testing, evaluation và failure modes</h2>
+<p>Thư mục <code>tests/</code> phản chiếu hầu hết vùng package: tracking, store, server, gateway, GenAI, tracing, model flavor, integration, artifact, deployment và CLI. Bản thân source có hook observability: bật Prometheus exporter trong <code>mlflow/server/__init__.py</code>, OTEL API routing trong <code>fastapi_app.py</code>, gateway timing middleware, API trace metrics trong store và online scoring processor trong <code>mlflow/genai/scorers/online/</code>.</p>
+<p>Failure mode cần dự phòng:</p>
+<ul>
+<li><strong>Contention backend store</strong>: tracking và trace search concurrency cao có thể quá tải SQLite hoặc SQL database nhỏ.</li>
+<li><strong>Artifact inconsistency</strong>: metadata đã tồn tại nhưng object storage write lỗi, nhất là với S3 endpoint tùy biến.</li>
+<li><strong>Trace payload tăng lớn</strong>: prompt, tool output hoặc document dài làm tăng chi phí storage và UI fetch.</li>
+<li><strong>Gateway provider failure</strong>: latency provider, lỗi streaming, credential và rate limit phải được tách khỏi overhead của MLflow.</li>
+<li><strong>Evaluator không deterministic</strong>: LLM judge và metric bên thứ ba có thể drift theo version model.</li>
+<li><strong>Store capability mismatch</strong>: không phải store nào cũng hỗ trợ mọi tính năng mới về trace, prompt, workspace hoặc archival.</li>
+<li><strong>Sai cấu hình security</strong>: host header, CORS, auth và artifact serving có thể làm lộ tracking data nhạy cảm.</li>
+</ul>
+<h2 id="r-i-ro-b-o-m-t-v-qu-n-tr">Rủi ro bảo mật và quản trị</h2>
+<p>MLflow có thể lưu model artifact, dataset, prompt text, trace, tool input, generated output, provider credential và experiment metadata. Kiểm soát governance nên gồm authentication và authorization, artifact bucket tách biệt, store URI lấy từ secret, TLS, host allowlist, audit quanh model/prompt promotion, retention policy và phân biệt rõ local dev với tracking production dùng chung.</p>
+<p>Với GenAI, rủi ro dữ liệu lớn nhất là nội dung trace. Input, retrieved context, tool argument và model output có thể chứa dữ liệu khách hàng hoặc doanh nghiệp nhạy cảm. Team nên định nghĩa logging filter, retention window và access rule trước khi bật automatic tracing trong production.</p>
+<h2 id="h-ng-d-n-c">Hướng dẫn đọc</h2>
+<ol>
+<li>Đọc <code>README.md</code> để nắm phạm vi sản phẩm và quickstart.</li>
+<li>Đọc <code>pyproject.toml</code> để hiểu dependency, extra và entry point.</li>
+<li>Đọc <code>mlflow/server/__init__.py</code> và <code>mlflow/server/fastapi_app.py</code> để hiểu server architecture.</li>
+<li>Đọc <code>mlflow/store/tracking/abstract_store.py</code> trước khi đọc concrete store.</li>
+<li>Đọc <code>mlflow/tracking/client.py</code> và <code>mlflow/tracking/fluent.py</code> để hiểu API hướng người dùng.</li>
+<li>Đọc <code>mlflow/tracing/</code> và trace entities cho LLM observability.</li>
+<li>Đọc <code>mlflow/genai/</code> cho evaluation, scorer, judge, prompt, optimization và online scoring.</li>
+<li>Đọc <code>mlflow/gateway/app.py</code> và <code>mlflow/gateway/providers/</code> cho governance model-provider.</li>
+<li>Đọc <code>docker-compose/README.md</code> và <code>charts/README.md</code> cho tradeoff triển khai.</li>
+</ol>
+<h2 id="l-tr-nh-h-c">Lộ trình học</h2>
+<ol>
+<li>Bắt đầu với run cơ bản: parameter, metric, artifact.</li>
+<li>Thêm workflow model registry hoặc prompt registry.</li>
+<li>Thêm LLM tracing và xem trace được lưu/render như thế nào.</li>
+<li>Thêm scorer hoặc judge và log assessment vào trace.</li>
+<li>Thêm AI Gateway route và nghiên cứu provider routing cùng rate limit.</li>
+<li>Chuyển từ file/SQLite local sang server có SQL backend và object storage.</li>
+</ol>
+<h2 id="thu-t-ng">Thuật ngữ</h2>
+<ul>
+<li><strong>Backend store</strong>: database hoặc file store cho metadata MLflow.</li>
+<li><strong>Artifact store</strong>: vị trí lưu model file, run artifact và trace artifact lớn.</li>
+<li><strong>Flavor</strong>: quy ước đóng gói model theo framework.</li>
+<li><strong>Gateway route</strong>: path được cấu hình để forward model request đến provider hoặc traffic split.</li>
+<li><strong>Assessment</strong>: kết quả evaluation gắn vào trace hoặc span.</li>
+<li><strong>Scorer</strong>: evaluator tái sử dụng tạo metric hoặc label.</li>
+<li><strong>Judge</strong>: evaluator dùng LLM áp dụng rubric hoặc prompt.</li>
+<li><strong>Trace archival</strong>: chuyển trace payload ra khỏi primary store để kiểm soát retention và chi phí.</li>
+</ul>
+<h2 id="deep-dive-b-m-theo-repository">Deep Dive Bám Theo Repository</h2>
+<p>MLflow không phải một service boundary duy nhất; nó là tập hợp các subsystem tracking, registry, artifact, model packaging, gateway và GenAI tracing, có thể chạy local hoặc sau tracking server. Repository thể hiện các ranh giới này trong <code>github-repos/05-observability-evaluation-llmops/mlflow/mlflow/tracking/</code>, <code>mlflow/store/</code>, <code>mlflow/server/</code>, <code>mlflow/models/</code>, <code>mlflow/tracing/</code>, <code>mlflow/genai/</code>, <code>mlflow/gateway/</code> và <code>mlflow/evaluation/</code>. Tài sản deployment trong <code>docker/</code>, <code>docker-compose/</code> và <code>charts/</code> nên được đọc như ví dụ vận hành, không phải toàn bộ kiến trúc.</p>
+<div class="mermaid">flowchart LR
+  User[&quot;ML hoac GenAI application&quot;] --&gt; Fluent[&quot;fluent APIs va clients&quot;]
+  Fluent --&gt; Tracking[&quot;tracking service mlflow/tracking&quot;]
+  Tracking --&gt; BackendStore[&quot;backend store mlflow/store/tracking&quot;]
+  Tracking --&gt; ArtifactStore[&quot;artifact repositories mlflow/store/artifact&quot;]
+  Fluent --&gt; Models[&quot;model packaging mlflow/models va flavors&quot;]
+  Fluent --&gt; Tracing[&quot;GenAI tracing mlflow/tracing&quot;]
+  Tracing --&gt; Assess[&quot;assessments va scorers mlflow/genai&quot;]
+  Server[&quot;mlflow/server&quot;] --&gt; BackendStore
+  Server --&gt; ArtifactStore
+  UI[&quot;server JS UI&quot;] --&gt; Server</div>
+<p>Phân biệt vận hành cốt lõi là metadata và bulk artifacts. Run parameters, metrics, tags, model versions, prompt registry entries, trace indexes và assessments thuộc backend store. Model files, datasets, logs, media và trace attachments lớn thuộc artifact store. Nếu một thiết kế production không nêu rõ cả hai store và chính sách backup của chúng, thiết kế đó chưa đủ.</p>
+<div class="mermaid">sequenceDiagram
+  participant App as Training hoac LLM app
+  participant Client as MLflow client
+  participant Server as Tracking server
+  participant Meta as Backend store
+  participant Art as Artifact store
+  participant Eval as GenAI scorer hoac judge
+  App-&gt;&gt;Client: log run, model, prompt, hoac trace
+  Client-&gt;&gt;Server: REST tracking request
+  Server-&gt;&gt;Meta: write params, metrics, trace metadata
+  Server-&gt;&gt;Art: upload artifacts hoac trace attachments
+  App-&gt;&gt;Eval: evaluate output hoac trace
+  Eval-&gt;&gt;Client: log assessment
+  Client-&gt;&gt;Server: attach score vao run hoac trace</div>
+<div class="mermaid">flowchart TD
+  Risk[&quot;Rui ro production&quot;] --&gt; Store[&quot;backend store migration&quot;]
+  Risk --&gt; Artifact[&quot;artifact store permissions&quot;]
+  Risk --&gt; Gateway[&quot;AI Gateway route&quot;]
+  Risk --&gt; Trace[&quot;trace volume&quot;]
+  Risk --&gt; Flavor[&quot;model flavor dependency drift&quot;]
+  Risk --&gt; Judge[&quot;judge model cost va variance&quot;]
+  Store --&gt; S1[&quot;runs va registry metadata unavailable&quot;]
+  Artifact --&gt; A1[&quot;model load duoc metadata nhung khong lay duoc files&quot;]
+  Gateway --&gt; G1[&quot;provider key hoac rate limit failure&quot;]
+  Trace --&gt; T1[&quot;payload lon can archival policy&quot;]
+  Flavor --&gt; F1[&quot;logged model khong reproducible&quot;]
+  Judge --&gt; J1[&quot;evaluation score doi theo model version&quot;]</div>
+<h3 id="checklist-s-n-s-ng-production">Checklist Sẵn Sàng Production</h3>
+<ul>
+<li>Chỉ định backend store, artifact store, tracking server, registry policy và trace retention như các quyết định thiết kế riêng.</li>
+<li>Review <code>mlflow/store/db_migrations/</code> trước khi upgrade tracking server dùng SQL; validate migration trên bản sao metadata production.</li>
+<li>Test artifact access từ đúng runtime dùng để serve model. Metadata read thành công không chứng minh artifact credentials hợp lệ.</li>
+<li>Với GenAI tracing, review <code>mlflow/tracing/</code>, <code>mlflow/tracing/otel/translation/</code> và <code>mlflow/genai/</code> để quyết định governance cho traces, assessments và archived payloads.</li>
+<li>Nếu dùng AI Gateway, review <code>mlflow/gateway/config.py</code>, <code>provider_registry.py</code>, <code>providers/</code>, <code>budget.py</code> và <code>guardrails.py</code>; provider routing là boundary bảo mật và chi phí.</li>
+<li>Pin model flavors, environment files và dependency constraints cho quy trình promote model lên production.</li>
+<li>Monitor tracking API latency, backend DB saturation, artifact upload/download failures, trace ingestion volume, gateway provider errors và judge/evaluator spend.</li>
+</ul>
+<h3 id="h-ng-d-n-c-cho-senior-architect">Hướng Dẫn Đọc Cho Senior Architect</h3>
+<p>Bắt đầu với <code>mlflow/tracking/</code> và <code>mlflow/server/</code> để hiểu API và server shape. Sau đó đọc <code>mlflow/store/</code> để tách backend metadata store khỏi artifact repositories. Tiếp theo đọc <code>mlflow/models/</code> và các flavor package liên quan cho model packaging. Chỉ sau đó mới đọc <code>mlflow/tracing/</code>, <code>mlflow/genai/</code>, <code>mlflow/evaluation/</code> và <code>mlflow/gateway/</code> để hiểu các tính năng LLMOps hiện đại nằm trên tracking substrate. Kết thúc bằng <code>charts/</code>, <code>docker/</code> và <code>tests/</code> để nối hành vi source với deployment và compatibility checks.</p>
+<h3 id="k-ch-b-n-v-n-h-nh-c-n-di-n-t-p">Kịch Bản Vận Hành Cần Diễn Tập</h3>
+<p>Hãy validate MLflow bằng workflow đi qua nhiều subsystem. Log một run có parameters, metrics, model artifact và dataset, rồi restore từ runtime khác để chứng minh backend store và artifact store đều hoạt động. Log một GenAI trace có attachments và assessments, rồi test archival và search behavior dưới retention limit. Route một gateway request qua ít nhất hai providers với budget controls bật, sau đó quan sát provider errors, guardrails và tracking records xuất hiện như thế nào trong cùng operational view.</p>
+<h3 id="d-u-hi-u-c-n-review-l-i-ki-n-tr-c">Dấu Hiệu Cần Review Lại Kiến Trúc</h3>
+<p>Cần review lại kiến trúc MLflow nếu team chỉ nói &quot;tracking server&quot; mà không chỉ rõ backend store, artifact store, registry policy và trace retention. Một rủi ro phổ biến là model metadata có thể đọc được nhưng artifact không tải được ở runtime phục vụ; rủi ro khác là GenAI trace tăng nhanh hơn chính sách archival. Với Gateway, mọi thay đổi provider, budget, guardrail hoặc route cần được xem như thay đổi production control plane, vì nó ảnh hưởng bảo mật, chi phí và khả năng tái hiện request.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

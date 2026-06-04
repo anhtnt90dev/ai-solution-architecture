@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Phoenix Architecture Notes | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/05-observability-evaluation-llmops/phoenix/README.en.md">View source</a>
+      <h1 id="phoenix-architecture-notes">Phoenix Architecture Notes</h1>
+<h2 id="executive-summary">Executive summary</h2>
+<p>Phoenix is an open source AI observability and evaluation platform from Arize. The repository describes Phoenix as a platform for tracing, evaluation, datasets, experiments, playground prompt iteration, and prompt management. The implementation is a mixed Python and TypeScript product: <code>src/phoenix/</code> contains the server, tracing, database, datasets, sessions, metrics, and utilities; <code>app/</code> and frontend assets provide the web UI; <code>packages/</code> contains Python subpackages such as <code>phoenix-client</code>, <code>phoenix-evals</code>, and <code>phoenix-otel</code>; <code>js/packages/</code> contains TypeScript packages such as <code>phoenix-otel</code>, <code>phoenix-client</code>, <code>phoenix-evals</code>, <code>phoenix-mcp</code>, and <code>phoenix-cli</code>.</p>
+<p>The root <code>pyproject.toml</code> identifies the package as <code>arize-phoenix</code>, licensed under Elastic-2.0, requiring Python <code>&gt;=3.10,&lt;3.15</code>, and depending on FastAPI, Starlette, Uvicorn, Strawberry GraphQL, SQLAlchemy async, Alembic, OpenTelemetry, OpenInference semantic conventions, gRPC, Prometheus, Authlib, LDAP, and Phoenix client/eval/OTel packages. The main server can run locally, in notebooks, in containers, or in Kubernetes. The included Docker, Compose, Helm, and Kustomize files make the intended topology clear: Phoenix web/API on port <code>6006</code>, OTLP gRPC ingestion on port <code>4317</code>, and SQLite or PostgreSQL persistence.</p>
+<h2 id="problem-solved">Problem solved</h2>
+<p>Phoenix solves the AI debugging loop around traces, evaluations, and experiments. For LLM and agent systems, generic APM often captures latency but not prompt variables, retrieval documents, token/cost details, tool calls, evaluator labels, dataset examples, or experiment lineage. Phoenix receives OpenTelemetry/OpenInference spans, stores them in an AI-aware schema, exposes trace and span analysis in the UI, and connects that telemetry to datasets, experiments, playground runs, code evaluators, LLM-as-judge evaluators, and prompt versions.</p>
+<h2 id="ai-stack-role">AI stack role</h2>
+<p>Phoenix is an observability and evaluation workbench in the AI stack:</p>
+<ul>
+<li>It receives telemetry from applications, agents, RAG systems, model providers, and OpenInference instrumentations.</li>
+<li>It provides a workspace for debugging traces, comparing experiments, authoring evaluators, and iterating prompts.</li>
+<li>It can be used as a local development tool, notebook companion, self-hosted production service, or managed cloud service.</li>
+<li>Its Python and TypeScript client packages make it useful both to application developers and to automated coding agents through <code>phoenix-mcp</code> and <code>phoenix-cli</code>.</li>
+</ul>
+<h2 id="source-tree-map">Source tree map</h2>
+<p>Repository evidence:</p>
+<ul>
+<li><code>README.md</code> describes Phoenix features: OpenTelemetry-based tracing, LLM evaluation, versioned datasets, experiments, playground, prompt management, provider/framework integrations, and coding-agent skills.</li>
+<li><code>pyproject.toml</code> defines <code>arize-phoenix</code>, dependencies, script entrypoints <code>arize-phoenix</code> and <code>phoenix</code>, optional deployment extras, and dev dependencies.</li>
+<li><code>src/phoenix/server/app.py</code> composes FastAPI, Strawberry GraphQL, gRPC, authentication, data loaders, database facilitators, background daemons, redaction, encryption, telemetry, fixture loading, and static UI serving.</li>
+<li><code>src/phoenix/server/api/routers/</code> contains REST routers, with <code>v1</code> as the visible API version directory.</li>
+<li><code>src/phoenix/server/grpc_server.py</code> provides the OTLP gRPC ingest server.</li>
+<li><code>src/phoenix/db/</code> contains async database models, Alembic migrations, bulk insertion, facilitator logic, and optional AWS RDS IAM authentication.</li>
+<li><code>src/phoenix/trace/</code> contains span schemas, OpenTelemetry attribute flattening/unflattening, span JSON encode/decode, trace datasets, fixtures, projects, and evaluations.</li>
+<li><code>packages/phoenix-otel/</code> provides the Python Phoenix-aware OpenTelemetry wrapper.</li>
+<li><code>packages/phoenix-client/</code> provides the Python client and resources for traces, spans, sessions, datasets, and experiments.</li>
+<li><code>packages/phoenix-evals/</code> provides Python LLM evaluation templates, adapters, wrappers, generated classification evaluator configs, and evaluator tests.</li>
+<li><code>js/packages/phoenix-mcp/</code> exposes Phoenix data and operations to coding agents through MCP tools for traces, spans, datasets, experiments, prompts, projects, sessions, and annotation configs.</li>
+<li><code>Dockerfile</code> exposes <code>6006</code> and <code>4317</code>, and includes WASM sandbox setup.</li>
+<li><code>docker-compose.yml</code> runs Phoenix plus Postgres, setting <code>PHOENIX_SQL_DATABASE_URL</code>.</li>
+<li><code>helm/</code> and <code>kustomize/</code> provide Kubernetes deployment paths with auth, persistence, PostgreSQL, health checks, Prometheus annotations, TLS, and OTLP instrumentation settings.</li>
+</ul>
+<h2 id="core-concepts">Core concepts</h2>
+<ul>
+<li><strong>OpenInference span</strong>: OpenTelemetry span decorated with AI-specific semantic conventions for LLM calls, retrieval, tools, documents, prompts, costs, and errors.</li>
+<li><strong>Project</strong>: namespace for traces and related telemetry.</li>
+<li><strong>Trace and span</strong>: execution graph of an LLM application or agent workflow.</li>
+<li><strong>Dataset</strong>: versioned set of examples used for evaluation, experimentation, or fine-tuning.</li>
+<li><strong>Experiment</strong>: run of a task, prompt, model, or agent over dataset examples, with output and evaluator annotations.</li>
+<li><strong>Evaluation</strong>: LLM-as-judge, code evaluator, classification metric, or retrieval/response quality signal.</li>
+<li><strong>Playground</strong>: prompt and model experimentation surface that can replay or compare traced calls.</li>
+<li><strong>Prompt version</strong>: managed prompt state used for systematic iteration and comparison.</li>
+</ul>
+<h2 id="internal-architecture">Internal architecture</h2>
+<div class="mermaid">graph TB
+  Apps[AI apps and OpenInference instrumentations] --&gt; OTLP[OTLP gRPC and HTTP ingestion]
+  SDK[Python and TypeScript Phoenix clients] --&gt; REST[FastAPI REST API]
+  Browser[Web UI] --&gt; GQL[Strawberry GraphQL]
+  Browser --&gt; REST
+  OTLP --&gt; Decode[decode_otlp_span and trace schemas]
+  Decode --&gt; Bulk[BulkInserter and Facilitator]
+  REST --&gt; DBSession[Async SQLAlchemy sessions]
+  GQL --&gt; Loaders[GraphQL DataLoaders]
+  Loaders --&gt; DBSession
+  Bulk --&gt; DB[(SQLite or PostgreSQL)]
+  DBSession --&gt; DB
+  Daemons[Experiment runner, sweepers, cost calculator, disk monitor] --&gt; DB
+  Packages[phoenix-evals and phoenix-client] --&gt; REST
+  MCP[phoenix-mcp and phoenix-cli] --&gt; REST</div>
+<p><code>src/phoenix/server/app.py</code> is the architectural hub. It imports FastAPI, GraphQL router support, gRPC interceptors, data loaders, <code>BulkInserter</code>, <code>Facilitator</code>, <code>GrpcServer</code>, <code>DbDiskUsageMonitor</code>, <code>ExperimentRunner</code>, <code>ExperimentSweeper</code>, <code>GenerativeModelStore</code>, <code>SpanCostCalculator</code>, <code>TraceDataSweeper</code>, authentication backends, redaction, encryption, sandbox session management, and OpenTelemetry server instrumentation. This is not a thin API wrapper; it is the composition root for the product.</p>
+<p>The database layer is asynchronous and migration-aware. <code>src/phoenix/db/alembic.ini</code> and <code>src/phoenix/db/migrations/</code> indicate schema migration discipline. <code>src/phoenix/db/aws_auth.py</code> shows cloud-specific database authentication support. Phoenix can use local SQLite for light deployments or PostgreSQL for durable multi-user/self-host deployments.</p>
+<p>The trace layer is deliberately OpenTelemetry-aligned. <code>src/phoenix/trace/attributes.py</code> documents flattening and unflattening OTEL attributes while preserving nested structures, and <code>src/phoenix/trace/schemas.py</code> defines span data structures inspired by OpenTelemetry.</p>
+<h2 id="runtime-and-data-flow">Runtime and data flow</h2>
+<div class="mermaid">sequenceDiagram
+  participant App as Instrumented AI app
+  participant OTel as OpenInference or Phoenix OTel SDK
+  participant GRPC as Phoenix OTLP gRPC 4317
+  participant Server as Phoenix server 6006
+  participant DB as SQLite or PostgreSQL
+  participant UI as Phoenix UI
+  participant Eval as phoenix-evals or code evaluator
+
+  App-&gt;&gt;OTel: Create spans with AI semantic attributes
+  OTel-&gt;&gt;GRPC: Export OTLP spans
+  GRPC-&gt;&gt;Server: Decode and enqueue span insertion
+  Server-&gt;&gt;DB: Bulk insert traces, spans, costs, annotations
+  UI-&gt;&gt;Server: Query GraphQL and REST resources
+  Server-&gt;&gt;DB: Load traces, datasets, prompts, experiments
+  Eval-&gt;&gt;Server: Submit annotations or experiment results
+  UI-&gt;&gt;Server: Compare traces, datasets, prompt variants</div>
+<p>The ingestion path is optimized for observability payloads rather than generic metrics. Phoenix receives OpenTelemetry spans, decodes them into Phoenix trace models, inserts them through the database facilitator/bulk inserter, then exposes them through GraphQL dataloaders and REST resources. Evaluation and experiment workflows can originate from the UI, client packages, or agent tooling; their results land back in the database as annotations, experiment runs, or evaluator outputs.</p>
+<h2 id="deployment-and-operations-topology">Deployment and operations topology</h2>
+<div class="mermaid">graph LR
+  subgraph Sources
+    Py[Python apps]
+    TS[TypeScript apps]
+    Agents[Coding agents]
+  end
+  subgraph PhoenixPod
+    Server[Phoenix web and API port 6006]
+    Collector[OTLP gRPC port 4317]
+    Sandbox[Optional evaluator sandbox]
+  end
+  subgraph Persistence
+    SQLite[(SQLite volume)]
+    PG[(PostgreSQL)]
+  end
+  subgraph Ops
+    Prom[Prometheus scrape]
+    OTelCollector[External OTLP collector]
+    SMTP[SMTP]
+    IdP[OAuth2 OIDC or LDAP]
+  end
+  Py --&gt; Collector
+  TS --&gt; Collector
+  Agents --&gt; Server
+  Server --&gt; SQLite
+  Server --&gt; PG
+  Collector --&gt; Server
+  Server --&gt; Prom
+  Server --&gt; OTelCollector
+  Server --&gt; SMTP
+  Server --&gt; IdP
+  Sandbox --&gt; Server</div>
+<p>The simplest Compose topology runs <code>phoenix</code> and <code>db</code>, maps <code>6006:6006</code> and <code>4317:4317</code>, and sets <code>PHOENIX_SQL_DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres</code>. Kubernetes options are more mature: <code>helm/README.md</code> and <code>helm/values.yaml</code> expose authentication, CORS, CSRF trusted origins, brute-force login protection, OAuth2/OIDC, LDAP, PostgreSQL settings, read replicas, retention policy, health checks, server host/port/root URL, <code>PHOENIX_MAX_SPANS_QUEUE_SIZE</code>, OTLP instrumentation export endpoints, SMTP, TLS, and sandbox provider allowlists. <code>kustomize/base/phoenix.yaml</code> includes Prometheus scrape annotations and readiness probes.</p>
+<h2 id="lifecycle-and-decision-diagram">Lifecycle and decision diagram</h2>
+<div class="mermaid">stateDiagram-v2
+  [*] --&gt; Capture
+  Capture --&gt; StoreTrace
+  StoreTrace --&gt; Inspect
+  Inspect --&gt; DatasetDecision
+  DatasetDecision --&gt; AddToDataset: useful example
+  DatasetDecision --&gt; DebugOnly: one-off issue
+  AddToDataset --&gt; RunExperiment
+  RunExperiment --&gt; Evaluate
+  Evaluate --&gt; Compare
+  Compare --&gt; PromotePrompt: quality improved
+  Compare --&gt; RevisePrompt: regression found
+  PromotePrompt --&gt; Capture
+  RevisePrompt --&gt; RunExperiment
+  DebugOnly --&gt; [*]</div>
+<p>Phoenix is strongest when traces are not the end of the workflow. A production trace can become a dataset example, a dataset can drive experiments, an experiment can be scored by evaluators, and scored outputs can guide prompt or model changes. The repo reflects that loop through <code>src/phoenix/trace/</code>, <code>src/phoenix/datasets/</code>, GraphQL dataloaders for experiment and dataset state, and <code>packages/phoenix-evals/</code>.</p>
+<h2 id="extension-points">Extension points</h2>
+<ul>
+<li>Add REST resources under <code>src/phoenix/server/api/routers/v1/</code> and register them through router creation.</li>
+<li>Add GraphQL fields, mutations, or dataloaders through <code>src/phoenix/server/api/schema.py</code>, <code>context.py</code>, and dataloader modules.</li>
+<li>Add trace parsing or semantic handling in <code>src/phoenix/trace/</code>.</li>
+<li>Add database models or migrations under <code>src/phoenix/db/</code>.</li>
+<li>Add Python client resources in <code>packages/phoenix-client/src/phoenix/client/</code>.</li>
+<li>Add evaluation templates, adapters, metrics, or generated config support in <code>packages/phoenix-evals/src/phoenix/evals/</code>.</li>
+<li>Add TypeScript client/eval/OTel behavior in <code>js/packages/</code>.</li>
+<li>Add coding-agent integration tools in <code>js/packages/phoenix-mcp/src/</code>.</li>
+<li>Add deployment knobs in <code>helm/values.yaml</code>, Helm templates, or Kustomize overlays.</li>
+</ul>
+<h2 id="integrations">Integrations</h2>
+<p>The README lists broad framework and provider support through OpenInference: OpenAI Agents SDK, Claude Agent SDK, LangGraph, Vercel AI SDK, Mastra, CrewAI, LlamaIndex, DSPy, OpenAI, Anthropic, Google GenAI, Google ADK, Bedrock, OpenRouter, LiteLLM, and more. Phoenix also provides Python subpackages for OTel, client, and evals; TypeScript packages for OTel, client, evals, MCP, and CLI; and coding-agent skills in <code>.agents/skills/</code>.</p>
+<p>The package design shows a deliberate split: the server owns storage and UI, <code>phoenix-otel</code> owns instrumentation defaults, <code>phoenix-client</code> owns API interaction, <code>phoenix-evals</code> owns metric execution, and <code>phoenix-mcp</code>/<code>phoenix-cli</code> expose Phoenix data to agent workflows.</p>
+<h2 id="configuration-deployment-and-operations">Configuration, deployment, and operations</h2>
+<p>Important configuration families:</p>
+<ul>
+<li>Server: <code>PHOENIX_HOST</code>, <code>PHOENIX_PORT</code>, <code>PHOENIX_GRPC_PORT</code>, <code>PHOENIX_ROOT_URL</code>, <code>PHOENIX_WORKING_DIR</code>, <code>PHOENIX_MAX_SPANS_QUEUE_SIZE</code>, <code>PHOENIX_TELEMETRY_ENABLED</code>.</li>
+<li>Database: <code>PHOENIX_SQL_DATABASE_URL</code>, Postgres host/user/password/db/schema, read replica URL, AWS RDS IAM, Azure managed identity.</li>
+<li>Auth: <code>PHOENIX_ENABLE_AUTH</code>, <code>PHOENIX_SECRET</code>, admin secrets, OAuth2/OIDC providers, LDAP settings, password policy, CSRF trusted origins, allowed CORS origins.</li>
+<li>Retention and safety: default trace retention days, database usage blocking thresholds, redaction, encryption, TLS.</li>
+<li>Evaluation sandbox: WASM, E2B, Daytona, Vercel, Deno, Modal allowlists and provider credentials.</li>
+<li>Instrumentation: server OTLP collector endpoints for exporting Phoenix&#x27;s own telemetry.</li>
+</ul>
+<p>Operationally, the highest-risk capacity setting is <code>PHOENIX_MAX_SPANS_QUEUE_SIZE</code>; Helm notes that queued spans consume memory and should be sized against database throughput. Watch database disk usage, migration status, span queue rejections, experiment runner health, sandbox availability, and auth configuration drift.</p>
+<h2 id="observability-testing-evaluation-and-failure-modes">Observability, testing, evaluation, and failure modes</h2>
+<p>Phoenix includes unit, integration, and package tests across <code>tests/</code>, <code>packages/phoenix-client/tests/</code>, <code>packages/phoenix-evals/tests/</code>, and <code>js/packages/*/test/</code>. Test names cover client resources for traces/spans/sessions/datasets/experiments, evaluator prompts and adapters, rate limiters, concurrency controllers, OTel registration, MCP trace/span/project/dataset utilities, and ATIF trajectory conversion.</p>
+<p>Failure modes to design for:</p>
+<ul>
+<li><strong>Span overload</strong>: OTLP ingestion can exceed database write throughput, filling the in-memory span queue and causing rejections.</li>
+<li><strong>Database pressure</strong>: SQLite is convenient but unsuitable for shared high-concurrency production; Postgres should be used for durable deployments.</li>
+<li><strong>Migration mismatch</strong>: server version and database schema must advance together.</li>
+<li><strong>Evaluator sandbox risk</strong>: code evaluators and agent tools require sandbox controls, provider allowlists, and resource limits.</li>
+<li><strong>Provider credential exposure</strong>: playground and evaluators can call external LLM providers; secrets need encryption and strict admin controls.</li>
+<li><strong>Trace data sensitivity</strong>: prompts, documents, tool arguments, and outputs can include PII or secrets.</li>
+<li><strong>Auth misconfiguration</strong>: disabling auth or weak default admin credentials is acceptable only in isolated local development.</li>
+</ul>
+<h2 id="security-and-governance-risks">Security and governance risks</h2>
+<p>Phoenix stores AI telemetry, evaluator outputs, prompt versions, dataset examples, annotations, and provider configuration. Security controls should include authentication in shared environments, SSO/OIDC or LDAP where appropriate, strong <code>PHOENIX_SECRET</code>, TLS for HTTP and gRPC, database network isolation, encrypted secrets, redaction rules, trace retention, least-privilege database credentials, and sandbox restrictions for code evaluators.</p>
+<p>Governance teams should treat datasets and experiments as quality records. If evaluator definitions change, results should be interpreted by evaluator version. If prompt versions are promoted from playground work, teams should preserve trace links and experiment evidence.</p>
+<h2 id="reading-guide">Reading guide</h2>
+<ol>
+<li>Read <code>README.md</code> for the product workflow and integrations.</li>
+<li>Read <code>pyproject.toml</code> for dependencies, package entrypoints, and optional extras.</li>
+<li>Read <code>src/phoenix/server/app.py</code> to understand the application composition root.</li>
+<li>Read <code>src/phoenix/trace/attributes.py</code>, <code>schemas.py</code>, and <code>trace_dataset.py</code> for trace representation.</li>
+<li>Read <code>src/phoenix/db/</code>, especially models, migrations, bulk inserter, and facilitator.</li>
+<li>Read <code>packages/phoenix-otel/</code>, <code>packages/phoenix-client/</code>, and <code>packages/phoenix-evals/</code> for external SDK roles.</li>
+<li>Read <code>helm/README.md</code>, <code>helm/values.yaml</code>, and <code>kustomize/base/phoenix.yaml</code> for production configuration.</li>
+<li>Use tests in <code>packages/</code> and <code>js/packages/</code> to understand edge cases.</li>
+</ol>
+<h2 id="learning-path">Learning path</h2>
+<ol>
+<li>Start a mental trace from OpenInference instrumentation to OTLP gRPC ingestion.</li>
+<li>Follow how a span becomes a database record and then a GraphQL UI query.</li>
+<li>Learn dataset and experiment concepts from README, <code>src/phoenix/datasets/</code>, and dataloaders.</li>
+<li>Study <code>packages/phoenix-evals</code> to understand LLM judge and classification evaluator construction.</li>
+<li>Study <code>js/packages/phoenix-mcp</code> if you want Phoenix data available to coding agents.</li>
+<li>Review Helm security settings before using Phoenix outside a local environment.</li>
+</ol>
+<h2 id="glossary">Glossary</h2>
+<ul>
+<li><strong>OpenInference</strong>: AI-focused semantic conventions and instrumentation built on OpenTelemetry.</li>
+<li><strong>OTLP</strong>: OpenTelemetry Protocol used for span ingestion.</li>
+<li><strong>Strawberry GraphQL</strong>: Python GraphQL framework used by the Phoenix API/UI layer.</li>
+<li><strong>DataLoader</strong>: batching and caching helper for efficient GraphQL reads.</li>
+<li><strong>Evaluator</strong>: function, model judge, or classification metric that scores outputs.</li>
+<li><strong>Sandbox</strong>: isolated runtime for code evaluator execution.</li>
+<li><strong>Prompt version</strong>: immutable or versioned prompt state for comparison and release.</li>
+<li><strong>ATIF</strong>: agent trajectory interchange fixture format used in Phoenix client tests.</li>
+</ul>
+<h2 id="repository-grounded-deep-dive">Repository-Grounded Deep Dive</h2>
+<p>Phoenix is best understood as an OpenTelemetry-native LLMOps application with a Python server, a TypeScript UI, and separate evaluator/client packages. The core runtime lives under <code>github-repos/05-observability-evaluation-llmops/phoenix/src/phoenix/</code>, with important boundaries in <code>server/</code>, <code>trace/</code>, <code>db/</code>, <code>datasets/</code>, and <code>metrics/</code>. The UI is under <code>app/src/</code>. Evaluator packages live in <code>packages/phoenix-evals/</code> and JavaScript client/OTEL packages live under <code>js/packages/phoenix-client/</code> and <code>js/packages/phoenix-otel/</code>. Deployment examples are visible in <code>kustomize/</code>, <code>helm/</code>, and <code>scripts/docker/devops/</code>.</p>
+<div class="mermaid">flowchart LR
+  App[&quot;LLM app with OpenInference instrumentation&quot;] --&gt; OTLP[&quot;OTLP HTTP or gRPC ingestion&quot;]
+  OTLP --&gt; Server[&quot;Phoenix server src/phoenix/server&quot;]
+  Server --&gt; Trace[&quot;trace normalization src/phoenix/trace&quot;]
+  Trace --&gt; DB[&quot;database layer src/phoenix/db&quot;]
+  DB --&gt; GraphQL[&quot;GraphQL resolvers and dataloaders&quot;]
+  GraphQL --&gt; UI[&quot;React UI app/src&quot;]
+  DB --&gt; Datasets[&quot;datasets and experiments&quot;]
+  EvalPkg[&quot;packages/phoenix-evals&quot;] --&gt; Datasets
+  ClientPkg[&quot;js/packages/phoenix-client&quot;] --&gt; Server</div>
+<p>The architectural split matters because Phoenix is both an ingestion system and an analysis workbench. OTLP/OpenInference spans are the raw evidence. GraphQL and DataLoader logic shape that evidence for UI exploration. Datasets, experiments, annotations, prompt versions, and evaluators convert observations into regression assets. If the team only monitors span ingestion, it can miss the health of experiment comparison, evaluator execution, prompt release, or dataset mutation paths.</p>
+<div class="mermaid">sequenceDiagram
+  participant Inst as Instrumented app
+  participant OTLP as Phoenix OTLP endpoint
+  participant Srv as Phoenix server
+  participant DB as DB session and migrations
+  participant UI as GraphQL UI
+  participant Eval as Evaluator package
+  Inst-&gt;&gt;OTLP: export spans with OpenInference attributes
+  OTLP-&gt;&gt;Srv: parse and normalize spans
+  Srv-&gt;&gt;DB: persist traces, spans, annotations
+  UI-&gt;&gt;DB: batched GraphQL reads through dataloaders
+  UI-&gt;&gt;Eval: request experiment or evaluator workflow
+  Eval-&gt;&gt;Srv: submit scores or experiment results
+  Srv-&gt;&gt;DB: attach evaluations to datasets or spans</div>
+<div class="mermaid">flowchart TD
+  Risk[&quot;Operational risk&quot;] --&gt; Ingest[&quot;OTLP schema mismatch&quot;]
+  Risk --&gt; DB[&quot;database migration drift&quot;]
+  Risk --&gt; Eval[&quot;LLM judge nondeterminism&quot;]
+  Risk --&gt; Sandbox[&quot;code evaluator sandbox&quot;]
+  Risk --&gt; UI[&quot;GraphQL hot query&quot;]
+  Risk --&gt; Auth[&quot;auth and reverse proxy&quot;]
+  Ingest --&gt; I1[&quot;span attributes fail downstream filters&quot;]
+  DB --&gt; D1[&quot;experiments or annotations cannot load&quot;]
+  Eval --&gt; E1[&quot;score distributions shift after prompt/model change&quot;]
+  Sandbox --&gt; S1[&quot;untrusted code needs isolation and limits&quot;]
+  UI --&gt; U1[&quot;dataloader batching hides expensive access pattern&quot;]
+  Auth --&gt; A1[&quot;headers or base path break behind proxy&quot;]</div>
+<h3 id="production-readiness-checklist">Production Readiness Checklist</h3>
+<ul>
+<li>Treat OpenInference attributes as contract. Before broad rollout, send representative spans and verify trace tree, token/cost fields, tool spans, retrieval spans, and annotations render correctly.</li>
+<li>Run database migrations and schema generation checks before deployment; <code>src/phoenix/db/</code>, <code>scripts/ddl/</code>, and <code>schemas/openapi.json</code> are part of the operational contract.</li>
+<li>Load test GraphQL views with realistic trace sizes. UI performance depends on resolver and DataLoader behavior, not only database indexes.</li>
+<li>For evaluator workflows, pin judge prompts, judge models, concurrency limits, and retry policies. Use <code>packages/phoenix-evals/tests/</code> as a guide for evaluator edge cases.</li>
+<li>Review sandbox and code-evaluator settings before allowing user-authored evaluators in shared environments.</li>
+<li>Verify reverse proxy, base URL, auth, and TLS behavior using the examples in <code>examples/reverse-proxy/</code>, <code>scripts/docker/devops/</code>, <code>kustomize/</code>, and <code>helm/</code>.</li>
+<li>Include datasets, experiments, prompt versions, annotations, and traces in backup and restore tests.</li>
+</ul>
+<h3 id="senior-architect-reading-path">Senior Architect Reading Path</h3>
+<p>Read <code>src/phoenix/server/</code> first to understand ingestion and API boundaries. Then read <code>src/phoenix/trace/</code> and <code>src/phoenix/db/</code> to see how spans become queryable records. Move to <code>app/src/</code> for the UI concepts, especially trace and experiment screens. Finally, inspect <code>packages/phoenix-evals/</code>, <code>packages/phoenix-otel/</code>, <code>js/packages/phoenix-client/</code>, and the deployment manifests. This order keeps telemetry, persistence, product workflow, SDK behavior, and operations separate.</p>
+<h3 id="operational-scenarios-to-rehearse">Operational Scenarios to Rehearse</h3>
+<p>Run one scenario for each Phoenix plane. For ingestion, export traces from a framework integration and confirm OpenInference attributes survive OTLP parsing, persistence, GraphQL reads, and UI rendering. For evaluation, create a dataset, run an experiment with a pinned evaluator, and verify that annotations and scores remain comparable after a server restart. For operations, place Phoenix behind the reverse-proxy examples, then check base URL handling, auth headers, TLS termination, and large trace pagination.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MLflow Architecture Notes | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/05-observability-evaluation-llmops/mlflow/README.en.md">View source</a>
+      <h1 id="mlflow-architecture-notes">MLflow Architecture Notes</h1>
+<h2 id="executive-summary">Executive summary</h2>
+<p>MLflow is a broad AI engineering platform for agents, LLM applications, and traditional ML models. The README positions it as a platform for debugging, evaluation, monitoring, prompt management, prompt optimization, AI Gateway governance, experiment tracking, model registry, and deployment. The repository is correspondingly large: <code>mlflow/</code> contains the Python package, <code>docs/</code> contains documentation, <code>examples/</code> demonstrates workflows, <code>tests/</code> mirrors the package structure, <code>charts/</code> provides Kubernetes deployment, and <code>docker-compose/</code> provides a local Postgres plus S3-compatible artifact store setup.</p>
+<p>The root <code>pyproject.toml</code> identifies version <code>3.13.1.dev0</code>, Python <code>&gt;=3.10</code>, and dependencies including Flask, FastAPI, SQLAlchemy, Alembic, OpenTelemetry, Huey, Databricks SDK, Docker, Graphene, Pydantic, Uvicorn, and many integration libraries. MLflow is not a single-purpose observability tool. It is a platform with a tracking server, artifact stores, model registry, prompt registry, tracing APIs, GenAI evaluation, scorers, judges, gateway routing, deployment providers, and a React UI served by the Python server.</p>
+<h2 id="problem-solved">Problem solved</h2>
+<p>MLflow solves lifecycle fragmentation. AI teams need to track runs and metrics, store artifacts, manage models, inspect LLM traces, compare prompts, evaluate agent quality, govern model-provider access, and deploy assets. Without a platform, these concerns scatter across notebooks, object stores, model APIs, APM tools, spreadsheets, and custom dashboards. MLflow provides a common tracking API, server, storage model, UI, and extension system that spans classic ML and modern GenAI workflows.</p>
+<h2 id="ai-stack-role">AI stack role</h2>
+<p>In an AI solution architecture, MLflow can play several roles:</p>
+<ul>
+<li><strong>Experiment system of record</strong> for parameters, metrics, tags, artifacts, datasets, and runs.</li>
+<li><strong>Model and prompt registry</strong> for lifecycle, versioning, aliases, lineage, and promotion.</li>
+<li><strong>LLM tracing backend</strong> for OpenTelemetry-compatible traces, spans, assessments, sessions, and trace metrics.</li>
+<li><strong>Evaluation platform</strong> through <code>mlflow.genai.evaluation</code>, built-in scorers, third-party scorer integrations, and judges.</li>
+<li><strong>Gateway</strong> for provider routing, rate limits, traffic splitting, credential indirection, guardrails, and OpenAI-compatible style access.</li>
+<li><strong>Deployment bridge</strong> to cloud and serving systems through deployment and model flavor integrations.</li>
+</ul>
+<h2 id="source-tree-map">Source tree map</h2>
+<p>Repository evidence:</p>
+<ul>
+<li><code>README.md</code> describes MLflow for agents, LLMs, and ML models, with observability, evaluation, prompt management, prompt optimization, AI Gateway, tracking, model registry, and deployment.</li>
+<li><code>pyproject.toml</code> defines package metadata, dependencies, optional extras, CLI entrypoint <code>mlflow = &quot;mlflow.cli:cli&quot;</code>, and entry points for <code>mlflow.app</code>, <code>mlflow.app.client</code>, and <code>mlflow.deployments</code>.</li>
+<li><code>mlflow/server/__init__.py</code> creates the Flask app, initializes security middleware, registers handler endpoints, serves UI assets, exposes health/version endpoints, serves artifacts, exposes trace artifacts, and optionally activates Prometheus exporter.</li>
+<li><code>mlflow/server/fastapi_app.py</code> wraps the Flask app in FastAPI, adds FastAPI security, workspace middleware, gateway timing middleware, OTEL API router, job API router, gateway router, assistant router, then mounts Flask at root for compatibility.</li>
+<li><code>mlflow/gateway/app.py</code> defines <code>GatewayAPI</code>, dynamic endpoints, traffic routes, rate limits, provider lookup, chat/completions/embeddings handlers, config loading from path or environment, and Swagger support.</li>
+<li><code>mlflow/store/tracking/abstract_store.py</code> defines the tracking store contract for experiments, runs, traces, trace archival, sessions, assessments, prompts, datasets, and trace metrics.</li>
+<li><code>mlflow/store/tracking/sqlalchemy_store.py</code>, <code>file_store.py</code>, and <code>rest_store.py</code> implement store backends.</li>
+<li><code>mlflow/tracking/client.py</code> defines <code>MlflowClient</code>, while <code>mlflow/tracking/fluent.py</code> provides the user-facing fluent API.</li>
+<li><code>mlflow/tracing/</code>, <code>mlflow/entities/span.py</code>, and trace entity modules represent tracing concepts.</li>
+<li><code>mlflow/genai/</code> contains evaluation, scorers, judges, datasets, prompts, prompt optimization, discovery, scheduled scorers, and online scoring processors.</li>
+<li><code>mlflow/genai/scorers/</code> includes built-ins plus integrations with Phoenix, Ragas, Deepeval, TruLens, Google ADK, guardrails, and online trace/session processors.</li>
+<li><code>mlflow/gateway/providers/</code> contains provider implementations for OpenAI, Anthropic, Bedrock, Databricks, Gemini, Groq, Hugging Face, LiteLLM, Mistral, Ollama, OpenRouter, Together AI, Vertex AI, and others.</li>
+<li><code>docker-compose/docker-compose.yml</code> runs local MLflow with Postgres and RustFS S3-compatible storage.</li>
+<li><code>charts/</code> contains Helm templates and values for Kubernetes, backend store URI, artifact destination, Prometheus exposure, TLS, and cleanup cron jobs.</li>
+</ul>
+<h2 id="core-concepts">Core concepts</h2>
+<ul>
+<li><strong>Experiment</strong>: logical namespace for runs and traces.</li>
+<li><strong>Run</strong>: execution record with parameters, metrics, tags, artifacts, datasets, and models.</li>
+<li><strong>Artifact</strong>: file or object stored under a run or model version; can be local, S3, Azure Blob, GCS, DBFS, or another supported store.</li>
+<li><strong>Tracking store</strong>: metadata backend implemented by file, SQLAlchemy, REST, or workspace-aware stores.</li>
+<li><strong>Trace and span</strong>: GenAI/agent execution telemetry with nested calls, timing, inputs, outputs, attributes, assessments, and linked prompts or runs.</li>
+<li><strong>Assessment or scorer result</strong>: evaluation signal logged against a trace or span.</li>
+<li><strong>Prompt version</strong>: managed prompt registry entity, often linked to traces and evaluations.</li>
+<li><strong>Gateway endpoint or route</strong>: configured model-provider access point, optionally with traffic split, rate limit, and guardrails.</li>
+<li><strong>Flavor</strong>: model packaging integration for a framework or model type.</li>
+</ul>
+<h2 id="internal-architecture">Internal architecture</h2>
+<div class="mermaid">graph TB
+  User[SDK and CLI users] --&gt; Fluent[mlflow.tracking.fluent]
+  User --&gt; Client[MlflowClient]
+  Fluent --&gt; Client
+  Client --&gt; StoreRegistry[Tracking service registry]
+  StoreRegistry --&gt; LocalStore[FileStore or SQLAlchemyStore]
+  StoreRegistry --&gt; RestStore[RestStore]
+  RestStore --&gt; Server[MLflow server]
+  Server --&gt; FastAPI[FastAPI wrapper]
+  FastAPI --&gt; Flask[Flask compatibility app]
+  FastAPI --&gt; OTel[OTEL API router]
+  FastAPI --&gt; GatewayRouter[Gateway router]
+  Flask --&gt; Handlers[server handlers]
+  Handlers --&gt; Backend[(Backend store)]
+  Handlers --&gt; Artifacts[(Artifact repositories)]
+  GatewayRouter --&gt; Providers[Gateway providers]
+  GenAI[mlflow.genai scorers and judges] --&gt; Client
+  UI[React UI static assets] --&gt; Server</div>
+<p>MLflow deliberately preserves backward compatibility. <code>mlflow/server/__init__.py</code> still owns the Flask app and registers the long-standing REST and AJAX handlers. <code>mlflow/server/fastapi_app.py</code> wraps that Flask app with FastAPI so newer routers can take precedence for OTEL, jobs, gateway, and assistant functionality. This layered approach allows modern GenAI endpoints to evolve without breaking existing tracking clients.</p>
+<p>The store contract is central. <code>AbstractStore</code> defines experiment/run operations but also newer trace APIs such as <code>start_trace</code>, <code>get_trace</code>, <code>search_traces</code>, trace deletion, archival, trace metrics, assessment logging, session queries, prompt-to-trace links, and run-to-trace links. Concrete stores decide whether they support each operation and how persistence is implemented.</p>
+<h2 id="runtime-and-data-flow">Runtime and data flow</h2>
+<div class="mermaid">sequenceDiagram
+  participant App as AI or ML application
+  participant SDK as MLflow SDK
+  participant Server as MLflow FastAPI plus Flask server
+  participant Store as Tracking backend store
+  participant Artifact as Artifact store
+  participant UI as MLflow UI
+  participant Eval as GenAI evaluators and scorers
+
+  App-&gt;&gt;SDK: log params, metrics, artifacts, traces, prompts
+  SDK-&gt;&gt;Server: REST or local store calls
+  Server-&gt;&gt;Store: persist experiments, runs, trace metadata
+  Server-&gt;&gt;Artifact: upload models, files, trace artifacts
+  Eval-&gt;&gt;SDK: log assessments and scorer results
+  UI-&gt;&gt;Server: query runs, traces, prompts, models
+  Server-&gt;&gt;Store: search and aggregate metadata
+  Server-&gt;&gt;Artifact: fetch files and trace payloads</div>
+<p>The same client abstractions can target local file stores, database stores, Databricks-backed stores, or a remote MLflow server. In a local script, store calls may not cross a network boundary. In a shared deployment, the SDK talks to the tracking server, and the server writes metadata to a backend database while storing large artifacts in object storage.</p>
+<p>For GenAI tracing, model-provider integrations and autologging can emit spans and traces. The server exposes trace artifacts for UI rendering, and <code>mlflow.genai</code> can attach assessments through scorers and judges. Prompt versions can be linked to traces so quality regressions have lineage.</p>
+<h2 id="deployment-and-operations-topology">Deployment and operations topology</h2>
+<div class="mermaid">graph LR
+  subgraph Clients
+    Notebook[Notebooks]
+    Services[Production services]
+    CI[CI evaluation jobs]
+  end
+  subgraph MLflowRuntime
+    Server[MLflow server]
+    UI[Web UI]
+    Gateway[AI Gateway]
+  end
+  subgraph Storage
+    DB[(Postgres or other SQL backend)]
+    Artifacts[(S3, RustFS, Azure, GCS, local PV)]
+  end
+  subgraph Ops
+    Prom[Prometheus metrics]
+    TLS[TLS and ingress]
+    Cron[Cleanup cron job]
+    Providers[LLM providers]
+  end
+  Notebook --&gt; Server
+  Services --&gt; Server
+  CI --&gt; Server
+  Server --&gt; DB
+  Server --&gt; Artifacts
+  UI --&gt; Server
+  Gateway --&gt; Providers
+  Server --&gt; Prom
+  TLS --&gt; Server
+  Cron --&gt; DB
+  Cron --&gt; Artifacts</div>
+<p>The local <code>docker-compose/</code> topology runs Postgres, RustFS as S3-compatible artifact storage, an initialization container for the bucket, and the MLflow server. Key variables include <code>MLFLOW_BACKEND_STORE_URI</code>, <code>MLFLOW_ARTIFACTS_DESTINATION</code>, <code>MLFLOW_S3_ENDPOINT_URL</code>, <code>AWS_ACCESS_KEY_ID</code>, <code>AWS_SECRET_ACCESS_KEY</code>, <code>MLFLOW_HOST</code>, and <code>MLFLOW_PORT</code>.</p>
+<p>The Helm chart in <code>charts/</code> supports a Kubernetes server with backend store URI, registry store URI, default artifact root, artifacts destination, env injection, Prometheus exposure, TLS, persistence for local storage, and a cleanup cron job for deleted runs/experiments/artifacts. The chart README explicitly warns that SQLite and local file storage are not suitable for production or high concurrency.</p>
+<h2 id="lifecycle-and-module-dependency-diagram">Lifecycle and module dependency diagram</h2>
+<div class="mermaid">stateDiagram-v2
+  [*] --&gt; Track
+  Track --&gt; Register
+  Track --&gt; Trace
+  Trace --&gt; Evaluate
+  Evaluate --&gt; Compare
+  Compare --&gt; OptimizePrompt
+  OptimizePrompt --&gt; Trace
+  Register --&gt; Deploy
+  Deploy --&gt; Monitor
+  Monitor --&gt; Trace
+  Trace --&gt; ArchiveOrDelete
+  ArchiveOrDelete --&gt; [*]</div>
+<p>This lifecycle spans both traditional ML and GenAI. Classic tracking logs experiments and runs. Registry and deployment promote models or prompts. Tracing captures online behavior. Evaluation and scorers attach quality signals. Prompt optimization and discovery modules feed new versions back into the loop. Archive/delete paths protect storage and governance requirements.</p>
+<h2 id="extension-points">Extension points</h2>
+<ul>
+<li>Add tracking behavior by extending store implementations or store registries under <code>mlflow/store/</code> and <code>mlflow/tracking/_tracking_service/</code>.</li>
+<li>Add server APIs through handlers, FastAPI routers, or app entry points declared in <code>pyproject.toml</code>.</li>
+<li>Add AI Gateway providers in <code>mlflow/gateway/providers/</code> and register them through provider lookup.</li>
+<li>Add scorers, judges, or evaluator integrations in <code>mlflow/genai/scorers/</code> and <code>mlflow/genai/judges/</code>.</li>
+<li>Add model framework support as a flavor under a dedicated <code>mlflow/&lt;framework&gt;/</code> package.</li>
+<li>Add deployment targets through <code>mlflow.deployments</code> entry points.</li>
+<li>Add artifact storage by implementing artifact repositories and registering schemes.</li>
+<li>Add UI behavior through <code>mlflow/server/js/</code> assets and corresponding server routes.</li>
+</ul>
+<h2 id="integrations">Integrations</h2>
+<p>MLflow has one of the broadest integration surfaces in this group. Source directories include OpenAI, Anthropic, Bedrock, Gemini, Groq, LiteLLM, LlamaIndex, LangChain, LangGraph, CrewAI, AutoGen, DSPy, Pydantic AI, Semantic Kernel, Transformers, PyTorch, TensorFlow, sklearn, Spark, XGBoost, Azure, SageMaker, Kubernetes, Databricks, MCP, and many more. Gateway providers cover major LLM providers, while GenAI scorer integrations include Phoenix, Ragas, Deepeval, TruLens, Google ADK, guardrails, and online trace/session scoring.</p>
+<h2 id="configuration-deployment-and-operations">Configuration, deployment, and operations</h2>
+<p>Important configuration groups:</p>
+<ul>
+<li>Tracking server: backend store URI, registry store URI, artifact root, artifacts destination, serve-artifacts mode, host, port, worker/server options.</li>
+<li>Security: allowed hosts, CORS/host protections, Flask and FastAPI security middleware, basic auth plugin entrypoint, request auth/header providers.</li>
+<li>Artifacts: S3, Azure Blob, GCS, DBFS, local filesystem, RustFS/MinIO-compatible endpoints.</li>
+<li>Gateway: gateway config path, dynamic endpoints, traffic routes, rate limits storage URI, API key resolution from env or file.</li>
+<li>Observability: Prometheus exporter path, OpenTelemetry APIs, gateway timing headers, server health endpoint.</li>
+<li>Cleanup and retention: trace archival, deleted run/artifact cleanup, cron job templates.</li>
+</ul>
+<p>Production deployments should use a relational backend such as Postgres or MySQL for metadata, object storage for artifacts, TLS at ingress, configured allowed hosts, explicit authentication, and secret-backed credentials. Local SQLite and local artifacts are useful for experiments but are not a production design.</p>
+<h2 id="observability-testing-evaluation-and-failure-modes">Observability, testing, evaluation, and failure modes</h2>
+<p>The <code>tests/</code> directory mirrors most package areas: tracking, stores, server, gateway, GenAI, tracing, model flavors, integrations, artifacts, deployment, and CLI. The source itself includes observability hooks: Prometheus exporter activation in <code>mlflow/server/__init__.py</code>, OTEL API routing in <code>fastapi_app.py</code>, gateway timing middleware, trace metrics store APIs, and online scoring processors in <code>mlflow/genai/scorers/online/</code>.</p>
+<p>Failure modes to plan for:</p>
+<ul>
+<li><strong>Backend store contention</strong>: high-concurrency tracking and trace search can overload SQLite or undersized SQL databases.</li>
+<li><strong>Artifact inconsistency</strong>: metadata can exist while object storage writes fail, especially with custom S3 endpoints.</li>
+<li><strong>Trace payload growth</strong>: large prompts, tool outputs, or documents increase storage and UI fetch cost.</li>
+<li><strong>Gateway provider failures</strong>: provider latency, streaming errors, credentials, and rate limits must be surfaced separately from MLflow overhead.</li>
+<li><strong>Evaluator non-determinism</strong>: LLM judges and third-party metrics can drift across model versions.</li>
+<li><strong>Store capability mismatch</strong>: not every store supports every newer trace, prompt, workspace, or archival feature.</li>
+<li><strong>Security misconfiguration</strong>: host header, CORS, auth, and artifact serving settings can expose sensitive tracking data.</li>
+</ul>
+<h2 id="security-and-governance-risks">Security and governance risks</h2>
+<p>MLflow can store model artifacts, datasets, prompt text, traces, tool inputs, generated outputs, provider credentials, and experiment metadata. Governance controls should include authentication and authorization, isolated artifact buckets, secret-backed store URIs, TLS, host allowlists, auditability around model/prompt promotion, retention policies, and clear separation between local dev and shared production tracking.</p>
+<p>For GenAI, the biggest data risk is trace content. Inputs, retrieved context, tool arguments, and model outputs may include sensitive customer or enterprise data. Teams should define logging filters, retention windows, and access rules before enabling automatic tracing in production.</p>
+<h2 id="reading-guide">Reading guide</h2>
+<ol>
+<li>Read <code>README.md</code> for product scope and quickstart.</li>
+<li>Read <code>pyproject.toml</code> for dependencies, extras, and entry points.</li>
+<li>Read <code>mlflow/server/__init__.py</code> and <code>mlflow/server/fastapi_app.py</code> for server architecture.</li>
+<li>Read <code>mlflow/store/tracking/abstract_store.py</code> before reading concrete stores.</li>
+<li>Read <code>mlflow/tracking/client.py</code> and <code>mlflow/tracking/fluent.py</code> to understand user-facing APIs.</li>
+<li>Read <code>mlflow/tracing/</code> and trace entities for LLM observability.</li>
+<li>Read <code>mlflow/genai/</code> for evaluation, scorers, judges, prompts, optimization, and online scoring.</li>
+<li>Read <code>mlflow/gateway/app.py</code> and <code>mlflow/gateway/providers/</code> for model-provider governance.</li>
+<li>Read <code>docker-compose/README.md</code> and <code>charts/README.md</code> for deployment tradeoffs.</li>
+</ol>
+<h2 id="learning-path">Learning path</h2>
+<ol>
+<li>Start with a basic run: parameters, metrics, artifacts.</li>
+<li>Add a model or prompt registry workflow.</li>
+<li>Add LLM tracing and inspect how traces are stored and rendered.</li>
+<li>Add a scorer or judge and log assessments against traces.</li>
+<li>Add an AI Gateway route and study provider routing and rate limits.</li>
+<li>Move from local file/SQLite storage to a server with SQL backend and object storage.</li>
+</ol>
+<h2 id="glossary">Glossary</h2>
+<ul>
+<li><strong>Backend store</strong>: database or file store for MLflow metadata.</li>
+<li><strong>Artifact store</strong>: storage location for model files, run artifacts, and large trace artifacts.</li>
+<li><strong>Flavor</strong>: framework-specific model packaging convention.</li>
+<li><strong>Gateway route</strong>: configured path that forwards model requests to a provider or traffic split.</li>
+<li><strong>Assessment</strong>: evaluation result attached to a trace or span.</li>
+<li><strong>Scorer</strong>: reusable evaluator that produces metrics or labels.</li>
+<li><strong>Judge</strong>: LLM-backed evaluator that applies a rubric or prompt.</li>
+<li><strong>Trace archival</strong>: moving trace payloads out of the primary store for retention and cost control.</li>
+</ul>
+<h2 id="repository-grounded-deep-dive">Repository-Grounded Deep Dive</h2>
+<p>MLflow is not a single service boundary; it is a set of tracking, registry, artifact, model packaging, gateway, and GenAI tracing subsystems that can be run locally or behind a tracking server. The repository shows these boundaries in <code>github-repos/05-observability-evaluation-llmops/mlflow/mlflow/tracking/</code>, <code>mlflow/store/</code>, <code>mlflow/server/</code>, <code>mlflow/models/</code>, <code>mlflow/tracing/</code>, <code>mlflow/genai/</code>, <code>mlflow/gateway/</code>, and <code>mlflow/evaluation/</code>. Deployment assets in <code>docker/</code>, <code>docker-compose/</code>, and <code>charts/</code> should be read as operational examples, not as the architecture itself.</p>
+<div class="mermaid">flowchart LR
+  User[&quot;ML or GenAI application&quot;] --&gt; Fluent[&quot;fluent APIs and clients&quot;]
+  Fluent --&gt; Tracking[&quot;tracking service mlflow/tracking&quot;]
+  Tracking --&gt; BackendStore[&quot;backend store mlflow/store/tracking&quot;]
+  Tracking --&gt; ArtifactStore[&quot;artifact repositories mlflow/store/artifact&quot;]
+  Fluent --&gt; Models[&quot;model packaging mlflow/models and flavors&quot;]
+  Fluent --&gt; Tracing[&quot;GenAI tracing mlflow/tracing&quot;]
+  Tracing --&gt; Assess[&quot;assessments and scorers mlflow/genai&quot;]
+  Server[&quot;mlflow/server&quot;] --&gt; BackendStore
+  Server --&gt; ArtifactStore
+  UI[&quot;server JS UI&quot;] --&gt; Server</div>
+<p>The core operational distinction is between metadata and bulk artifacts. Run parameters, metrics, tags, model versions, prompt registry entries, trace indexes, and assessments belong to backend stores. Model files, datasets, logs, media, and large trace attachments belong to artifact stores. If a production design does not name both stores and their backup policies, it is incomplete.</p>
+<div class="mermaid">sequenceDiagram
+  participant App as Training or LLM app
+  participant Client as MLflow client
+  participant Server as Tracking server
+  participant Meta as Backend store
+  participant Art as Artifact store
+  participant Eval as GenAI scorer or judge
+  App-&gt;&gt;Client: log run, model, prompt, or trace
+  Client-&gt;&gt;Server: REST tracking request
+  Server-&gt;&gt;Meta: write params, metrics, trace metadata
+  Server-&gt;&gt;Art: upload artifacts or trace attachments
+  App-&gt;&gt;Eval: evaluate output or trace
+  Eval-&gt;&gt;Client: log assessment
+  Client-&gt;&gt;Server: attach score to run or trace</div>
+<div class="mermaid">flowchart TD
+  Risk[&quot;Production risk&quot;] --&gt; Store[&quot;backend store migration&quot;]
+  Risk --&gt; Artifact[&quot;artifact store permissions&quot;]
+  Risk --&gt; Gateway[&quot;AI Gateway route&quot;]
+  Risk --&gt; Trace[&quot;trace volume&quot;]
+  Risk --&gt; Flavor[&quot;model flavor dependency drift&quot;]
+  Risk --&gt; Judge[&quot;judge model cost and variance&quot;]
+  Store --&gt; S1[&quot;runs and registry metadata unavailable&quot;]
+  Artifact --&gt; A1[&quot;model loads but files cannot be fetched&quot;]
+  Gateway --&gt; G1[&quot;provider key or rate limit failure&quot;]
+  Trace --&gt; T1[&quot;large payloads require archival policy&quot;]
+  Flavor --&gt; F1[&quot;logged model not reproducible&quot;]
+  Judge --&gt; J1[&quot;evaluation score changes across model versions&quot;]</div>
+<h3 id="production-readiness-checklist">Production Readiness Checklist</h3>
+<ul>
+<li>Specify backend store, artifact store, tracking server, registry policy, and trace retention as separate design decisions.</li>
+<li>Review <code>mlflow/store/db_migrations/</code> before upgrading a SQL-backed tracking server; validate migration against a copy of production metadata.</li>
+<li>Test artifact access from the same runtime that serves models. A successful metadata read does not prove artifact credentials are valid.</li>
+<li>For GenAI tracing, review <code>mlflow/tracing/</code>, <code>mlflow/tracing/otel/translation/</code>, and <code>mlflow/genai/</code> to decide how traces, assessments, and archived payloads should be governed.</li>
+<li>If using AI Gateway, review <code>mlflow/gateway/config.py</code>, <code>provider_registry.py</code>, <code>providers/</code>, <code>budget.py</code>, and <code>guardrails.py</code>; provider routing is a security and cost boundary.</li>
+<li>Pin model flavors, environment files, and dependency constraints for production model promotion.</li>
+<li>Monitor tracking API latency, backend DB saturation, artifact upload/download failures, trace ingestion volume, gateway provider errors, and judge/evaluator spend.</li>
+</ul>
+<h3 id="senior-architect-reading-path">Senior Architect Reading Path</h3>
+<p>Start with <code>mlflow/tracking/</code> and <code>mlflow/server/</code> to understand API and server shape. Then read <code>mlflow/store/</code> to separate backend metadata stores from artifact repositories. Move to <code>mlflow/models/</code> and selected flavor packages for model packaging. Only then read <code>mlflow/tracing/</code>, <code>mlflow/genai/</code>, <code>mlflow/evaluation/</code>, and <code>mlflow/gateway/</code> to understand modern LLMOps features on top of the tracking substrate. Finish with <code>charts/</code>, <code>docker/</code>, and <code>tests/</code> to connect source behavior to deployment and compatibility checks.</p>
+<h3 id="operational-scenarios-to-rehearse">Operational Scenarios to Rehearse</h3>
+<p>Validate MLflow with workflows that cross subsystem boundaries. Log a run with parameters, metrics, a model artifact, and a dataset, then restore it from a different runtime to prove backend and artifact stores both work. Log a GenAI trace with attachments and assessments, then test archival and search behavior under retention limits. Route a gateway request through at least two providers with budget controls enabled, then observe how provider errors, guardrails, and tracking records appear in the same operational view.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

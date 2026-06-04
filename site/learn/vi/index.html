@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Học AI Solution Architecture | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../en/index.html">English</a>
+        <a href="index.html">Tiếng Việt</a>
+        <a href="../en/curriculum.html">Curriculum</a>
+        <a href="../../templates/index.html">Toolkit</a>
+        <a href="../../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../en/index.html">English course</a>
+      <a href="index.html">Trang tiếng Việt</a>
+      <a href="../en/curriculum.html">Curriculum</a>
+      <a href="../en/projects.html">Projects</a>
+      <a href="../../templates/index.html">Architecture toolkit</a>
+      <a href="../../capstone/index.html">Capstone</a>
+      <a href="../../assessments/index.html">Assessments</a>
+      <a href="../../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/vi/README.md">View source</a>
+      <h1 id="h-c-ai-solution-architecture">Học AI Solution Architecture</h1>
+<p>Bộ tài liệu này biến các ghi chú kiến trúc theo từng repository thành một hệ thống kiến thức thống nhất. Đối tượng chính là senior developer, solution architect, staff engineer và technical lead cần thiết kế hệ thống AI có thể vận hành trong môi trường production.</p>
+<p>Ý tưởng cốt lõi: một giải pháp AI thực tế không phải là &quot;một LLM cộng với một ứng dụng&quot;. Đó là hệ thống nhiều lớp, trong đó orchestration của agent, runtime mô hình, dữ liệu retrieval, chiến lược adaptation, evaluation, observability, tool, bảo mật và vận hành đều ảnh hưởng lẫn nhau.</p>
+<h2 id="sau-kh-a-n-y-b-n-s-l-m-c-g">Sau Khóa Này Bạn Sẽ Làm Được Gì</h2>
+<p>Sau khi đi hết bộ tài liệu, bạn nên có khả năng:</p>
+<ul>
+<li>Chuyển một ý tưởng sản phẩm AI thành các lớp kiến trúc cụ thể.</li>
+<li>Chọn giữa agent loop, workflow graph, multi-agent system và retrieval engine.</li>
+<li>Chọn inference runtime dựa trên latency, throughput, memory, quantization, deployment và compatibility.</li>
+<li>Quyết định khi nào dùng prompting, RAG, adapter, fine-tuning hoặc distributed training.</li>
+<li>Thiết kế data plane vector với ingestion, search, filter, tenancy, durability và recovery.</li>
+<li>Thêm tracing, evaluation, feedback, lineage và governance cho prompt/model.</li>
+<li>Quản trị tool execution, MCP server, self-hosted UI gateway và admin surface.</li>
+<li>Thực hiện production readiness review bao gồm security, observability, failure mode và ownership vận hành.</li>
+</ul>
+<h2 id="m-h-nh-ki-n-th-c">Mô Hình Kiến Thức</h2>
+<div class="mermaid">flowchart TB
+  Product[Product và user workflow] --&gt; App[Application / agent architecture]
+  App --&gt; Runtime[Inference runtime]
+  App --&gt; Retrieval[RAG và vector data]
+  App --&gt; Tools[Tools, MCP, platform UI]
+  Runtime --&gt; Model[Model artifact và tokenizer]
+  Training[Training và adaptation] --&gt; Model
+  Retrieval --&gt; Knowledge[Documents, chunks, metadata, embeddings]
+  App --&gt; Eval[Evaluation và feedback]
+  Runtime --&gt; Eval
+  Retrieval --&gt; Eval
+  Eval --&gt; Ops[LLMOps và production operations]
+  Tools --&gt; Ops
+  Ops --&gt; Governance[Security và governance]</div>
+<p>Công việc kiến trúc diễn ra ở các ranh giới:</p>
+<ul>
+<li><strong>Application đến runtime</strong>: ứng dụng có chịu được streaming, batching, retry, backpressure và prompt format riêng của model không?</li>
+<li><strong>Application đến retrieval</strong>: orchestration layer có biết khi nào cần retrieve, cách cite evidence và cách phát hiện context yếu không?</li>
+<li><strong>Runtime đến model artifact</strong>: serving layer có nạp, quantize, shard, schedule và monitor model được chọn không?</li>
+<li><strong>Training đến serving</strong>: adapter, checkpoint, tokenizer change và compatibility constraint có được kiểm soát không?</li>
+<li><strong>Application đến observability</strong>: trace, tool call, retrieval span, output, score và user feedback có nằm trong cùng một lineage không?</li>
+<li><strong>Tools đến governance</strong>: permission, audit log, sandbox, secret và allowed action có rõ ràng không?</li>
+</ul>
+<h2 id="c-u-tr-c-kh-a-h-c">Cấu Trúc Khóa Học</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Trang</th><th>Mục đích</th></tr></thead>
+<tbody>
+<tr><td><a href="curriculum.html">Chương trình học</a></td><td>Mười hai bài học khái niệm để xây mental model hoàn chỉnh.</td></tr>
+<tr><td><a href="projects.html">Dự án</a></td><td>Sáu dự án thực hành kiến trúc, kết thúc bằng capstone.</td></tr>
+<tr><td><a href="reference-atlas.html">Bản đồ repository</a></td><td>Bản đồ so sánh 17 repository và vai trò của từng repo.</td></tr>
+<tr><td><a href="glossary.html">Bảng thuật ngữ</a></td><td>Từ vựng dùng chung cho design review và thảo luận kiến trúc.</td></tr>
+</tbody></table></div>
+<h2 id="t-i-li-u-deep-dive-ngu-n">Tài Liệu Deep Dive Nguồn</h2>
+<p>Các ghi chú tham chiếu nằm trong <a href="../../deep-dives/index.html"><code>repo-architecture-docs</code></a>. Mỗi repository có tài liệu tiếng Anh và tiếng Việt với source tree map, diagram, extension point, rủi ro bảo mật, hướng dẫn vận hành, failure mode, production readiness checklist và glossary.</p>
+<p>Dùng lớp course này khi bạn cần cái nhìn hệ thống end-to-end. Dùng deep dive nguồn khi bạn cần chi tiết kiến trúc ở mức repository.</p>
+<h2 id="b-n-mi-n">Bản Đồ Miền</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Miền</th><th>Tài liệu deep dive</th><th>Trách nhiệm kiến trúc</th></tr></thead>
+<tbody>
+<tr><td>Agent application</td><td><a href="../../deep-dives/01-ai-app-agent-architecture/index.html">Group 01</a></td><td>Planning, tool use, workflow control, memory, human escalation, multi-agent coordination</td></tr>
+<tr><td>Inference serving</td><td><a href="../../deep-dives/02-model-serving-inference/index.html">Group 02</a></td><td>Loading, scheduling, batching, quantization, local/distributed serving, token streaming</td></tr>
+<tr><td>Training và adaptation</td><td><a href="../../deep-dives/03-fine-tuning-training/index.html">Group 03</a></td><td>Adapter strategy, optimizer state, distributed scaling, checkpoint governance</td></tr>
+<tr><td>RAG và vector data</td><td><a href="../../deep-dives/04-rag-vector-database/index.html">Group 04</a></td><td>Embedding, indexing, metadata, tenancy, durability, hybrid retrieval</td></tr>
+<tr><td>LLMOps và evaluation</td><td><a href="../../deep-dives/05-observability-evaluation-llmops/index.html">Group 05</a></td><td>Tracing, evaluation, experiment tracking, feedback, lineage, model/prompt governance</td></tr>
+<tr><td>Tooling và platform</td><td><a href="../../deep-dives/06-tooling-mcp-ai-platform/index.html">Group 06</a></td><td>MCP server, tool gateway, self-hosted chat UI, admin control, provider routing</td></tr>
+</tbody></table></div>
+<h2 id="c-ch-h-c">Cách Học</h2>
+<ol>
+<li>Bắt đầu với <a href="curriculum.html">chương trình học</a> và đọc các bài theo thứ tự.</li>
+<li>Với mỗi bài, mở deep dive repository tương ứng và xem diagram.</li>
+<li>Ghi lại quyết định trong design log: lớp được chọn, phương án bị loại, failure mode, validation plan.</li>
+<li>Làm dự án tương ứng trong <a href="projects.html">projects</a>.</li>
+<li>Quay lại <a href="reference-atlas.html">repository atlas</a> khi cần so sánh công cụ.</li>
+<li>Kết thúc bằng production readiness review của capstone.</li>
+</ol>
+<h2 id="pattern-trung-t-m">Pattern Trung Tâm</h2>
+<pre><code class="language-text">AI SOLUTION ARCHITECTURE
+========================
+User workflow
+  -&gt; AI application boundary
+  -&gt; agent / workflow / retrieval decisions
+  -&gt; model runtime and data plane
+  -&gt; evaluation and feedback loop
+  -&gt; operations and governance
+
+Model tạo ra năng lực.
+Kiến trúc tạo ra độ tin cậy.
+Evaluation loop tạo ra bằng chứng.
+Governance layer tạo ra kiểm soát.</code></pre>
+<h2 id="y-kh-ng-ph-i-l-g">Đây Không Phải Là Gì</h2>
+<p>Đây không phải checklist prompt engineering, bảng xếp hạng benchmark hoặc catalog toàn bộ thư viện AI. Đây là khóa học kiến trúc được xây từ cấu trúc repository thật. Đầu ra mong muốn là năng lực phán đoán thiết kế tốt hơn: biết lớp nào sở hữu vấn đề nào, trade-off nào quan trọng và failure nào phải diễn tập trước khi launch.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

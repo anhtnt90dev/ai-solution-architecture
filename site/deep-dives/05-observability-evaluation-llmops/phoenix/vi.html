@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ghi chú kiến trúc Phoenix | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/05-observability-evaluation-llmops/phoenix/README.vi.md">View source</a>
+      <h1 id="ghi-ch-ki-n-tr-c-phoenix">Ghi chú kiến trúc Phoenix</h1>
+<h2 id="t-m-t-t-i-u-h-nh">Tóm tắt điều hành</h2>
+<p>Phoenix là nền tảng observability và evaluation mã nguồn mở cho AI của Arize. Repository mô tả Phoenix như một nền tảng cho tracing, evaluation, dataset, experiment, playground để lặp prompt và prompt management. Phần triển khai là sản phẩm kết hợp Python và TypeScript: <code>src/phoenix/</code> chứa server, tracing, database, dataset, session, metrics và utilities; <code>app/</code> cùng tài sản frontend cung cấp web UI; <code>packages/</code> chứa subpackage Python như <code>phoenix-client</code>, <code>phoenix-evals</code>, <code>phoenix-otel</code>; <code>js/packages/</code> chứa package TypeScript như <code>phoenix-otel</code>, <code>phoenix-client</code>, <code>phoenix-evals</code>, <code>phoenix-mcp</code> và <code>phoenix-cli</code>.</p>
+<p>File gốc <code>pyproject.toml</code> định nghĩa package <code>arize-phoenix</code>, license Elastic-2.0, yêu cầu Python <code>&gt;=3.10,&lt;3.15</code>, và phụ thuộc FastAPI, Starlette, Uvicorn, Strawberry GraphQL, SQLAlchemy async, Alembic, OpenTelemetry, OpenInference semantic conventions, gRPC, Prometheus, Authlib, LDAP cùng các package client/eval/OTel của Phoenix. Server chính có thể chạy local, trong notebook, trong container hoặc Kubernetes. Docker, Compose, Helm và Kustomize trong repo thể hiện topology dự kiến: web/API Phoenix ở port <code>6006</code>, OTLP gRPC ingestion ở port <code>4317</code>, persistence bằng SQLite hoặc PostgreSQL.</p>
+<h2 id="b-i-to-n-c-gi-i-quy-t">Bài toán được giải quyết</h2>
+<p>Phoenix giải quyết vòng lặp debug AI quanh trace, evaluation và experiment. Với LLM và agent system, APM tổng quát thường chỉ thấy latency mà không hiểu prompt variable, retrieval document, token/cost detail, tool call, evaluator label, dataset example hoặc lineage của experiment. Phoenix nhận span OpenTelemetry/OpenInference, lưu chúng trong schema hiểu ngữ cảnh AI, hiển thị phân tích trace/span trong UI và kết nối telemetry đó với dataset, experiment, playground run, code evaluator, LLM-as-judge evaluator và prompt version.</p>
+<h2 id="vai-tr-trong-ai-stack">Vai trò trong AI stack</h2>
+<p>Phoenix là workbench quan sát và đánh giá trong AI stack:</p>
+<ul>
+<li>Nhận telemetry từ ứng dụng, agent, hệ thống RAG, model provider và OpenInference instrumentation.</li>
+<li>Cung cấp không gian debug trace, so sánh experiment, viết evaluator và lặp prompt.</li>
+<li>Có thể dùng như công cụ local development, companion trong notebook, dịch vụ self-host production hoặc cloud managed.</li>
+<li>Các package Python và TypeScript giúp Phoenix hữu ích cho cả developer ứng dụng và coding agent thông qua <code>phoenix-mcp</code> và <code>phoenix-cli</code>.</li>
+</ul>
+<h2 id="b-n-source-tree">Bản đồ source tree</h2>
+<p>Bằng chứng trong repository:</p>
+<ul>
+<li><code>README.md</code> mô tả tính năng Phoenix: tracing dựa trên OpenTelemetry, LLM evaluation, dataset có version, experiment, playground, prompt management, integration với provider/framework và coding-agent skills.</li>
+<li><code>pyproject.toml</code> định nghĩa <code>arize-phoenix</code>, dependency, entrypoint script <code>arize-phoenix</code> và <code>phoenix</code>, optional extra triển khai và dev dependency.</li>
+<li><code>src/phoenix/server/app.py</code> ghép FastAPI, Strawberry GraphQL, gRPC, authentication, data loader, database facilitator, background daemon, redaction, encryption, telemetry, fixture loading và static UI serving.</li>
+<li><code>src/phoenix/server/api/routers/</code> chứa REST router, trong đó <code>v1</code> là thư mục API version rõ ràng.</li>
+<li><code>src/phoenix/server/grpc_server.py</code> cung cấp OTLP gRPC ingest server.</li>
+<li><code>src/phoenix/db/</code> chứa async database model, Alembic migration, bulk insertion, facilitator logic và tùy chọn AWS RDS IAM authentication.</li>
+<li><code>src/phoenix/trace/</code> chứa span schema, flatten/unflatten OpenTelemetry attribute, encode/decode span JSON, trace dataset, fixture, project và evaluation.</li>
+<li><code>packages/phoenix-otel/</code> cung cấp wrapper OpenTelemetry có default phù hợp Phoenix cho Python.</li>
+<li><code>packages/phoenix-client/</code> cung cấp Python client và resource cho trace, span, session, dataset, experiment.</li>
+<li><code>packages/phoenix-evals/</code> cung cấp template LLM evaluation Python, adapter, wrapper, generated classification evaluator config và evaluator tests.</li>
+<li><code>js/packages/phoenix-mcp/</code> mở dữ liệu và thao tác Phoenix cho coding agent qua MCP tools cho trace, span, dataset, experiment, prompt, project, session và annotation config.</li>
+<li><code>Dockerfile</code> expose <code>6006</code> và <code>4317</code>, đồng thời có setup WASM sandbox.</li>
+<li><code>docker-compose.yml</code> chạy Phoenix cùng Postgres và đặt <code>PHOENIX_SQL_DATABASE_URL</code>.</li>
+<li><code>helm/</code> và <code>kustomize/</code> cung cấp đường triển khai Kubernetes với auth, persistence, PostgreSQL, health check, Prometheus annotation, TLS và cấu hình OTLP instrumentation.</li>
+</ul>
+<h2 id="kh-i-ni-m-c-t-l-i">Khái niệm cốt lõi</h2>
+<ul>
+<li><strong>OpenInference span</strong>: span OpenTelemetry có semantic convention riêng cho AI như LLM call, retrieval, tool, document, prompt, cost và error.</li>
+<li><strong>Project</strong>: namespace cho trace và telemetry liên quan.</li>
+<li><strong>Trace và span</strong>: đồ thị thực thi của ứng dụng LLM hoặc agent workflow.</li>
+<li><strong>Dataset</strong>: tập example có version dùng cho evaluation, experimentation hoặc fine-tuning.</li>
+<li><strong>Experiment</strong>: lần chạy task, prompt, model hoặc agent trên dataset example, kèm output và evaluator annotation.</li>
+<li><strong>Evaluation</strong>: LLM-as-judge, code evaluator, classification metric hoặc tín hiệu chất lượng cho retrieval/response.</li>
+<li><strong>Playground</strong>: bề mặt thử prompt và model, có thể replay hoặc so sánh traced call.</li>
+<li><strong>Prompt version</strong>: trạng thái prompt được quản lý để lặp và so sánh có hệ thống.</li>
+</ul>
+<h2 id="ki-n-tr-c-n-i-b">Kiến trúc nội bộ</h2>
+<div class="mermaid">graph TB
+  Apps[AI apps va OpenInference instrumentations] --&gt; OTLP[OTLP gRPC va HTTP ingestion]
+  SDK[Python va TypeScript Phoenix clients] --&gt; REST[FastAPI REST API]
+  Browser[Web UI] --&gt; GQL[Strawberry GraphQL]
+  Browser --&gt; REST
+  OTLP --&gt; Decode[decode_otlp_span va trace schemas]
+  Decode --&gt; Bulk[BulkInserter va Facilitator]
+  REST --&gt; DBSession[Async SQLAlchemy sessions]
+  GQL --&gt; Loaders[GraphQL DataLoaders]
+  Loaders --&gt; DBSession
+  Bulk --&gt; DB[(SQLite hoac PostgreSQL)]
+  DBSession --&gt; DB
+  Daemons[Experiment runner, sweepers, cost calculator, disk monitor] --&gt; DB
+  Packages[phoenix-evals va phoenix-client] --&gt; REST
+  MCP[phoenix-mcp va phoenix-cli] --&gt; REST</div>
+<p><code>src/phoenix/server/app.py</code> là trung tâm kiến trúc. File này import FastAPI, GraphQL router support, gRPC interceptor, data loader, <code>BulkInserter</code>, <code>Facilitator</code>, <code>GrpcServer</code>, <code>DbDiskUsageMonitor</code>, <code>ExperimentRunner</code>, <code>ExperimentSweeper</code>, <code>GenerativeModelStore</code>, <code>SpanCostCalculator</code>, <code>TraceDataSweeper</code>, authentication backend, redaction, encryption, sandbox session management và OpenTelemetry server instrumentation. Đây không phải wrapper API mỏng mà là composition root của sản phẩm.</p>
+<p>Lớp database là async và có kỷ luật migration. <code>src/phoenix/db/alembic.ini</code> và <code>src/phoenix/db/migrations/</code> cho thấy schema được quản lý bằng migration. <code>src/phoenix/db/aws_auth.py</code> cho thấy hỗ trợ xác thực database theo cloud. Phoenix có thể dùng SQLite local cho triển khai nhẹ hoặc PostgreSQL cho self-host nhiều người dùng và production.</p>
+<p>Lớp trace bám sát OpenTelemetry. <code>src/phoenix/trace/attributes.py</code> mô tả cách flatten và unflatten OTEL attributes mà vẫn giữ cấu trúc nested, còn <code>src/phoenix/trace/schemas.py</code> định nghĩa span data structure lấy cảm hứng từ OpenTelemetry.</p>
+<h2 id="lu-ng-runtime-v-d-li-u">Luồng runtime và dữ liệu</h2>
+<div class="mermaid">sequenceDiagram
+  participant App as Ung dung AI da instrument
+  participant OTel as OpenInference hoac Phoenix OTel SDK
+  participant GRPC as Phoenix OTLP gRPC 4317
+  participant Server as Phoenix server 6006
+  participant DB as SQLite hoac PostgreSQL
+  participant UI as Phoenix UI
+  participant Eval as phoenix-evals hoac code evaluator
+
+  App-&gt;&gt;OTel: Tao span voi AI semantic attributes
+  OTel-&gt;&gt;GRPC: Export OTLP spans
+  GRPC-&gt;&gt;Server: Decode va enqueue span insertion
+  Server-&gt;&gt;DB: Bulk insert trace, span, cost, annotation
+  UI-&gt;&gt;Server: Query GraphQL va REST resources
+  Server-&gt;&gt;DB: Load trace, dataset, prompt, experiment
+  Eval-&gt;&gt;Server: Submit annotation hoac experiment result
+  UI-&gt;&gt;Server: So sanh trace, dataset, prompt variants</div>
+<p>Đường ingestion được tối ưu cho payload observability AI chứ không chỉ metric tổng quát. Phoenix nhận span OpenTelemetry, decode thành trace model của Phoenix, insert qua database facilitator/bulk inserter, rồi hiển thị qua GraphQL dataloader và REST resource. Workflow evaluation và experiment có thể xuất phát từ UI, client package hoặc agent tooling; kết quả quay lại database dưới dạng annotation, experiment run hoặc evaluator output.</p>
+<h2 id="topology-tri-n-khai-v-v-n-h-nh">Topology triển khai và vận hành</h2>
+<div class="mermaid">graph LR
+  subgraph Sources
+    Py[Python apps]
+    TS[TypeScript apps]
+    Agents[Coding agents]
+  end
+  subgraph PhoenixPod
+    Server[Phoenix web va API port 6006]
+    Collector[OTLP gRPC port 4317]
+    Sandbox[Optional evaluator sandbox]
+  end
+  subgraph Persistence
+    SQLite[(SQLite volume)]
+    PG[(PostgreSQL)]
+  end
+  subgraph Ops
+    Prom[Prometheus scrape]
+    OTelCollector[External OTLP collector]
+    SMTP[SMTP]
+    IdP[OAuth2 OIDC hoac LDAP]
+  end
+  Py --&gt; Collector
+  TS --&gt; Collector
+  Agents --&gt; Server
+  Server --&gt; SQLite
+  Server --&gt; PG
+  Collector --&gt; Server
+  Server --&gt; Prom
+  Server --&gt; OTelCollector
+  Server --&gt; SMTP
+  Server --&gt; IdP
+  Sandbox --&gt; Server</div>
+<p>Topology Compose đơn giản chạy <code>phoenix</code> và <code>db</code>, map <code>6006:6006</code> và <code>4317:4317</code>, đặt <code>PHOENIX_SQL_DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres</code>. Các tùy chọn Kubernetes hoàn thiện hơn: <code>helm/README.md</code> và <code>helm/values.yaml</code> phơi bày authentication, CORS, CSRF trusted origins, brute-force login protection, OAuth2/OIDC, LDAP, PostgreSQL settings, read replica, retention policy, health checks, server host/port/root URL, <code>PHOENIX_MAX_SPANS_QUEUE_SIZE</code>, endpoint export OTLP instrumentation, SMTP, TLS và allowlist sandbox provider. <code>kustomize/base/phoenix.yaml</code> có Prometheus scrape annotation và readiness probe.</p>
+<h2 id="v-ng-i-v-quy-t-nh">Vòng đời và quyết định</h2>
+<div class="mermaid">stateDiagram-v2
+  [*] --&gt; Capture
+  Capture --&gt; StoreTrace
+  StoreTrace --&gt; Inspect
+  Inspect --&gt; DatasetDecision
+  DatasetDecision --&gt; AddToDataset: example co gia tri
+  DatasetDecision --&gt; DebugOnly: su co mot lan
+  AddToDataset --&gt; RunExperiment
+  RunExperiment --&gt; Evaluate
+  Evaluate --&gt; Compare
+  Compare --&gt; PromotePrompt: chat luong tang
+  Compare --&gt; RevisePrompt: phat hien regression
+  PromotePrompt --&gt; Capture
+  RevisePrompt --&gt; RunExperiment
+  DebugOnly --&gt; [*]</div>
+<p>Phoenix mạnh nhất khi trace không phải điểm kết thúc. Một trace production có thể trở thành dataset example, dataset có thể chạy experiment, experiment có thể được evaluator chấm điểm, và output đã chấm điểm hướng dẫn thay đổi prompt hoặc model. Repository phản ánh vòng lặp này qua <code>src/phoenix/trace/</code>, <code>src/phoenix/datasets/</code>, GraphQL dataloader cho trạng thái experiment/dataset và <code>packages/phoenix-evals/</code>.</p>
+<h2 id="i-m-m-r-ng">Điểm mở rộng</h2>
+<ul>
+<li>Thêm REST resource dưới <code>src/phoenix/server/api/routers/v1/</code> và đăng ký qua router creation.</li>
+<li>Thêm GraphQL field, mutation hoặc dataloader qua <code>src/phoenix/server/api/schema.py</code>, <code>context.py</code> và các module dataloader.</li>
+<li>Thêm xử lý semantic hoặc parsing trace trong <code>src/phoenix/trace/</code>.</li>
+<li>Thêm database model hoặc migration dưới <code>src/phoenix/db/</code>.</li>
+<li>Thêm Python client resource trong <code>packages/phoenix-client/src/phoenix/client/</code>.</li>
+<li>Thêm evaluation template, adapter, metric hoặc generated config support trong <code>packages/phoenix-evals/src/phoenix/evals/</code>.</li>
+<li>Thêm TypeScript client/eval/OTel behavior trong <code>js/packages/</code>.</li>
+<li>Thêm tool tích hợp coding-agent trong <code>js/packages/phoenix-mcp/src/</code>.</li>
+<li>Thêm cấu hình triển khai trong <code>helm/values.yaml</code>, Helm template hoặc Kustomize overlay.</li>
+</ul>
+<h2 id="t-ch-h-p">Tích hợp</h2>
+<p>README liệt kê hỗ trợ rộng qua OpenInference: OpenAI Agents SDK, Claude Agent SDK, LangGraph, Vercel AI SDK, Mastra, CrewAI, LlamaIndex, DSPy, OpenAI, Anthropic, Google GenAI, Google ADK, Bedrock, OpenRouter, LiteLLM và nhiều hệ khác. Phoenix cũng có Python subpackage cho OTel, client và evals; TypeScript package cho OTel, client, evals, MCP và CLI; cùng coding-agent skills trong <code>.agents/skills/</code>.</p>
+<p>Thiết kế package cho thấy sự tách vai trò rõ: server sở hữu storage và UI, <code>phoenix-otel</code> sở hữu instrumentation default, <code>phoenix-client</code> sở hữu tương tác API, <code>phoenix-evals</code> sở hữu thực thi metric, còn <code>phoenix-mcp</code>/<code>phoenix-cli</code> đưa dữ liệu Phoenix vào workflow của agent.</p>
+<h2 id="c-u-h-nh-tri-n-khai-v-v-n-h-nh">Cấu hình, triển khai và vận hành</h2>
+<p>Các nhóm cấu hình quan trọng:</p>
+<ul>
+<li>Server: <code>PHOENIX_HOST</code>, <code>PHOENIX_PORT</code>, <code>PHOENIX_GRPC_PORT</code>, <code>PHOENIX_ROOT_URL</code>, <code>PHOENIX_WORKING_DIR</code>, <code>PHOENIX_MAX_SPANS_QUEUE_SIZE</code>, <code>PHOENIX_TELEMETRY_ENABLED</code>.</li>
+<li>Database: <code>PHOENIX_SQL_DATABASE_URL</code>, Postgres host/user/password/db/schema, read replica URL, AWS RDS IAM, Azure managed identity.</li>
+<li>Auth: <code>PHOENIX_ENABLE_AUTH</code>, <code>PHOENIX_SECRET</code>, admin secret, OAuth2/OIDC provider, LDAP settings, password policy, CSRF trusted origins, allowed CORS origins.</li>
+<li>Retention và safety: default trace retention days, ngưỡng database usage blocking, redaction, encryption, TLS.</li>
+<li>Evaluation sandbox: allowlist và credential cho WASM, E2B, Daytona, Vercel, Deno, Modal.</li>
+<li>Instrumentation: endpoint OTLP collector để export telemetry của chính Phoenix server.</li>
+</ul>
+<p>Trong vận hành, cài đặt capacity rủi ro nhất là <code>PHOENIX_MAX_SPANS_QUEUE_SIZE</code>; Helm ghi chú rằng span đang queue tiêu thụ memory và phải được sizing theo throughput database. Cần theo dõi disk usage database, trạng thái migration, span queue rejection, sức khỏe experiment runner, sandbox availability và drift cấu hình auth.</p>
+<h2 id="observability-testing-evaluation-v-failure-modes">Observability, testing, evaluation và failure modes</h2>
+<p>Phoenix có unit, integration và package test trong <code>tests/</code>, <code>packages/phoenix-client/tests/</code>, <code>packages/phoenix-evals/tests/</code> và <code>js/packages/*/test/</code>. Tên test bao phủ client resource cho trace/span/session/dataset/experiment, evaluator prompt và adapter, rate limiter, concurrency controller, OTel registration, MCP trace/span/project/dataset utilities và chuyển đổi ATIF trajectory.</p>
+<p>Các failure mode cần thiết kế:</p>
+<ul>
+<li><strong>Quá tải span</strong>: OTLP ingestion vượt throughput ghi database, làm đầy in-memory span queue và gây rejection.</li>
+<li><strong>Áp lực database</strong>: SQLite tiện lợi nhưng không phù hợp production nhiều người dùng hoặc concurrency cao; deployment bền vững nên dùng Postgres.</li>
+<li><strong>Lệch migration</strong>: phiên bản server và schema database phải được nâng cùng nhau.</li>
+<li><strong>Rủi ro sandbox evaluator</strong>: code evaluator và agent tool cần sandbox control, provider allowlist và resource limit.</li>
+<li><strong>Lộ credential provider</strong>: playground và evaluator có thể gọi external LLM provider; secret cần encryption và admin control nghiêm ngặt.</li>
+<li><strong>Dữ liệu trace nhạy cảm</strong>: prompt, document, tool argument và output có thể chứa PII hoặc secret.</li>
+<li><strong>Sai cấu hình auth</strong>: tắt auth hoặc dùng default admin yếu chỉ phù hợp trong local development cô lập.</li>
+</ul>
+<h2 id="r-i-ro-b-o-m-t-v-qu-n-tr">Rủi ro bảo mật và quản trị</h2>
+<p>Phoenix lưu AI telemetry, evaluator output, prompt version, dataset example, annotation và cấu hình provider. Kiểm soát bảo mật nên gồm authentication trong môi trường dùng chung, SSO/OIDC hoặc LDAP khi phù hợp, <code>PHOENIX_SECRET</code> mạnh, TLS cho HTTP và gRPC, cô lập network database, mã hóa secret, redaction rule, trace retention, credential database least privilege và giới hạn sandbox cho code evaluator.</p>
+<p>Đội governance nên xem dataset và experiment như hồ sơ chất lượng. Nếu evaluator definition thay đổi, kết quả phải được diễn giải theo evaluator version. Nếu prompt version được promote từ playground, team nên giữ liên kết trace và bằng chứng experiment.</p>
+<h2 id="h-ng-d-n-c">Hướng dẫn đọc</h2>
+<ol>
+<li>Đọc <code>README.md</code> để nắm workflow sản phẩm và integration.</li>
+<li>Đọc <code>pyproject.toml</code> để biết dependency, package entrypoint và optional extra.</li>
+<li>Đọc <code>src/phoenix/server/app.py</code> để hiểu composition root của ứng dụng.</li>
+<li>Đọc <code>src/phoenix/trace/attributes.py</code>, <code>schemas.py</code> và <code>trace_dataset.py</code> để hiểu biểu diễn trace.</li>
+<li>Đọc <code>src/phoenix/db/</code>, nhất là model, migration, bulk inserter và facilitator.</li>
+<li>Đọc <code>packages/phoenix-otel/</code>, <code>packages/phoenix-client/</code>, <code>packages/phoenix-evals/</code> để hiểu vai trò SDK bên ngoài.</li>
+<li>Đọc <code>helm/README.md</code>, <code>helm/values.yaml</code> và <code>kustomize/base/phoenix.yaml</code> cho cấu hình production.</li>
+<li>Dùng test trong <code>packages/</code> và <code>js/packages/</code> để hiểu edge case.</li>
+</ol>
+<h2 id="l-tr-nh-h-c">Lộ trình học</h2>
+<ol>
+<li>Theo dấu một trace từ OpenInference instrumentation đến OTLP gRPC ingestion.</li>
+<li>Xem cách một span thành database record rồi thành GraphQL query cho UI.</li>
+<li>Học khái niệm dataset và experiment từ README, <code>src/phoenix/datasets/</code> và dataloader.</li>
+<li>Nghiên cứu <code>packages/phoenix-evals</code> để hiểu cách dựng LLM judge và classification evaluator.</li>
+<li>Nghiên cứu <code>js/packages/phoenix-mcp</code> nếu muốn đưa dữ liệu Phoenix vào coding agent.</li>
+<li>Review cấu hình bảo mật Helm trước khi dùng Phoenix ngoài local environment.</li>
+</ol>
+<h2 id="thu-t-ng">Thuật ngữ</h2>
+<ul>
+<li><strong>OpenInference</strong>: semantic convention và instrumentation tập trung vào AI, xây trên OpenTelemetry.</li>
+<li><strong>OTLP</strong>: OpenTelemetry Protocol dùng để ingest span.</li>
+<li><strong>Strawberry GraphQL</strong>: framework GraphQL Python dùng ở lớp API/UI của Phoenix.</li>
+<li><strong>DataLoader</strong>: helper batching và caching cho GraphQL read hiệu quả.</li>
+<li><strong>Evaluator</strong>: function, model judge hoặc classification metric chấm điểm output.</li>
+<li><strong>Sandbox</strong>: runtime cô lập để chạy code evaluator.</li>
+<li><strong>Prompt version</strong>: trạng thái prompt bất biến hoặc có version để so sánh và release.</li>
+<li><strong>ATIF</strong>: định dạng fixture trao đổi agent trajectory dùng trong test Phoenix client.</li>
+</ul>
+<h2 id="deep-dive-b-m-theo-repository">Deep Dive Bám Theo Repository</h2>
+<p>Nên hiểu Phoenix như một ứng dụng LLMOps đặt OpenTelemetry làm nền, gồm Python server, TypeScript UI và các package evaluator/client riêng. Runtime lõi nằm trong <code>github-repos/05-observability-evaluation-llmops/phoenix/src/phoenix/</code>, với ranh giới quan trọng ở <code>server/</code>, <code>trace/</code>, <code>db/</code>, <code>datasets/</code> và <code>metrics/</code>. UI nằm ở <code>app/src/</code>. Package evaluator nằm trong <code>packages/phoenix-evals/</code>, còn JavaScript client/OTEL nằm dưới <code>js/packages/phoenix-client/</code> và <code>js/packages/phoenix-otel/</code>. Ví dụ deployment nằm trong <code>kustomize/</code>, <code>helm/</code> và <code>scripts/docker/devops/</code>.</p>
+<div class="mermaid">flowchart LR
+  App[&quot;LLM app co OpenInference instrumentation&quot;] --&gt; OTLP[&quot;OTLP HTTP hoac gRPC ingestion&quot;]
+  OTLP --&gt; Server[&quot;Phoenix server src/phoenix/server&quot;]
+  Server --&gt; Trace[&quot;trace normalization src/phoenix/trace&quot;]
+  Trace --&gt; DB[&quot;database layer src/phoenix/db&quot;]
+  DB --&gt; GraphQL[&quot;GraphQL resolvers va dataloaders&quot;]
+  GraphQL --&gt; UI[&quot;React UI app/src&quot;]
+  DB --&gt; Datasets[&quot;datasets va experiments&quot;]
+  EvalPkg[&quot;packages/phoenix-evals&quot;] --&gt; Datasets
+  ClientPkg[&quot;js/packages/phoenix-client&quot;] --&gt; Server</div>
+<p>Ranh giới kiến trúc quan trọng vì Phoenix vừa là ingestion system vừa là analysis workbench. OTLP/OpenInference spans là bằng chứng thô. GraphQL và DataLoader định hình bằng chứng đó để UI khám phá. Datasets, experiments, annotations, prompt versions và evaluators biến observation thành tài sản regression. Nếu team chỉ monitor span ingestion, họ có thể bỏ sót sức khỏe của experiment comparison, evaluator execution, prompt release hoặc dataset mutation.</p>
+<div class="mermaid">sequenceDiagram
+  participant Inst as Instrumented app
+  participant OTLP as Phoenix OTLP endpoint
+  participant Srv as Phoenix server
+  participant DB as DB session va migrations
+  participant UI as GraphQL UI
+  participant Eval as Evaluator package
+  Inst-&gt;&gt;OTLP: export spans voi OpenInference attributes
+  OTLP-&gt;&gt;Srv: parse va normalize spans
+  Srv-&gt;&gt;DB: persist traces, spans, annotations
+  UI-&gt;&gt;DB: batched GraphQL reads qua dataloaders
+  UI-&gt;&gt;Eval: request experiment hoac evaluator workflow
+  Eval-&gt;&gt;Srv: submit scores hoac experiment results
+  Srv-&gt;&gt;DB: attach evaluations vao datasets hoac spans</div>
+<div class="mermaid">flowchart TD
+  Risk[&quot;Rui ro van hanh&quot;] --&gt; Ingest[&quot;OTLP schema mismatch&quot;]
+  Risk --&gt; DB[&quot;database migration drift&quot;]
+  Risk --&gt; Eval[&quot;LLM judge nondeterminism&quot;]
+  Risk --&gt; Sandbox[&quot;code evaluator sandbox&quot;]
+  Risk --&gt; UI[&quot;GraphQL hot query&quot;]
+  Risk --&gt; Auth[&quot;auth va reverse proxy&quot;]
+  Ingest --&gt; I1[&quot;span attributes lam hong downstream filters&quot;]
+  DB --&gt; D1[&quot;experiments hoac annotations khong load duoc&quot;]
+  Eval --&gt; E1[&quot;score distributions shift sau doi prompt/model&quot;]
+  Sandbox --&gt; S1[&quot;untrusted code can isolation va limits&quot;]
+  UI --&gt; U1[&quot;dataloader batching che dau access pattern dat&quot;]
+  Auth --&gt; A1[&quot;headers hoac base path loi sau proxy&quot;]</div>
+<h3 id="checklist-s-n-s-ng-production">Checklist Sẵn Sàng Production</h3>
+<ul>
+<li>Xem OpenInference attributes như contract. Trước khi rollout rộng, gửi span đại diện và kiểm tra trace tree, token/cost fields, tool spans, retrieval spans và annotations render đúng.</li>
+<li>Chạy kiểm tra migration database và schema trước deployment; <code>src/phoenix/db/</code>, <code>scripts/ddl/</code> và <code>schemas/openapi.json</code> là một phần contract vận hành.</li>
+<li>Load test GraphQL views với trace size thực tế. Hiệu năng UI phụ thuộc resolver và DataLoader, không chỉ database index.</li>
+<li>Với evaluator workflows, pin judge prompts, judge models, concurrency limits và retry policies. Dùng <code>packages/phoenix-evals/tests/</code> để hiểu edge case của evaluator.</li>
+<li>Review sandbox và code-evaluator settings trước khi cho phép user-authored evaluator trong môi trường dùng chung.</li>
+<li>Xác thực reverse proxy, base URL, auth và TLS bằng các ví dụ trong <code>examples/reverse-proxy/</code>, <code>scripts/docker/devops/</code>, <code>kustomize/</code> và <code>helm/</code>.</li>
+<li>Đưa datasets, experiments, prompt versions, annotations và traces vào backup/restore tests.</li>
+</ul>
+<h3 id="h-ng-d-n-c-cho-senior-architect">Hướng Dẫn Đọc Cho Senior Architect</h3>
+<p>Đọc <code>src/phoenix/server/</code> trước để hiểu ingestion và API boundaries. Sau đó đọc <code>src/phoenix/trace/</code> và <code>src/phoenix/db/</code> để xem spans thành records queryable như thế nào. Tiếp theo chuyển sang <code>app/src/</code> cho product concepts, nhất là trace và experiment screens. Cuối cùng inspect <code>packages/phoenix-evals/</code>, <code>packages/phoenix-otel/</code>, <code>js/packages/phoenix-client/</code> và deployment manifests. Thứ tự này giữ telemetry, persistence, product workflow, SDK behavior và operations thành các lớp riêng.</p>
+<h3 id="k-ch-b-n-v-n-h-nh-c-n-di-n-t-p">Kịch Bản Vận Hành Cần Diễn Tập</h3>
+<p>Hãy chạy một kịch bản cho từng plane của Phoenix. Với ingestion, export traces từ một framework integration và xác nhận OpenInference attributes đi qua OTLP parsing, persistence, GraphQL reads và UI rendering. Với evaluation, tạo dataset, chạy experiment bằng evaluator đã pin, rồi kiểm tra annotations và scores vẫn so sánh được sau khi server restart. Với operations, đặt Phoenix sau các reverse-proxy examples, sau đó kiểm tra base URL handling, auth headers, TLS termination và phân trang trace lớn.</p>
+<h3 id="d-u-hi-u-c-n-review-l-i-ki-n-tr-c">Dấu Hiệu Cần Review Lại Kiến Trúc</h3>
+<p>Cần review lại kiến trúc Phoenix nếu trace tree hiển thị đúng nhưng dataset/experiment không liên kết được với span gốc, nếu evaluator chạy thành công nhưng score distribution thay đổi mà không có version note, hoặc nếu GraphQL UI chậm dù OTLP ingestion vẫn ổn. Những dấu hiệu này cho thấy vấn đề nằm ở lớp phân tích và workflow, không nhất thiết ở ingestion. Trong môi trường production, hãy tách dashboard health, database migration health, evaluator health và OTLP ingestion health thành các tín hiệu vận hành độc lập.</p>
+<p>Một kiểm tra hữu ích là chọn một trace phức tạp có tool call, retrieval và annotation, rồi lần lượt truy xuất nó qua UI, GraphQL/API client và evaluator workflow. Nếu ba đường này không kể cùng một câu chuyện dữ liệu, tài liệu vận hành cần ghi rõ nguồn sự thật và quyền ưu tiên của từng store.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

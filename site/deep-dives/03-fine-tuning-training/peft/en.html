@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PEFT Architecture | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/03-fine-tuning-training/peft/README.en.md">View source</a>
+      <h1 id="peft-architecture">PEFT Architecture</h1>
+<h2 id="scope-and-repository-facts">Scope And Repository Facts</h2>
+<p>This document is grounded in the local clone at <code>github-repos/03-fine-tuning-training/peft</code>, inspected at commit <code>4f7ddfabbb0d03c6071e7ba922335bde26da4cf7</code> from 2026-06-01, with package version <code>0.19.2.dev0</code> in <code>setup.py</code> and <code>src/peft/__init__.py</code>.</p>
+<p>PEFT is a Python package under <code>src/peft</code> with 232 source files, 62 test files, 78 documentation files, and 215 example files in this clone. Its package metadata in <code>setup.py</code> requires Python 3.10+, PyTorch, Transformers, Accelerate, Safetensors, Hugging Face Hub, NumPy, packaging, psutil, PyYAML, and tqdm. Optional development and test extras add pytest, diffusers, datasets, scipy, scikit-learn, sentencepiece, protobuf, torchvision, ruff, black, and doc-builder tooling.</p>
+<h2 id="executive-summary">Executive Summary</h2>
+<p>PEFT, Parameter-Efficient Fine-Tuning, solves the cost problem of adapting large pretrained models by training compact adapter parameters instead of updating every base-model weight. It is not a training platform by itself; it is the adapter layer and checkpoint format that lets Transformers, Diffusers, Accelerate, DeepSpeed, TRL, and plain PyTorch training loops reuse large frozen backbones while only optimizing a small number of task-specific parameters.</p>
+<p>Architecturally, PEFT is organized around a small set of public wrappers and registries:</p>
+<ul>
+<li><code>src/peft/mapping_func.py</code> exposes <code>get_peft_model</code>, the main wrapper factory.</li>
+<li><code>src/peft/peft_model.py</code> defines <code>PeftModel</code> and task-specific subclasses such as <code>PeftModelForCausalLM</code>.</li>
+<li><code>src/peft/mapping.py</code> holds runtime mappings from PEFT type to config class, tuner class, mixed-model class, and parameter prefix.</li>
+<li><code>src/peft/tuners/tuners_utils.py</code> defines the shared <code>BaseTuner</code> and <code>BaseTunerLayer</code> mechanics for finding target modules, replacing layers, managing adapter state, merging, unloading, and switching adapters.</li>
+<li><code>src/peft/tuners/*</code> implements concrete methods such as LoRA, AdaLoRA, IA3, prompt tuning, prefix tuning, LoHa, LoKr, OFT, BOFT, VeRA, XLora, trainable tokens, and many newer research adapters.</li>
+<li><code>src/peft/utils/save_and_load.py</code>, <code>src/peft/config.py</code>, and <code>src/peft/utils/*</code> manage adapter config serialization, state-dict filtering, Hub access, quantization helpers, adapter hotswapping, and integration utilities.</li>
+</ul>
+<p>The main architectural tradeoff is that PEFT mutates or wraps the base model. That gives excellent compatibility with existing PyTorch and Hugging Face training workflows, but it makes target module selection, checkpoint provenance, dtype handling, and adapter/base-model alignment critical operational concerns.</p>
+<h2 id="problem-solved">Problem Solved</h2>
+<p>Full fine-tuning of modern LLMs, diffusion models, speech models, and vision-language models is expensive in GPU memory, storage, optimizer state, and retraining time. PEFT reduces this by attaching small trainable modules or prompts to a frozen base model. The README demonstrates the practical result: adapter checkpoints are often MB-scale instead of GB-scale, and LoRA can train models that would otherwise exceed GPU memory.</p>
+<p>PEFT addresses four recurring engineering problems:</p>
+<ul>
+<li><strong>Training cost:</strong> only adapter weights, selected heads, or selected tokens require gradients.</li>
+<li><strong>Storage cost:</strong> <code>PeftModel.save_pretrained</code> stores adapter weights plus <code>adapter_config.json</code>, not the full base model.</li>
+<li><strong>Multi-task reuse:</strong> one frozen base model can host multiple named adapters and switch among them.</li>
+<li><strong>Ecosystem integration:</strong> adapters can be used from Transformers, Diffusers, Accelerate, DeepSpeed, TRL, and Hugging Face Hub workflows.</li>
+</ul>
+<h2 id="ai-stack-role">AI Stack Role</h2>
+<p>PEFT sits between model libraries and training/inference orchestration:</p>
+<ul>
+<li>Upstream: pretrained model loaders such as <code>transformers.AutoModel*</code>, Diffusers pipelines, and custom <code>torch.nn.Module</code> models.</li>
+<li>Core: PEFT config classes, model wrappers, tuner registries, adapter layers, and save/load utilities.</li>
+<li>Downstream training: Transformers <code>Trainer</code>, TRL <code>SFTTrainer</code> or DPO workflows, Accelerate launchers, FSDP, DeepSpeed ZeRO, and hand-written PyTorch loops.</li>
+<li>Downstream inference: unmerged adapter inference, merged base-model export, hotswapped adapters, weighted/mixed adapters, and Hub distribution.</li>
+</ul>
+<p>PEFT should be treated as a model adaptation and adapter checkpoint layer, not as a data pipeline, experiment tracker, serving gateway, or evaluation framework.</p>
+<h2 id="source-tree-map">Source Tree Map</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Path</th><th>Responsibility</th></tr></thead>
+<tbody>
+<tr><td><code>README.md</code></td><td>Project overview, quickstart, benefits, integrations, and model-support guidance.</td></tr>
+<tr><td><code>setup.py</code>, <code>pyproject.toml</code></td><td>Package version, dependencies, extras, test markers, ruff/pytest settings.</td></tr>
+<tr><td><code>src/peft/__init__.py</code></td><td>Public API exports for configs, models, utilities, helpers, and all registered methods.</td></tr>
+<tr><td><code>src/peft/mapping.py</code></td><td>Runtime registries for PEFT type to config, tuner, mixed tuner, and parameter prefix.</td></tr>
+<tr><td><code>src/peft/mapping_func.py</code></td><td>Main <code>get_peft_model</code> factory and routing between <code>PeftModel</code>, task-specific wrappers, and <code>PeftMixedModel</code>.</td></tr>
+<tr><td><code>src/peft/config.py</code></td><td>Base config mixin, <code>PeftConfig</code>, config save/load, Hub download, version metadata, forward compatibility.</td></tr>
+<tr><td><code>src/peft/peft_model.py</code></td><td>High-level PEFT wrapper, adapter save/load, add/set/disable adapter, task-specific forward paths, generation helpers.</td></tr>
+<tr><td><code>src/peft/mixed_model.py</code></td><td>Mixed compatible adapter support through <code>PeftMixedModel</code>.</td></tr>
+<tr><td><code>src/peft/tuners/tuners_utils.py</code></td><td>Shared module matching, adapter injection, layer replacement, merge/unload, trainability and adapter state helpers.</td></tr>
+<tr><td><code>src/peft/tuners/lora/*</code></td><td>LoRA config/model/layer, quantized dispatchers, Tensor Parallel hooks, LoRA variants, merge utilities.</td></tr>
+<tr><td><code>src/peft/tuners/*</code></td><td>Method-specific configs, model wrappers, prompt encoders, and adapter layers for many PEFT methods.</td></tr>
+<tr><td><code>src/peft/utils/save_and_load.py</code></td><td>Adapter-only state dict extraction, loading, key rewriting, embedding save handling.</td></tr>
+<tr><td><code>src/peft/utils/hotswap.py</code></td><td>Adapter hotswap support and target-shape compatibility checks.</td></tr>
+<tr><td><code>docs/source/_toctree.yml</code></td><td>Documentation information architecture: tutorials, method guides, developer guides, Accelerate integrations, API references.</td></tr>
+<tr><td><code>docs/source/developer_guides/*</code></td><td>Checkpoint format, low-level injection, custom models, quantization, model merging, mixed models, torch.compile, troubleshooting.</td></tr>
+<tr><td><code>docs/source/accelerate/*</code></td><td>DeepSpeed and FSDP integration guidance.</td></tr>
+<tr><td><code>examples/*</code></td><td>Task and method examples: causal LM, seq2seq, SFT, diffusion, ControlNet, image classification, int8/FP4, multi-adapter, hotswap-style use cases.</td></tr>
+<tr><td><code>tests/*</code></td><td>Unit, integration, GPU, regression, mapping, low-level API, adapter-specific, quantization, torch.compile, training, and model compatibility tests.</td></tr>
+</tbody></table></div>
+<h2 id="component-diagram">Component Diagram</h2>
+<div class="mermaid">flowchart TB
+    user[User training or inference code]
+    hf[Transformers, Diffusers, custom torch modules]
+    factory[get_peft_model / inject_adapter_in_model]
+    wrapper[PeftModel and task-specific wrappers]
+    registry[PEFT registries in mapping.py]
+    tuner[BaseTuner in tuners_utils.py]
+    methods[Method implementations in tuners/*]
+    utils[Config, save/load, Hub, hotswap, integrations]
+    train[Trainer, TRL, Accelerate, DeepSpeed, FSDP]
+    artifact[adapter_config.json + adapter_model.safetensors]
+
+    user --&gt; hf
+    user --&gt; factory
+    hf --&gt; factory
+    factory --&gt; registry
+    registry --&gt; wrapper
+    registry --&gt; tuner
+    tuner --&gt; methods
+    wrapper --&gt; utils
+    methods --&gt; utils
+    wrapper --&gt; train
+    train --&gt; artifact
+    artifact --&gt; wrapper</div>
+<h2 id="core-concepts">Core Concepts</h2>
+<p><strong>Base model:</strong> the pretrained model being adapted. PEFT usually freezes it and inserts trainable adapter state.</p>
+<p><strong>Adapter:</strong> the trainable parameter set added to the model. For LoRA this is usually low-rank <code>lora_A</code> and <code>lora_B</code> modules; for prompt methods it can be learned prompt embeddings or prefix encoders.</p>
+<p><strong>PEFT config:</strong> a dataclass-derived object such as <code>LoraConfig</code>, <code>IA3Config</code>, or <code>PromptTuningConfig</code>. It declares method type, task type, target modules, trainable modules, rank, initialization, dropout, inference mode, and method-specific settings.</p>
+<p><strong>Target modules and target parameters:</strong> names, regexes, shorthand values, or state-dict-derived targets that decide where adapters are injected. <code>BaseTuner</code> and method-specific models perform the matching.</p>
+<p><strong>Modules to save:</strong> non-adapter modules that must remain trainable and be included in adapter checkpoints. Sequence classification heads and resized embeddings are common examples.</p>
+<p><strong>Named adapters:</strong> adapters are stored in module dictionaries and can be selected with <code>set_adapter</code>, disabled, loaded from a checkpoint, or saved selectively.</p>
+<p><strong>Merged vs unmerged inference:</strong> some methods can merge adapter deltas into base weights via <code>merge_and_unload</code>; this may improve inference simplicity but sacrifices adapter switching and unmerge flexibility.</p>
+<p><strong>Adapter checkpoint:</strong> PEFT saves <code>adapter_model.safetensors</code> or <code>adapter_model.bin</code>, <code>adapter_config.json</code>, and optionally a generated model card. The docs recommend Safetensors because pickle-backed <code>.bin</code> has security risk.</p>
+<h2 id="internal-architecture">Internal Architecture</h2>
+<p>The public API starts in <code>src/peft/__init__.py</code>, which re-exports model wrappers, config classes, helper utilities, and every method registered under <code>src/peft/tuners</code>. This makes PEFT feel like a flat API while keeping method implementations modular.</p>
+<p>The main path is:</p>
+<ol>
+<li>User creates a base model with Transformers, Diffusers, timm, or custom PyTorch.</li>
+<li>User creates a <code>PeftConfig</code>, commonly <code>LoraConfig</code>.</li>
+<li><code>get_peft_model</code> in <code>mapping_func.py</code> inspects task type, model state, and config.</li>
+<li>The factory chooses <code>PeftModel</code>, a task-specific subclass, or <code>PeftMixedModel</code>.</li>
+<li>For non-prompt methods, <code>PeftModel.__init__</code> looks up a tuner class in <code>PEFT_TYPE_TO_TUNER_MAPPING</code>.</li>
+<li><code>BaseTuner</code> injects adapter modules by traversing the base model, matching targets, replacing layers, and recording targeted module/parameter names.</li>
+<li>Method layers such as <code>LoraLayer</code> own the adapter weights and forward-time delta logic.</li>
+<li>Save/load utilities filter adapter parameters from full model state and write/read PEFT checkpoint files.</li>
+</ol>
+<p>The extension registry is deliberately simple. <code>register_peft_method</code> in <code>src/peft/utils/peft_types.py</code> validates the method name, ensures <code>PeftType</code> has a corresponding enum value, assigns a unique parameter prefix, and fills the mappings in <code>mapping.py</code>. Method packages call it from their <code>__init__.py</code>, for example <code>src/peft/tuners/lora/__init__.py</code> registers <code>LORA</code> with <code>LoraConfig</code> and <code>LoraModel</code>.</p>
+<h2 id="end-to-end-flow">End-To-End Flow</h2>
+<div class="mermaid">sequenceDiagram
+    participant App as Training script
+    participant Base as Base model
+    participant Factory as get_peft_model
+    participant Registry as PEFT mappings
+    participant Tuner as BaseTuner/LoraModel
+    participant Layer as Adapter layer
+    participant Trainer as Trainer/Accelerate/DeepSpeed
+    participant Store as Adapter checkpoint
+
+    App-&gt;&gt;Base: AutoModel.from_pretrained(...)
+    App-&gt;&gt;Factory: get_peft_model(Base, LoraConfig)
+    Factory-&gt;&gt;Registry: resolve task type and PEFT type
+    Registry--&gt;&gt;Factory: PeftModel + LoraModel
+    Factory-&gt;&gt;Tuner: wrap or mutate base model
+    Tuner-&gt;&gt;Layer: replace matched modules with adapter-aware layers
+    Trainer-&gt;&gt;Layer: forward/backward on trainable adapter params
+    Trainer-&gt;&gt;Store: save_pretrained(...)
+    Store--&gt;&gt;App: adapter_config.json + adapter_model.safetensors</div>
+<h2 id="runtime-and-data-flow">Runtime And Data Flow</h2>
+<p>During training, the base model receives the same input tensors as before. The key change is that selected modules have been replaced by adapter-aware modules. For LoRA, <code>LoraLayer</code> holds the original base layer plus trainable low-rank matrices in module dictionaries keyed by adapter name. In the forward path, the base layer result is combined with an adapter delta, with dtype casts and variant hooks applied when needed.</p>
+<p>Trainability is managed by PEFT utilities rather than by the user manually freezing every parameter. Adapter parameters and configured <code>modules_to_save</code> are marked trainable; most base parameters remain frozen. <code>print_trainable_parameters</code>, <code>get_model_status</code>, and <code>get_layer_status</code> help inspect this state.</p>
+<p>Loading is different from creation. A trained adapter should be loaded with <code>PeftModel.from_pretrained(base_model, adapter_id)</code> or <code>load_adapter</code>, not by calling <code>get_peft_model</code> with a fresh config. <code>tests/test_mapping.py</code> verifies that repeated wrapping emits a warning and that unloading first avoids that warning.</p>
+<p>For low-level use cases, <code>inject_adapter_in_model</code> in <code>mapping.py</code> mutates any <code>torch.nn.Module</code> in place and returns the original model instance instead of a <code>PeftModel</code>. <code>docs/source/developer_guides/low_level_api.md</code> and <code>tests/test_low_level_api.py</code> show that this path is useful for non-Transformers models but gives up higher-level wrapper utilities unless the caller manages save/load explicitly.</p>
+<h2 id="deployment-and-operations-topology">Deployment And Operations Topology</h2>
+<div class="mermaid">flowchart LR
+    subgraph Dev[Development workstation]
+        config[PeftConfig]
+        script[Training script]
+        tests[Local tests and examples]
+    end
+    subgraph Train[Training cluster]
+        base[Base model cache]
+        accel[Accelerate launcher]
+        ds[DeepSpeed or FSDP optional]
+        peft[PeftModel with adapters]
+    end
+    subgraph Artifacts[Artifact storage]
+        hub[Hugging Face Hub or object storage]
+        adapter[Adapter checkpoint]
+        card[README model card]
+    end
+    subgraph Serve[Inference runtime]
+        load[Load base + adapter]
+        switch[set_adapter / disable_adapter / hotswap]
+        merged[Optional merged model]
+    end
+
+    config --&gt; script
+    script --&gt; accel
+    accel --&gt; ds
+    ds --&gt; peft
+    base --&gt; peft
+    peft --&gt; adapter
+    adapter --&gt; hub
+    peft --&gt; card
+    hub --&gt; load
+    load --&gt; switch
+    switch --&gt; merged</div>
+<p>Operationally, PEFT is lightweight compared with DeepSpeed or Accelerate, but it depends on correct model and environment coordination:</p>
+<ul>
+<li>The base model name and revision in <code>adapter_config.json</code> must match the model used at inference.</li>
+<li>Adapter dtype behavior matters: PEFT promotes fp16/bf16 adapter weights to fp32 by default for stable training unless <code>autocast_adapter_dtype=False</code>.</li>
+<li>For quantized training, call helpers such as <code>prepare_model_for_kbit_training</code> before adapter injection.</li>
+<li>For ZeRO-3, FSDP, or low-memory loading, use documented options such as <code>low_cpu_mem_usage</code> and the Accelerate/DeepSpeed guidance.</li>
+<li>Saving should use <code>safe_serialization=True</code> unless there is a compatibility reason not to.</li>
+<li>Merged exports are easier to serve in plain runtimes but lose multi-adapter controls.</li>
+</ul>
+<h2 id="lifecycle-and-decision-diagram">Lifecycle And Decision Diagram</h2>
+<div class="mermaid">flowchart TD
+    start[Start with a pretrained model] --&gt; task{What needs adaptation?}
+    task --&gt;|Language generation or classification| lora[LoRA or variant]
+    task --&gt;|Prompt-only adaptation| prompt[Prompt, prefix, or P-tuning]
+    task --&gt;|Multiplicative channel scaling| ia3[IA3]
+    task --&gt;|Many adapters or routing| mixed[PeftMixedModel, XLora, Arrow, hotswap]
+    task --&gt;|New architecture| custom[Manual target_modules or low-level injection]
+    lora --&gt; train[Train adapter params]
+    prompt --&gt; train
+    ia3 --&gt; train
+    mixed --&gt; train
+    custom --&gt; train
+    train --&gt; eval[Evaluate task quality and trainable percent]
+    eval --&gt; save[Save adapter checkpoint]
+    save --&gt; deploy{Deployment choice}
+    deploy --&gt;|Need adapter switching| unmerged[Load base + adapter]
+    deploy --&gt;|Need plain model artifact| merge[merge_and_unload if supported]
+    deploy --&gt;|Need online replacement| hot[hotswap compatible adapters]</div>
+<h2 id="module-dependency-diagram">Module Dependency Diagram</h2>
+<div class="mermaid">flowchart TB
+    init[src/peft/__init__.py]
+    peftmodel[src/peft/peft_model.py]
+    mappingfunc[src/peft/mapping_func.py]
+    mapping[src/peft/mapping.py]
+    config[src/peft/config.py]
+    types[src/peft/utils/peft_types.py]
+    tunerutils[src/peft/tuners/tuners_utils.py]
+    lora[src/peft/tuners/lora]
+    other[src/peft/tuners/*]
+    save[src/peft/utils/save_and_load.py]
+    integrations[src/peft/utils/integrations.py]
+
+    init --&gt; mappingfunc
+    init --&gt; peftmodel
+    init --&gt; config
+    init --&gt; other
+    mappingfunc --&gt; mapping
+    mappingfunc --&gt; peftmodel
+    peftmodel --&gt; mapping
+    peftmodel --&gt; save
+    peftmodel --&gt; integrations
+    tunerutils --&gt; mapping
+    lora --&gt; tunerutils
+    other --&gt; tunerutils
+    other --&gt; types
+    types --&gt; mapping
+    config --&gt; mapping</div>
+<h2 id="extension-points">Extension Points</h2>
+<p>The most important extension points are:</p>
+<ul>
+<li><strong>New PEFT method:</strong> add a <code>PeftType</code> enum member in <code>src/peft/utils/peft_types.py</code>, implement config/model/layers under <code>src/peft/tuners/&lt;method&gt;</code>, and call <code>register_peft_method</code> from that method package.</li>
+<li><strong>New adapter layer behavior:</strong> subclass or mirror <code>BaseTuner</code> and <code>BaseTunerLayer</code>; implement target detection, <code>_prepare_adapter_config</code>, <code>_create_and_replace</code>, and method-specific layer logic.</li>
+<li><strong>New LoRA variant:</strong> use the variant pattern around <code>LoraVariant</code> in <code>src/peft/tuners/lora/layer.py</code>, where variant hooks can participate in init, merge, unmerge, and forward.</li>
+<li><strong>Custom models:</strong> set <code>target_modules</code>, regex target patterns, <code>target_parameters</code>, and <code>modules_to_save</code> explicitly. The custom models guide shows MLP, timm, and new Transformers architectures.</li>
+<li><strong>Low-level injection:</strong> call <code>inject_adapter_in_model</code> for arbitrary <code>torch.nn.Module</code> models when <code>PeftModel</code> wrappers are not appropriate.</li>
+<li><strong>Checkpoint conversion:</strong> use <code>get_peft_model_state_dict</code>, <code>set_peft_model_state_dict</code>, and the checkpoint-format guide to map external adapter keys into PEFT format.</li>
+<li><strong>Serving flexibility:</strong> use <code>load_adapter</code>, <code>set_adapter</code>, <code>disable_adapter</code>, hotswap utilities, or <code>merge_and_unload</code> depending on latency, memory, and multi-adapter requirements.</li>
+</ul>
+<h2 id="integrations">Integrations</h2>
+<p>PEFT is intentionally coupled to the Hugging Face ecosystem:</p>
+<ul>
+<li><strong>Transformers:</strong> direct adapter APIs, task-specific <code>PeftModelFor*</code> classes, model loading, generation, classification heads, and Hub conventions.</li>
+<li><strong>Diffusers:</strong> LoRA and other adapter workflows for DreamBooth, ControlNet, Stable Diffusion, and image generation examples.</li>
+<li><strong>Accelerate:</strong> distributed launch and device placement; PEFT docs include FSDP and DeepSpeed pages under <code>docs/source/accelerate</code>.</li>
+<li><strong>DeepSpeed:</strong> large-model LoRA and QLoRA workflows with ZeRO-3, CPU offload, and <code>gather_params_ctx</code> integration in adapter initialization paths.</li>
+<li><strong>TRL:</strong> SFT, DPO, and RLHF-style workflows where PEFT config is passed to TRL trainers.</li>
+<li><strong>Quantization libraries:</strong> bitsandbytes, GPTQ, AQLM, AWQ, HQQ, EETQ, INC, torchao, and Transformer Engine dispatch paths are visible in LoRA implementation files.</li>
+<li><strong>Hugging Face Hub:</strong> configs inherit <code>PushToHubMixin</code>, load via <code>hf_hub_download</code>, and save model-card metadata.</li>
+<li><strong>Safetensors:</strong> default secure adapter serialization through <code>safe_save_file</code>.</li>
+</ul>
+<h2 id="configuration-deployment-and-operations">Configuration, Deployment, And Operations</h2>
+<p>PEFT configuration is code-first rather than centralized YAML-first. The adapter config object is the source of truth, and <code>adapter_config.json</code> is the persisted runtime contract.</p>
+<p>Recommended operational practices:</p>
+<ul>
+<li>Record base model id, revision, tokenizer changes, PEFT version, training data version, and target module selection.</li>
+<li>Prefer explicit <code>target_modules</code> for new architectures or custom PyTorch modules.</li>
+<li>Use <code>task_type</code> where possible so PEFT can select task wrappers and train/save relevant heads.</li>
+<li>Use <code>modules_to_save</code> for randomly initialized heads, resized embeddings, poolers, or task-specific output layers.</li>
+<li>Use <code>save_embedding_layers=True</code> or trainable tokens intentionally when tokenizer vocabulary changes.</li>
+<li>Keep adapters unmerged when you need adapter switching, provenance, or composition.</li>
+<li>Merge only after verifying that the method and quantization mode support it and that downstream serving does not need adapter control.</li>
+<li>Run <code>print_trainable_parameters()</code> and inspect <code>targeted_module_names</code> or layer status before spending GPU time.</li>
+<li>In DeepSpeed/FSDP workflows, follow the specific Accelerate config guidance and ensure all ranks save/checkpoint consistently.</li>
+</ul>
+<h2 id="observability-testing-evaluation-and-failure-modes">Observability, Testing, Evaluation, And Failure Modes</h2>
+<p>The repo has broad tests for adapter methods and integrations:</p>
+<ul>
+<li><code>tests/test_low_level_api.py</code> validates low-level injection, adapter-only state dicts, <code>modules_to_save</code>, and state-dict-driven target reconstruction.</li>
+<li><code>tests/test_mapping.py</code> validates repeated wrapping warnings and unload behavior.</li>
+<li><code>tests/test_config.py</code>, <code>tests/test_auto.py</code>, and <code>tests/test_hub_features.py</code> cover config and Hub-style flows.</li>
+<li><code>tests/test_lora_variants.py</code>, <code>tests/test_lora_conversion.py</code>, <code>tests/test_torch_compile.py</code>, and many method-specific test files cover implementation behavior.</li>
+<li><code>tests/training/*</code> includes DeepSpeed, FSDP, and tensor-parallel-oriented training configurations.</li>
+</ul>
+<p>Observable signals include trainable parameter counts, adapter status helpers, warnings about repeated wrapping or incompatible config, checkpoint key mismatches, missing/unexpected state-dict keys, and Trainer/Accelerate logs.</p>
+<p>Common failure modes:</p>
+<ul>
+<li>Loading a trained adapter with <code>get_peft_model</code> instead of <code>PeftModel.from_pretrained</code>.</li>
+<li>Incorrect <code>target_modules</code>, especially on new architectures or custom modules.</li>
+<li>Forgetting <code>modules_to_save</code> for classification heads or resized embeddings, leading to random inference heads after reload.</li>
+<li>Adapter/base model mismatch because the base model revision changed.</li>
+<li>Dtype issues with fp16 gradients or disabled adapter autocasting.</li>
+<li>Quantization plus merge incompatibilities or small numerical deviations after merging.</li>
+<li>Hotswapping adapters with incompatible ranks, targets, or shapes.</li>
+<li>Security exposure from pickle-backed <code>.bin</code> adapter files or untrusted Hub code.</li>
+</ul>
+<p>Evaluation should measure both task quality and systems metrics: validation loss/accuracy, instruction-following score, adapter checkpoint size, trainable parameter percentage, peak GPU memory, throughput, reload reproducibility, and merged-vs-unmerged output drift.</p>
+<h2 id="security-and-governance-risks">Security And Governance Risks</h2>
+<p>PEFT adapters are small but can materially change model behavior. Governance should treat adapter artifacts as model artifacts, not as harmless patches.</p>
+<p>Key risks:</p>
+<ul>
+<li><strong>Untrusted artifacts:</strong> prefer Safetensors; avoid loading pickle-backed <code>.bin</code> from untrusted sources.</li>
+<li><strong>Base-model drift:</strong> adapter behavior depends on exact base weights, tokenizer, and revision.</li>
+<li><strong>Data leakage:</strong> fine-tuned adapters can memorize sensitive data even when the base model is unchanged.</li>
+<li><strong>Policy bypass:</strong> a small adapter can override safety or domain behavior in a large base model.</li>
+<li><strong>License mismatch:</strong> adapter distribution must respect the base model license and training data obligations.</li>
+<li><strong>Supply chain:</strong> Hub downloads, custom model code, and quantization libraries should be pinned and reviewed.</li>
+<li><strong>Reproducibility:</strong> save training config, seeds, PEFT version, dependency versions, and target module decisions.</li>
+</ul>
+<h2 id="reading-guide">Reading Guide</h2>
+<p>Start with:</p>
+<ol>
+<li><code>README.md</code> for the high-level purpose, quickstart, and ecosystem integrations.</li>
+<li><code>src/peft/mapping_func.py</code> to understand how <code>get_peft_model</code> routes models.</li>
+<li><code>src/peft/peft_model.py</code> for wrapper lifecycle, save/load, adapter switching, and task-specific behavior.</li>
+<li><code>src/peft/tuners/tuners_utils.py</code> for the shared adapter injection engine.</li>
+<li><code>src/peft/tuners/lora/config.py</code>, <code>model.py</code>, and <code>layer.py</code> for the most important concrete method.</li>
+<li><code>docs/source/developer_guides/checkpoint.md</code> for artifact format and conversion.</li>
+<li><code>docs/source/developer_guides/low_level_api.md</code> and <code>custom_models.md</code> for custom models and non-wrapper workflows.</li>
+<li><code>docs/source/developer_guides/troubleshooting.md</code> for dtype, loading, and task-head pitfalls.</li>
+<li><code>tests/test_low_level_api.py</code>, <code>tests/test_mapping.py</code>, and method-specific tests to see expected behavior.</li>
+</ol>
+<h2 id="learning-path">Learning Path</h2>
+<p>For application developers:</p>
+<ol>
+<li>Run the README LoRA quickstart mentally against a small Transformers model.</li>
+<li>Inspect <code>LoraConfig</code> fields and understand <code>r</code>, <code>lora_alpha</code>, <code>target_modules</code>, dropout, bias, and <code>modules_to_save</code>.</li>
+<li>Learn the difference between creating a new adapter and loading a trained adapter.</li>
+<li>Practice saving, loading, disabling, and merging one adapter.</li>
+<li>Move to quantized training with <code>prepare_model_for_kbit_training</code>.</li>
+<li>Add distributed training through Accelerate, FSDP, or DeepSpeed only after the single-process adapter path is correct.</li>
+</ol>
+<p>For contributors:</p>
+<ol>
+<li>Read <code>register_peft_method</code> and one method package such as <code>tuners/lora</code>.</li>
+<li>Study <code>BaseTuner</code> target matching and replacement flow.</li>
+<li>Study state-dict key naming in the checkpoint guide.</li>
+<li>Add or modify tests before changing adapter injection, save/load, or dtype behavior.</li>
+<li>Verify method docs, package reference pages, examples, and test coverage together.</li>
+</ol>
+<h2 id="production-readiness-and-adapter-governance">Production Readiness And Adapter Governance</h2>
+<p>PEFT production readiness is about treating an adapter as a governed model artifact. The critical source anchors are <code>src/peft/mapping_func.py</code>, <code>src/peft/peft_model.py</code>, <code>src/peft/mapping.py</code>, <code>src/peft/tuners/tuners_utils.py</code>, <code>src/peft/tuners/lora/*</code>, <code>src/peft/utils/save_and_load.py</code>, <code>src/peft/utils/hotswap.py</code>, and <code>docs/source/developer_guides/checkpoint.md</code>.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Readiness area</th><th>What to verify</th></tr></thead>
+<tbody>
+<tr><td>Base-model contract</td><td><code>adapter_config.json</code> records the intended base model, but production should also pin revision, tokenizer changes, dtype, and quantization assumptions.</td></tr>
+<tr><td>Target selection</td><td><code>target_modules</code>, <code>target_parameters</code>, and <code>modules_to_save</code> match the actual architecture and include heads or resized embeddings when needed.</td></tr>
+<tr><td>Trainability</td><td><code>print_trainable_parameters</code>, <code>get_model_status</code>, and <code>get_layer_status</code> confirm only intended parameters are trainable.</td></tr>
+<tr><td>Checkpoint format</td><td>Prefer <code>adapter_model.safetensors</code>, validate key prefixes, and avoid untrusted pickle-backed <code>.bin</code> files.</td></tr>
+<tr><td>Load path</td><td>Use <code>PeftModel.from_pretrained</code> or <code>load_adapter</code> for trained adapters; do not accidentally create a fresh adapter with <code>get_peft_model</code>.</td></tr>
+<tr><td>Serving choice</td><td>Decide unmerged, merged, mixed, or hotswapped adapters based on latency, memory, provenance, and compatibility constraints.</td></tr>
+</tbody></table></div>
+<div class="mermaid">flowchart LR
+  Base[Base model and tokenizer] --&gt; Config[PeftConfig]
+  Config --&gt; Factory[get_peft_model or inject_adapter_in_model]
+  Factory --&gt; Mapping[mapping.py registries]
+  Mapping --&gt; Tuner[BaseTuner and method model]
+  Tuner --&gt; Layers[Adapter layers in tuners/*]
+  Layers --&gt; Train[Trainer, Accelerate, DeepSpeed, FSDP]
+  Train --&gt; Save[save_and_load.py adapter state dict]
+  Save --&gt; Artifact[adapter_config.json and adapter_model.safetensors]
+  Artifact --&gt; Load[PeftModel.from_pretrained or load_adapter]
+  Load --&gt; Serve{Serve mode}
+  Serve --&gt; Unmerged[Base plus adapter]
+  Serve --&gt; Merged[merge_and_unload]
+  Serve --&gt; Hot[hotswap compatible adapters]</div>
+<h2 id="failure-isolation-map">Failure Isolation Map</h2>
+<p>PEFT failures often appear as quality drops after reload, but the root cause may be target matching, missing task heads, base-model drift, dtype behavior, or an unsafe merge. Triage should inspect both adapter config and actual module status, not only training logs.</p>
+<div class="mermaid">flowchart TD
+  Symptom[PEFT symptom] --&gt; Domain{Domain}
+  Domain --&gt; Target[Target modules or parameters]
+  Domain --&gt; Save[Missing modules_to_save or embeddings]
+  Domain --&gt; Base[Base model or tokenizer drift]
+  Domain --&gt; DType[Adapter dtype or quantized training]
+  Domain --&gt; Load[Wrong loading API]
+  Domain --&gt; Merge[Merge, unmerge, or hotswap incompatibility]
+  Domain --&gt; Security[Unsafe artifact or Hub trust]
+  Target --&gt; Files1[tuners_utils.py and method configs]
+  Save --&gt; Files2[save_and_load.py and peft_model.py]
+  Base --&gt; Files3[config.py and adapter_config.json]
+  DType --&gt; Files4[integrations.py, lora dispatchers, quant guides]
+  Load --&gt; Files5[mapping_func.py and PeftModel.from_pretrained]
+  Merge --&gt; Files6[hotswap.py, merge_utils.py, method layers]
+  Security --&gt; Files7[checkpoint guide and safetensors policy]
+  Files1 --&gt; Action[Fix config, retrain, reload, or block artifact]
+  Files2 --&gt; Action
+  Files3 --&gt; Action
+  Files4 --&gt; Action
+  Files5 --&gt; Action
+  Files6 --&gt; Action
+  Files7 --&gt; Action</div>
+<h2 id="glossary">Glossary</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>Adapter</td><td>Trainable parameters attached to a frozen or mostly frozen base model.</td></tr>
+<tr><td>PEFT</td><td>Parameter-Efficient Fine-Tuning; the family of techniques and this library.</td></tr>
+<tr><td>LoRA</td><td>Low-Rank Adaptation; uses low-rank matrices to represent weight deltas.</td></tr>
+<tr><td>IA3</td><td>Adapter method that scales activations through learned vectors.</td></tr>
+<tr><td>Prompt tuning</td><td>Learns virtual prompt embeddings instead of modifying model layers.</td></tr>
+<tr><td>Prefix tuning</td><td>Learns key/value prefixes for attention layers.</td></tr>
+<tr><td><code>PeftConfig</code></td><td>Base configuration class persisted as <code>adapter_config.json</code>.</td></tr>
+<tr><td><code>PeftModel</code></td><td>High-level wrapper around the base model and adapters.</td></tr>
+<tr><td><code>BaseTuner</code></td><td>Shared injection and adapter-management base class.</td></tr>
+<tr><td><code>target_modules</code></td><td>Module names, regexes, or shorthand selecting where adapters attach.</td></tr>
+<tr><td><code>modules_to_save</code></td><td>Extra non-adapter modules that remain trainable and are checkpointed.</td></tr>
+<tr><td><code>adapter_model.safetensors</code></td><td>Default adapter weight file.</td></tr>
+<tr><td><code>merge_and_unload</code></td><td>Merges adapter deltas into base weights and removes PEFT wrappers when supported.</td></tr>
+<tr><td>Hotswap</td><td>Replace adapter weights online without rebuilding the whole model, subject to compatibility.</td></tr>
+<tr><td>QLoRA</td><td>LoRA fine-tuning on quantized base models, commonly with bitsandbytes 4-bit weights.</td></tr>
+<tr><td>ZeRO</td><td>DeepSpeed optimizer-state, gradient, and parameter partitioning used with PEFT for large training runs.</td></tr>
+</tbody></table></div>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

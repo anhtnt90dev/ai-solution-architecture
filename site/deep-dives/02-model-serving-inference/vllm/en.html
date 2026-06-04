@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>vLLM Architecture | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/02-model-serving-inference/vllm/README.en.md">View source</a>
+      <h1 id="vllm-architecture">vLLM Architecture</h1>
+<p>Source snapshot: <code>github-repos/02-model-serving-inference/vllm</code> at <code>2427094</code> (<code>[Feature] Support EPLB for DeepSeek v4 Mega Moe (#43339)</code>). This document is grounded in the repository files present in that snapshot.</p>
+<h2 id="executive-summary">Executive Summary</h2>
+<p>vLLM is a high-throughput, memory-efficient inference and serving engine for large language models. Its README describes the project as &quot;easy, fast, and cheap LLM serving&quot; and highlights PagedAttention, continuous batching, chunked prefill, prefix caching, CUDA/HIP graphs, quantization, optimized attention/GEMM/MoE kernels, speculative decoding, multi-LoRA, and OpenAI-compatible serving.</p>
+<p>Architecturally, vLLM is not just a Python wrapper around PyTorch models. It is a serving runtime with a request scheduler, KV-cache allocator, model runner abstraction, hardware platform layer, custom kernels, API server layer, plugin system, metrics layer, and a large model registry. The current tree shows both classic engine files in <code>vllm/engine/*</code> and the newer V1 runtime in <code>vllm/v1/*</code>; production-facing code increasingly centers on <code>vllm/v1/engine</code>, <code>vllm/v1/core</code>, <code>vllm/v1/worker</code>, <code>vllm/entrypoints</code>, and <code>vllm/model_executor</code>.</p>
+<p>For solution architects, vLLM&#x27;s value is that it turns model weights into a scalable service: HTTP/gRPC APIs, dynamic scheduling, memory-aware batching, distributed execution, quantized kernels, streaming outputs, tool and reasoning parsers, LoRA adaptation, and observability hooks. Its primary design tradeoff is complexity: performance comes from tight coupling among scheduler policy, KV-cache layout, model execution, kernels, and deployment topology.</p>
+<h2 id="problem-solved">Problem Solved</h2>
+<p>Large language model serving has different constraints from offline model execution:</p>
+<ul>
+<li>Requests arrive continuously and have different prompt and output lengths.</li>
+<li>GPU memory is dominated by model weights and KV cache, not only activations.</li>
+<li>Static batches waste capacity when short requests finish early.</li>
+<li>Long prefills can block low-latency decode traffic.</li>
+<li>Every token requires low-overhead scheduling, sampling, detokenization, and streaming.</li>
+<li>Production APIs need compatibility, monitoring, lifecycle controls, and failure isolation.</li>
+</ul>
+<p>vLLM addresses these with a runtime that schedules work every step, allocates KV cache in blocks, reuses prefixes, loads model weights through configurable loaders, selects hardware-specific kernels, and exposes serving APIs. The repository evidence for these concerns appears in <code>vllm/v1/core/sched/*</code>, <code>vllm/v1/core/block_pool.py</code>, <code>vllm/v1/core/kv_cache_coordinator.py</code>, <code>vllm/model_executor/*</code>, <code>csrc/attention/*</code>, <code>vllm/entrypoints/openai/*</code>, <code>vllm/v1/metrics/*</code>, and <code>docs/design/*</code>.</p>
+<h2 id="ai-stack-role">AI Stack Role</h2>
+<p>vLLM sits between model-definition libraries and application/API clients.</p>
+<ul>
+<li>Upstream model sources: Hugging Face model repositories, tensor formats, quantized checkpoints, LoRA adapters, tokenizer/chat-template assets.</li>
+<li>Runtime layer: PyTorch, custom CUDA/HIP/C++/Triton/CuTeDSL kernels, platform plugins, distributed communicators.</li>
+<li>Serving layer: OpenAI-compatible APIs, Anthropic Messages API, gRPC, batch/offline APIs, CLI commands.</li>
+<li>Operations layer: Docker, deployment docs, metrics, logging, profiling, benchmarks, tests.</li>
+</ul>
+<p>It is usually selected when an organization wants high-throughput LLM serving without building its own scheduler and KV-cache system. It can serve text generation, embeddings, pooling, classification, reward/scoring, multimodal, speech-to-text, LoRA-enhanced, and structured-output workloads depending on model support and feature flags.</p>
+<h2 id="source-tree-map">Source Tree Map</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Path</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td><code>README.md</code></td><td>Project positioning, feature list, install guidance, supported model categories, citation and support links.</td></tr>
+<tr><td><code>pyproject.toml</code></td><td>Python package metadata, build requirements, Python version range, CLI entry point <code>vllm = vllm.entrypoints.cli.main:main</code>, plugin entry points for LoRA resolvers, pytest markers.</td></tr>
+<tr><td><code>vllm/entrypoints</code></td><td>User-facing APIs: CLI, OpenAI-compatible REST, Anthropic API, gRPC server, pooling, speech-to-text, MCP tool server, SageMaker integration.</td></tr>
+<tr><td><code>vllm/engine</code></td><td>Classic engine classes such as <code>llm_engine.py</code>, <code>async_llm_engine.py</code>, and engine argument utilities.</td></tr>
+<tr><td><code>vllm/v1/engine</code></td><td>V1 engine client/core split: <code>async_llm.py</code>, <code>llm_engine.py</code>, <code>core.py</code>, <code>coordinator.py</code>, input/output processors, detokenizer, parallel sampling.</td></tr>
+<tr><td><code>vllm/v1/core</code></td><td>Scheduler, request queue, block pool, KV-cache manager/coordinator, encoder cache manager, cache metrics.</td></tr>
+<tr><td><code>vllm/v1/worker</code></td><td>Device workers and model runners including <code>gpu_worker.py</code>, <code>gpu_model_runner.py</code>, XPU and TPU paths, LoRA/KV connector mixins.</td></tr>
+<tr><td><code>vllm/v1/attention</code></td><td>Attention backend interfaces and implementations used by the V1 worker/runtime.</td></tr>
+<tr><td><code>vllm/model_executor</code></td><td>Model loading, model definitions, layers, quantization, attention layers, MoE layers, custom ops, offloading, warmup.</td></tr>
+<tr><td><code>vllm/config</code></td><td>Structured configuration modules for model, scheduler, cache, device, parallelism, LoRA, quantization, compilation, multimodal, observability, profiler, KV transfer.</td></tr>
+<tr><td><code>vllm/distributed</code></td><td>Distributed execution, device communicators, NCCL/Ray/shared-memory communication, elastic expert parallel pieces, KV transfer, event connectors.</td></tr>
+<tr><td><code>vllm/lora</code> and <code>vllm/plugins/lora_resolvers</code></td><td>LoRA request handling, runtime adapters, filesystem and Hugging Face Hub resolver plugins.</td></tr>
+<tr><td><code>vllm/platforms</code></td><td>Platform abstraction for NVIDIA/AMD/CPU/TPU/XPU and out-of-tree hardware plugins.</td></tr>
+<tr><td><code>csrc</code></td><td>Native kernels and torch bindings: attention, cache ops, CUDA utilities, MoE, quantization, ROCm, CPU kernels, all-reduce.</td></tr>
+<tr><td><code>rust</code></td><td>Rust components for chat rendering, tokenization, tool parsing, text output, and reasoning parser support.</td></tr>
+<tr><td><code>docs/design</code></td><td>Design notes for PagedAttention, metrics, plugin system, prefix caching, multiprocessing, torch compile, LoRA resolver plugins, model runner V2, multimodal processing.</td></tr>
+<tr><td><code>examples</code></td><td>Chat templates, OpenAI client examples, tool-calling, observability, pooling, and feature samples.</td></tr>
+<tr><td><code>tests</code></td><td>Unit, kernel, config, model, entrypoint, distributed, LoRA, evaluation, and regression tests.</td></tr>
+<tr><td><code>benchmarks</code> and <code>vllm/benchmarks</code></td><td>Latency, throughput, serving, startup, dataset, and sweep benchmarks.</td></tr>
+<tr><td><code>docker</code>, <code>requirements</code>, <code>scripts</code>, <code>tools</code></td><td>Packaging, containerization, dependency sets, developer and release automation.</td></tr>
+</tbody></table></div>
+<h2 id="core-concepts">Core Concepts</h2>
+<p><strong>Request lifecycle.</strong> A user request becomes an internal request with tokenized inputs, sampling/structured-output constraints, optional multimodal payloads, optional LoRA identity, and API metadata. V1 request structures live in <code>vllm/v1/request.py</code>; output forms live in <code>vllm/v1/outputs.py</code> and top-level <code>vllm/outputs.py</code>.</p>
+<p><strong>Engine vs. engine core.</strong> The outer engine/API side handles request ingress, streaming, detokenization, metrics, cancellation, and user protocol mapping. <code>vllm/v1/engine/async_llm.py</code> shows <code>AsyncLLM</code> as an engine client; <code>vllm/v1/engine/core.py</code> contains <code>EngineCore</code>, <code>EngineCoreProc</code>, and actor variants. This separation helps isolate the high-performance inner loop.</p>
+<p><strong>Continuous batching.</strong> The scheduler builds a batch at each step instead of waiting for a static batch to finish. The relevant files are <code>vllm/v1/core/sched/scheduler.py</code>, <code>request_queue.py</code>, <code>async_scheduler.py</code>, and <code>interface.py</code>.</p>
+<p><strong>Chunked prefill.</strong> Long prompts are split so decode work can continue. The README explicitly lists chunked prefill, and scheduler/cache files show token and block budgeting at runtime.</p>
+<p><strong>Paged KV cache.</strong> vLLM stores KV memory in blocks so requests of different lengths can share a fixed memory pool. <code>docs/design/paged_attention.md</code> explains historical kernel concepts and points to <code>csrc/attention/attention_kernels.cu</code>; the V1 cache implementation is in <code>vllm/v1/core/block_pool.py</code>, <code>kv_cache_manager.py</code>, <code>single_type_kv_cache_manager.py</code>, and <code>kv_cache_coordinator.py</code>.</p>
+<p><strong>Prefix caching.</strong> <code>docs/design/prefix_caching.md</code> and V1 cache coordinator/block pool files describe reuse of computed prompt blocks. This improves repeated system prompts, retrieval templates, and multi-turn chat with shared prefixes.</p>
+<p><strong>Model runner.</strong> Worker-side runners prepare input batches, invoke model forward passes, handle KV cache tensors, run sampling, and coordinate GPU graph paths. Key files include <code>vllm/v1/worker/gpu_model_runner.py</code>, <code>gpu_input_batch.py</code>, <code>gpu_worker.py</code>, <code>gpu/structured_outputs.py</code>, and <code>gpu/spec_decode/*</code>.</p>
+<p><strong>Model executor.</strong> <code>vllm/model_executor</code> contains the model loading and layer implementation substrate. It includes attention layers, quantization methods, fused MoE layers, Mamba layers, rotary embeddings, loaders for GGUF/tensorizer/bitsandbytes/default/sharded weights, and many architecture-specific model files in <code>vllm/model_executor/models</code>.</p>
+<p><strong>Serving protocols.</strong> <code>vllm/entrypoints/openai</code> implements OpenAI-compatible chat/completion/responses/models/engine routes. Other entrypoints include <code>anthropic</code>, <code>grpc_server.py</code>, <code>pooling</code>, <code>speech_to_text</code>, and <code>mcp</code>.</p>
+<p><strong>Plugins.</strong> <code>docs/design/plugin_system.md</code> documents entry point groups such as <code>vllm.general_plugins</code>, <code>vllm.platform_plugins</code>, <code>vllm.io_processor_plugins</code>, and <code>vllm.stat_logger_plugins</code>. <code>pyproject.toml</code> registers built-in LoRA resolver plugins.</p>
+<h2 id="component-system-diagram">Component/System Diagram</h2>
+<div class="mermaid">flowchart LR
+    Client[API clients and SDKs] --&gt; Entrypoints[vllm/entrypoints\nOpenAI, Anthropic, gRPC, CLI, pooling]
+    Entrypoints --&gt; Engine[vllm/v1/engine\nAsyncLLM, LLMEngine, EngineCore client]
+    Engine --&gt; Scheduler[vllm/v1/core/sched\nscheduler and request queue]
+    Scheduler --&gt; KV[vllm/v1/core\nBlockPool and KV cache managers]
+    Scheduler --&gt; Worker[vllm/v1/worker\nGPU/XPU/TPU workers and model runners]
+    Worker --&gt; Executor[vllm/model_executor\nmodels, layers, loaders, quantization]
+    Executor --&gt; Kernels[csrc + Triton/CUDA/HIP\nattention, cache, MoE, GEMM]
+    Engine --&gt; Metrics[vllm/v1/metrics\nPrometheus and loggers]
+    Config[vllm/config\nmodel, cache, scheduler, parallel, device] --&gt; Engine
+    Plugins[vllm/plugins + entry_points\nLoRA, platform, stat logger] --&gt; Entrypoints
+    Distributed[vllm/distributed\ncommunicators, Ray, KV transfer] --&gt; Worker</div>
+<h2 id="internal-architecture">Internal Architecture</h2>
+<p>The architecture has four primary planes.</p>
+<p><strong>Protocol plane.</strong> <code>vllm/entrypoints</code> translates external protocols into internal engine calls. <code>vllm/entrypoints/openai/api_server.py</code>, <code>chat_completion/serving.py</code>, <code>completion/serving.py</code>, and <code>responses/serving.py</code> define the OpenAI-compatible surface. The Anthropic adapter in <code>vllm/entrypoints/anthropic/serving.py</code> converts Anthropic message format to OpenAI-compatible internal requests. Pooling and speech-to-text entrypoints use separate protocol and IO processor modules.</p>
+<p><strong>Scheduling and memory plane.</strong> <code>vllm/v1/core</code> owns request admission, scheduling, KV block allocation, cache reuse, and cache metrics. The scheduler must balance running decodes, waiting prefills, token budget, KV budget, and fairness. The block pool keeps free and cached blocks, while cache coordinators handle full-attention, sliding-window, MLA, hybrid, Mamba, encoder-only, and cross-attention cache specs exposed by <code>vllm/v1/kv_cache_interface.py</code>.</p>
+<p><strong>Execution plane.</strong> <code>vllm/v1/worker</code> owns device initialization, model loading, cache initialization, execution, sampling, structured outputs, LoRA mixing, and graph warmup. <code>vllm/model_executor</code> contains reusable layers and model definitions. Custom kernels in <code>csrc</code> and generated/Triton kernels are selected based on hardware, dtype, attention type, quantization, and model architecture.</p>
+<p><strong>Operations plane.</strong> Metrics, logging, profiling, benchmarks, deployment docs, Docker files, and tests make the runtime operable. <code>docs/design/metrics.md</code> states that V1 exposes Prometheus-compatible metrics with the <code>vllm:</code> prefix and favors collecting metrics outside the engine core where possible to reduce inner-loop overhead.</p>
+<h2 id="end-to-end-runtime-flow">End-to-End Runtime Flow</h2>
+<div class="mermaid">sequenceDiagram
+    participant C as Client
+    participant API as entrypoints/openai
+    participant E as AsyncLLM / LLMEngine
+    participant S as Scheduler
+    participant K as KV cache coordinator
+    participant W as GPU model runner
+    participant M as Model executor + kernels
+    participant O as Output processor
+
+    C-&gt;&gt;API: POST /v1/chat/completions or /v1/responses
+    API-&gt;&gt;API: validate protocol, tools, chat template, params
+    API-&gt;&gt;E: add request
+    E-&gt;&gt;S: enqueue internal request
+    loop each engine step
+        S-&gt;&gt;K: reserve or reuse KV blocks
+        S-&gt;&gt;W: schedule prefill/decode batch
+        W-&gt;&gt;M: run forward pass and attention kernels
+        M--&gt;&gt;W: logits and cache updates
+        W-&gt;&gt;W: sample tokens / structured output checks
+        W--&gt;&gt;S: step outputs and finished flags
+        S--&gt;&gt;E: EngineCoreOutputs
+        E-&gt;&gt;O: detokenize, logprobs, metrics
+        O--&gt;&gt;API: stream deltas or final output
+        API--&gt;&gt;C: SSE chunk or JSON response
+    end</div>
+<h2 id="runtime-and-data-flow">Runtime and Data Flow</h2>
+<ol>
+<li><strong>Ingress.</strong> A FastAPI route or CLI path accepts the request. OpenAI-compatible code in <code>vllm/entrypoints/openai/*</code> validates fields such as model, messages, prompt, tools, streaming, sampling, logprobs, and response format.</li>
+<li><strong>Input processing.</strong> Chat templates from <code>examples/*.jinja</code>, tokenizer utilities in <code>vllm/tokenizers</code> and <code>vllm/transformers_utils</code>, multimodal processors in <code>vllm/multimodal</code>, and structured-output parsers normalize user input.</li>
+<li><strong>Admission.</strong> The engine creates an internal request and enqueues it in the scheduler. Admission depends on token budgets, model length, LoRA status, cache capacity, and parallel configuration.</li>
+<li><strong>Prefill.</strong> Prompt tokens are processed and KV cache blocks are written. Long prompts may be chunked.</li>
+<li><strong>Decode.</strong> The scheduler repeatedly forms decode batches. Each active sequence usually contributes one query token per step, while cache pages provide context.</li>
+<li><strong>Sampling.</strong> <code>vllm/v1/worker/gpu/sample/*</code> and top-level sampling parameter modules implement temperature, top-k/top-p/min-p, penalties, logprob extraction, bad words, logit bias, and output states.</li>
+<li><strong>Post-processing.</strong> Detokenization, tool-call parsing, reasoning parser output, structured-output validation, and logprob formatting happen outside the innermost kernel path.</li>
+<li><strong>Streaming/final response.</strong> The API layer returns SSE chunks or a final JSON payload. Metrics are updated from request and engine events.</li>
+</ol>
+<h2 id="deployment-and-operations-topology">Deployment and Operations Topology</h2>
+<div class="mermaid">flowchart TB
+    subgraph Users
+        SDK[OpenAI SDK / curl / app server]
+    end
+    subgraph Edge
+        LB[Load balancer or ingress]
+        Auth[API key / TLS / network policy]
+    end
+    subgraph VLLMNode[&quot;vLLM serving node or pod&quot;]
+        API[API server process\nvllm serve]
+        Core[Engine core process / actor]
+        Workers[Worker processes\nGPU model runners]
+        Cache[KV cache blocks in GPU memory]
+        Metrics[/metrics endpoint]
+    end
+    subgraph Platform
+        GPU[NVIDIA/AMD/TPU/XPU/CPU]
+        ModelStore[HF Hub, local disk, object store]
+        Adapters[LoRA resolver cache]
+        Prom[Prometheus + Grafana]
+    end
+
+    SDK --&gt; LB --&gt; Auth --&gt; API
+    API --&gt; Core --&gt; Workers --&gt; GPU
+    Workers &lt;--&gt; Cache
+    API --&gt; ModelStore
+    API --&gt; Adapters
+    Prom --&gt; Metrics</div>
+<p>Operationally, vLLM can run as a Python CLI service, containerized API server, Ray-backed distributed deployment, SageMaker endpoint, or specialized topology for data/expert/tensor/pipeline/context parallelism. The docs tree includes <code>docs/deployment</code>, <code>docs/serving</code>, and <code>docs/configuration</code>. Docker assets live under <code>docker</code>, and build dependencies are split in <code>requirements</code>.</p>
+<p>Important production knobs are represented in <code>vllm/config</code>: cache sizing and block size, scheduler behavior, model length, dtype, quantization, parallelism, device selection, compilation, LoRA, multimodal limits, observability, profiling, and KV transfer/offload.</p>
+<h2 id="lifecycle-decisions-and-module-dependencies">Lifecycle, Decisions, and Module Dependencies</h2>
+<div class="mermaid">stateDiagram-v2
+    [*] --&gt; LoadConfig
+    LoadConfig --&gt; ResolvePlatform: device and platform checks
+    ResolvePlatform --&gt; LoadModel: model loader selected
+    LoadModel --&gt; InitKVCache: profile memory and allocate blocks
+    InitKVCache --&gt; Warmup: graph/compile/kernel warmup
+    Warmup --&gt; Accepting
+    Accepting --&gt; Scheduling: request admitted
+    Scheduling --&gt; Prefill: prompt tokens scheduled
+    Prefill --&gt; Decode: first token ready
+    Decode --&gt; Decode: continue generation
+    Decode --&gt; Finished: EOS, max tokens, stop, cancel
+    Finished --&gt; Accepting: release blocks / emit metrics
+    Decode --&gt; Failed: OOM, kernel error, protocol cancel
+    Failed --&gt; Accepting: cleanup or restart policy</div>
+<div class="mermaid">flowchart LR
+    ModelConfig[vllm/config/model.py] --&gt; Loader[vllm/model_executor/model_loader]
+    LoadConfig[vllm/config/load.py] --&gt; Loader
+    CacheConfig[vllm/config/cache.py] --&gt; KVInterface[vllm/v1/kv_cache_interface.py]
+    SchedulerConfig[vllm/config/scheduler.py] --&gt; Scheduler[vllm/v1/core/sched]
+    ParallelConfig[vllm/config/parallel.py] --&gt; Distributed[vllm/distributed]
+    DeviceConfig[vllm/config/device.py] --&gt; Platform[vllm/platforms]
+    QuantConfig[vllm/config/quantization.py] --&gt; QuantLayers[vllm/model_executor/layers/quantization]
+    CompilationConfig[vllm/config/compilation.py] --&gt; Compile[vllm/compilation]
+    ObservabilityConfig[vllm/config/observability.py] --&gt; Metrics[vllm/v1/metrics]</div>
+<h2 id="extension-points">Extension Points</h2>
+<p>vLLM is intentionally extensible, but extension quality depends on respecting process boundaries and version compatibility.</p>
+<ul>
+<li><strong>Model plugins:</strong> <code>docs/design/plugin_system.md</code> describes <code>vllm.general_plugins</code> for registering out-of-tree model architectures through <code>ModelRegistry.register_model</code>.</li>
+<li><strong>Platform plugins:</strong> <code>vllm.platform_plugins</code> can register an out-of-tree platform class with custom worker, attention backend, device communicator, and ops.</li>
+<li><strong>IO processor plugins:</strong> <code>vllm.io_processor_plugins</code> support custom pooling pre/post-processing.</li>
+<li><strong>Stat logger plugins:</strong> <code>vllm.stat_logger_plugins</code> can add custom metric/log sinks.</li>
+<li><strong>LoRA resolver plugins:</strong> <code>pyproject.toml</code> registers <code>lora_filesystem_resolver</code> and <code>lora_hf_hub_resolver</code>; <code>docs/design/lora_resolver_plugins.md</code> documents runtime LoRA discovery through environment variables such as <code>VLLM_ALLOW_RUNTIME_LORA_UPDATING</code>, <code>VLLM_PLUGINS</code>, and <code>VLLM_LORA_RESOLVER_CACHE_DIR</code>.</li>
+<li><strong>Attention backends and kernels:</strong> <code>vllm/v1/attention</code>, <code>vllm/model_executor/layers/attention</code>, <code>csrc/attention</code>, and <code>vllm/kernels</code> provide backend-specific implementation points.</li>
+<li><strong>Quantization methods:</strong> <code>vllm/model_executor/layers/quantization</code> contains AWQ, GPTQ, FP8, MXFP4/MXFP8, GGUF, compressed tensors, TorchAO, bitsandbytes, and related strategies.</li>
+<li><strong>Serving protocols:</strong> New routes can follow patterns in <code>vllm/entrypoints/openai/*</code>, <code>anthropic/*</code>, <code>pooling/*</code>, or <code>serve/*</code>.</li>
+</ul>
+<h2 id="integrations">Integrations</h2>
+<p>The repository shows integrations across the model, hardware, and serving ecosystem:</p>
+<ul>
+<li>Hugging Face model and tokenizer loading via <code>vllm/transformers_utils</code>, <code>vllm/model_executor/model_loader</code>, and README-supported model architecture categories.</li>
+<li>OpenAI-compatible APIs in <code>vllm/entrypoints/openai</code>.</li>
+<li>Anthropic Messages API in <code>vllm/entrypoints/anthropic</code>.</li>
+<li>gRPC in <code>vllm/entrypoints/grpc_server.py</code>.</li>
+<li>MCP tool serving in <code>vllm/entrypoints/mcp</code>.</li>
+<li>SageMaker adapter in <code>vllm/entrypoints/sagemaker</code>.</li>
+<li>Ray and distributed communication in <code>vllm/ray</code> and <code>vllm/distributed</code>.</li>
+<li>Prometheus/Grafana observability through <code>vllm/v1/metrics</code> and <code>examples/observability</code>.</li>
+<li>LoRA and PEFT-style adapter serving through <code>vllm/lora</code>.</li>
+<li>Structured outputs through <code>vllm/v1/structured_output</code>, <code>vllm/config/structured_outputs.py</code>, <code>vllm/reasoning</code>, <code>vllm/tool_parsers</code>, and Rust parser components.</li>
+</ul>
+<h2 id="configuration-deployment-and-ops">Configuration, Deployment, and Ops</h2>
+<p>Configuration is layered rather than centralized in one file. <code>vllm/config</code> separates model, scheduler, cache, parallel, device, compilation, quantization, LoRA, multimodal, profiler, observability, and transfer concerns. CLI arguments are wired through <code>vllm/engine/arg_utils.py</code>, <code>vllm/entrypoints/cli/*</code>, and OpenAI CLI argument utilities.</p>
+<p>Deployment considerations:</p>
+<ul>
+<li><strong>Model fit:</strong> choose dtype, quantization, tensor/pipeline/expert/data parallelism, max model length, and KV cache budget before scaling replicas.</li>
+<li><strong>Latency vs throughput:</strong> continuous batching improves throughput but can raise tail latency if scheduling and prefill budgets are poorly tuned.</li>
+<li><strong>Long prompts:</strong> chunked prefill and prefix caching reduce blocking and repeated work.</li>
+<li><strong>Adapter serving:</strong> runtime LoRA updates are powerful but require governance around adapter source, compatibility, and cache directories.</li>
+<li><strong>Multi-process metrics:</strong> <code>docs/design/metrics.md</code> notes that metrics collection location matters; multiprocess mode changes what process metrics are visible.</li>
+<li><strong>Hardware portability:</strong> platform plugins expand hardware support, but kernel maturity differs by backend.</li>
+<li><strong>Distributed serving:</strong> tensor, pipeline, data, expert, and context parallelism need network, NCCL/RCCL/communicator, and placement planning.</li>
+</ul>
+<h2 id="observability-testing-evaluation-and-failure-modes">Observability, Testing, Evaluation, and Failure Modes</h2>
+<p>Observability anchors:</p>
+<ul>
+<li><code>docs/design/metrics.md</code> lists V1 Prometheus metrics such as <code>vllm:num_requests_running</code>, <code>vllm:kv_cache_usage_perc</code>, <code>vllm:prefix_cache_queries</code>, <code>vllm:prefix_cache_hits</code>, <code>vllm:prompt_tokens_total</code>, <code>vllm:generation_tokens_total</code>, <code>vllm:request_success_total</code>, <code>vllm:time_to_first_token_seconds</code>, <code>vllm:inter_token_latency_seconds</code>, and <code>vllm:e2e_request_latency_seconds</code>.</li>
+<li><code>vllm/v1/metrics/prometheus.py</code>, <code>stats.py</code>, <code>loggers.py</code>, and <code>reader.py</code> implement metrics paths.</li>
+<li><code>vllm/logging_utils</code>, <code>vllm/logger.py</code>, <code>vllm/profiler</code>, and <code>vllm/benchmarks</code> support local diagnosis and capacity work.</li>
+</ul>
+<p>Testing anchors:</p>
+<ul>
+<li><code>tests/test_config.py</code>, <code>tests/test_inputs.py</code>, <code>tests/test_outputs.py</code>, <code>tests/test_logprobs.py</code>, and <code>tests/test_sequence.py</code> cover core behavior.</li>
+<li><code>tests/kernels/*</code> tests native and Triton kernels.</li>
+<li><code>tests/weight_loading/*</code> covers model load behavior.</li>
+<li><code>tests/evals/mrcr/*</code> provides an evaluation harness for long-context/multi-round correctness.</li>
+<li><code>pyproject.toml</code> defines pytest markers for slow, distributed, optional, CPU, hybrid, and model categories.</li>
+</ul>
+<p>Common failure modes:</p>
+<ul>
+<li><strong>GPU OOM at model load or KV allocation:</strong> model too large, context too long, parallelism mismatch, or cache budget too high.</li>
+<li><strong>Scheduler starvation or latency spikes:</strong> long prefills, too many concurrent requests, or unbalanced admission policy.</li>
+<li><strong>Prefix-cache inefficiency:</strong> prompts too unique, block size mismatch, or unsupported cache spec.</li>
+<li><strong>Kernel incompatibility:</strong> dtype, quantization, architecture, or platform does not support selected attention/GEMM path.</li>
+<li><strong>Tokenizer/chat-template mismatch:</strong> model output quality or tool calls fail when templates do not match model training.</li>
+<li><strong>LoRA incompatibility:</strong> adapter base model mismatch, missing files, wrong resolver path, or runtime update disabled.</li>
+<li><strong>Metrics confusion:</strong> multiprocess deployments can hide default Python/process metrics.</li>
+<li><strong>Distributed instability:</strong> communicator setup, rank placement, GPU topology, or Ray/process lifecycle failures.</li>
+</ul>
+<h2 id="security-and-governance-risks">Security and Governance Risks</h2>
+<ul>
+<li><strong>Model provenance:</strong> serving arbitrary Hub models or custom weights requires license, safety, and supply-chain review.</li>
+<li><strong>Remote code and plugins:</strong> plugin entry points execute Python in every process. Treat installed plugins as privileged code.</li>
+<li><strong>LoRA runtime loading:</strong> resolver plugins can pull adapters dynamically. Restrict <code>VLLM_PLUGINS</code>, cache directories, Hub tokens, and adapter allow-lists.</li>
+<li><strong>API exposure:</strong> OpenAI-compatible endpoints can be mistaken for fully managed OpenAI APIs. Enforce authentication, rate limits, network boundaries, and logging.</li>
+<li><strong>Tool calling and MCP:</strong> tool execution surfaces need explicit sandboxing and audit controls; model-generated tool calls are not inherently trusted.</li>
+<li><strong>Prompt and output logging:</strong> logs/metrics may contain sensitive prompts, completions, image/audio references, or tenant IDs.</li>
+<li><strong>Structured output assumptions:</strong> schema-constrained decoding reduces format errors but does not guarantee factuality, policy compliance, or safe tool arguments.</li>
+<li><strong>Multitenancy:</strong> shared KV cache, LoRA adapters, and request metrics require tenant-aware isolation if deployed for multiple customers.</li>
+</ul>
+<h2 id="reading-guide">Reading Guide</h2>
+<ol>
+<li>Start with <code>README.md</code> for the project promise and feature set.</li>
+<li>Read <code>pyproject.toml</code> to understand packaging, CLI entry points, dependency assumptions, and plugin registration.</li>
+<li>Read <code>vllm/entrypoints/openai/api_server.py</code> and the <code>chat_completion</code>, <code>completion</code>, and <code>responses</code> folders to understand serving protocols.</li>
+<li>Read <code>vllm/v1/engine/async_llm.py</code> and <code>vllm/v1/engine/core.py</code> for the V1 engine boundary.</li>
+<li>Read <code>vllm/v1/core/sched/scheduler.py</code>, <code>block_pool.py</code>, and <code>kv_cache_coordinator.py</code> for scheduling and memory.</li>
+<li>Read <code>vllm/v1/worker/gpu_model_runner.py</code> and <code>vllm/model_executor/model_loader/*</code> for execution and loading.</li>
+<li>Read <code>docs/design/metrics.md</code>, <code>plugin_system.md</code>, <code>lora_resolver_plugins.md</code>, <code>prefix_caching.md</code>, and <code>paged_attention.md</code> for architectural rationale.</li>
+<li>Skim <code>tests/kernels</code>, <code>tests/weight_loading</code>, and <code>tests/evals</code> to see what the maintainers consider important.</li>
+</ol>
+<h2 id="learning-path">Learning Path</h2>
+<ol>
+<li>Run simple offline inference conceptually through <code>vllm/entrypoints/llm.py</code> and <code>vllm/engine/llm_engine.py</code>.</li>
+<li>Trace a streaming OpenAI chat request through <code>vllm/entrypoints/openai/chat_completion/serving.py</code>.</li>
+<li>Follow the request into <code>vllm/v1/engine/async_llm.py</code>, then into <code>EngineCore</code>.</li>
+<li>Study how <code>scheduler.py</code> chooses work and how <code>BlockPool</code> allocates KV blocks.</li>
+<li>Inspect <code>gpu_model_runner.py</code> to see how batches become device tensors and model calls.</li>
+<li>Compare quantization layer implementations under <code>vllm/model_executor/layers/quantization</code>.</li>
+<li>Review metrics and benchmark files before making production capacity decisions.</li>
+<li>Only then add plugins, custom models, custom kernels, or distributed topologies.</li>
+</ol>
+<h2 id="production-readiness-and-capacity-loop">Production Readiness And Capacity Loop</h2>
+<p>The production question for vLLM is not only &quot;can the model load?&quot; It is whether the scheduler, KV cache, model runner, kernels, API layer, and metrics support the expected tenant mix. Use the following anchors when reviewing an implementation plan: <code>vllm/entrypoints/openai/*</code>, <code>vllm/v1/engine/*</code>, <code>vllm/v1/core/sched/scheduler.py</code>, <code>vllm/v1/core/block_pool.py</code>, <code>vllm/v1/worker/gpu_model_runner.py</code>, <code>vllm/model_executor/model_loader/*</code>, <code>vllm/config/*</code>, <code>vllm/v1/metrics/prometheus.py</code>, and <code>docs/design/*</code>.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Readiness area</th><th>What to verify</th></tr></thead>
+<tbody>
+<tr><td>Model fit</td><td>Weights, dtype, quantization, max model length, multimodal limits, LoRA needs, and KV cache budget fit the target hardware.</td></tr>
+<tr><td>Scheduler policy</td><td>Long prefills, chunked prefill, prefix caching, max batched tokens, and admission controls match SLOs for TTFT and inter-token latency.</td></tr>
+<tr><td>API contract</td><td>OpenAI/Responses/Anthropic route behavior, tool parsing, reasoning parsers, stream cancellation, and error format match client expectations.</td></tr>
+<tr><td>Kernel/platform</td><td>Selected attention, quantization, MoE, and GEMM paths are supported for the device backend and model architecture.</td></tr>
+<tr><td>Observability</td><td>Prometheus metrics, request IDs, logs, benchmark baselines, and cache hit ratios are available before traffic ramps.</td></tr>
+<tr><td>Governance</td><td>Runtime LoRA, plugin entry points, Hub access, prompt logging, and structured-output assumptions are covered by policy.</td></tr>
+</tbody></table></div>
+<div class="mermaid">flowchart LR
+  Plan[Model and traffic plan] --&gt; Config[vllm/config choices]
+  Config --&gt; Load[model_loader and model_executor]
+  Load --&gt; Profile[Memory profiling and KV block allocation]
+  Profile --&gt; Schedule[v1/core scheduler]
+  Schedule --&gt; Runner[v1/worker gpu_model_runner]
+  Runner --&gt; Metrics[v1/metrics and benchmarks]
+  Metrics --&gt; Decision{SLO met?}
+  Decision --&gt;|No| Tune[Tune dtype, quant, max length, batching, cache, parallelism]
+  Tune --&gt; Config
+  Decision --&gt;|Yes| Release[Canary and scale replicas]
+  Release --&gt; Metrics</div>
+<h2 id="failure-isolation-map">Failure Isolation Map</h2>
+<p>Most vLLM incidents can be narrowed by asking which plane failed: protocol, scheduling/cache, model execution, kernel/platform, distributed coordination, or observability. This is especially important because an API symptom such as slow streaming can originate in prefill starvation, KV pressure, detokenization overhead, or a backend kernel fallback.</p>
+<div class="mermaid">flowchart TD
+  Symptom[Serving symptom] --&gt; Plane{Failure plane}
+  Plane --&gt; Protocol[Protocol and request parsing]
+  Plane --&gt; Cache[Scheduler and KV cache]
+  Plane --&gt; Runner[Worker and model runner]
+  Plane --&gt; Kernel[Kernel, dtype, quantization]
+  Plane --&gt; Distributed[Parallelism or communicator]
+  Plane --&gt; LoRA[Runtime LoRA or plugin]
+  Plane --&gt; Metrics[Metrics or logging]
+  Protocol --&gt; Files1[entrypoints/openai, tool_parsers, reasoning]
+  Cache --&gt; Files2[v1/core/sched, block_pool, kv_cache_coordinator]
+  Runner --&gt; Files3[v1/worker/gpu_model_runner.py]
+  Kernel --&gt; Files4[csrc, model_executor/layers, platforms]
+  Distributed --&gt; Files5[distributed, ray, config/parallel.py]
+  LoRA --&gt; Files6[lora and plugins/lora_resolvers]
+  Metrics --&gt; Files7[v1/metrics and docs/design/metrics.md]
+  Files1 --&gt; Action[Patch, tune, rollback, or isolate tenant]
+  Files2 --&gt; Action
+  Files3 --&gt; Action
+  Files4 --&gt; Action
+  Files5 --&gt; Action
+  Files6 --&gt; Action
+  Files7 --&gt; Action</div>
+<h2 id="glossary">Glossary</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>PagedAttention</td><td>vLLM&#x27;s attention/KV-cache approach that stores key/value memory in blocks rather than one contiguous allocation per request.</td></tr>
+<tr><td>KV cache</td><td>Cached key/value tensors from previous tokens used during autoregressive decoding.</td></tr>
+<tr><td>Prefill</td><td>Processing prompt tokens to populate KV cache before generation begins.</td></tr>
+<tr><td>Decode</td><td>Step-by-step generation of output tokens using the existing KV cache.</td></tr>
+<tr><td>Continuous batching</td><td>Rescheduling requests each step so completed requests leave and new requests join without waiting for a static batch.</td></tr>
+<tr><td>Chunked prefill</td><td>Splitting long prompts across multiple scheduling steps.</td></tr>
+<tr><td>Prefix caching</td><td>Reusing KV blocks for shared prompt prefixes.</td></tr>
+<tr><td>Engine core</td><td>The performance-sensitive inner loop that schedules and executes model steps.</td></tr>
+<tr><td>Model runner</td><td>Worker-side component that builds device batches, invokes the model, updates KV cache, and samples tokens.</td></tr>
+<tr><td>LoRA resolver</td><td>Plugin that finds and loads adapters dynamically from filesystem, Hub, or custom storage.</td></tr>
+<tr><td>Tensor parallelism</td><td>Splitting tensor computation across devices.</td></tr>
+<tr><td>Pipeline parallelism</td><td>Splitting model layers across devices.</td></tr>
+<tr><td>Expert parallelism</td><td>Splitting MoE experts across devices.</td></tr>
+<tr><td>Structured outputs</td><td>Constrained generation using parsers/grammars/schemas to enforce output shape.</td></tr>
+<tr><td>TTFT</td><td>Time to first token, a key serving latency metric.</td></tr>
+<tr><td>TPOT</td><td>Time per output token or inter-token latency.</td></tr>
+</tbody></table></div>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Model Context Protocol Servers - Ghi chú kiến trúc | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/06-tooling-mcp-ai-platform/servers/README.vi.md">View source</a>
+      <h1 id="model-context-protocol-servers-ghi-ch-ki-n-tr-c">Model Context Protocol Servers - Ghi chú kiến trúc</h1>
+<h2 id="t-m-t-t-i-u-h-nh">Tóm tắt điều hành</h2>
+<p><code>github-repos/06-tooling-mcp-ai-platform/servers</code> là tập hợp các server tham chiếu cho Model Context Protocol. Repo được tổ chức như một monorepo gồm các package TypeScript và Python, mỗi package minh họa một vai trò MCP riêng: kiểm thử tính tương thích, truy cập filesystem, lấy nội dung web, thao tác Git, bộ nhớ dạng knowledge graph, suy luận theo bước và tiện ích múi giờ.</p>
+<p>Repo này nên được xem là tài sản học tập và tham chiếu, không phải nền tảng đã harden cho production. <code>README.md</code> cấp cao nêu rõ các server này mang tính giáo dục/reference. Giá trị kiến trúc chính là repo cho thấy nhiều kiểu tương tác MCP cạnh nhau: stdio, SSE, Streamable HTTP, roots, tools, resources, prompts, notifications, structured output, task-like behavior, sampling và elicitation.</p>
+<h2 id="v-n-c-gi-i-quy-t">Vấn đề được giải quyết</h2>
+<p>MCP client cần server thực tế để kiểm tra primitive của giao thức từ đầu đến cuối. Repo này giải quyết nhu cầu đó bằng cách cung cấp:</p>
+<ul>
+<li><code>src/everything</code>: server tham chiếu rộng để kiểm thử feature và client conformance.</li>
+<li><code>src/filesystem</code>: server truy cập file/thư mục có scope bằng allowed directories hoặc MCP roots.</li>
+<li><code>src/fetch</code>: server lấy nội dung URL, chuyển HTML thành markdown và tôn trọng robots.txt cho autonomous fetch.</li>
+<li><code>src/git</code>: server thao tác Git repository bằng GitPython và validation scope.</li>
+<li><code>src/memory</code>: server knowledge graph bền vững bằng JSONL.</li>
+<li><code>src/sequentialthinking</code>: server lưu trace suy luận có revision và branch.</li>
+<li><code>src/time</code>: server lấy thời gian hiện tại và chuyển đổi múi giờ.</li>
+</ul>
+<p>Nói ngắn gọn, repo biến đặc tả MCP thành các ví dụ nhỏ, có thể chạy, đọc và mở rộng.</p>
+<h2 id="vai-tr-trong-ai-stack">Vai trò trong AI stack</h2>
+<p>Các server này không host model. Chúng nằm giữa MCP client hoặc agent runtime và các hệ thống cung cấp ngữ cảnh/hành động. Client có thể cho model gọi các capability này để đọc file, lấy web content, truy vấn memory, thao tác Git hoặc tra cứu thời gian.</p>
+<div class="mermaid">flowchart LR
+    User[&quot;Người dùng / operator&quot;] --&gt; Client[&quot;MCP client&lt;br/&gt;Claude Desktop, IDE, agent runtime&quot;]
+    Client --&gt; Transport[&quot;MCP transport&lt;br/&gt;stdio, SSE, Streamable HTTP&quot;]
+    Transport --&gt; Everything[&quot;everything&lt;br/&gt;bao phủ giao thức&quot;]
+    Transport --&gt; Filesystem[&quot;filesystem&lt;br/&gt;allowed directories + roots&quot;]
+    Transport --&gt; Fetch[&quot;fetch&lt;br/&gt;web retrieval&quot;]
+    Transport --&gt; Git[&quot;git&lt;br/&gt;repo operations&quot;]
+    Transport --&gt; Memory[&quot;memory&lt;br/&gt;knowledge graph JSONL&quot;]
+    Transport --&gt; Sequential[&quot;sequentialthinking&lt;br/&gt;thought history&quot;]
+    Transport --&gt; Time[&quot;time&lt;br/&gt;timezone tools&quot;]
+    Filesystem --&gt; LocalDisk[&quot;Đĩa cục bộ&quot;]
+    Git --&gt; Repo[&quot;Git repository&quot;]
+    Fetch --&gt; Web[&quot;HTTP sites + robots.txt&quot;]
+    Memory --&gt; MemoryFile[&quot;memory.jsonl&quot;]
+    Time --&gt; TZ[&quot;IANA timezone database&quot;]</div>
+<h2 id="b-n-c-y-ngu-n">Bản đồ cây nguồn</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Đường dẫn</th><th>Vai trò</th></tr></thead>
+<tbody>
+<tr><td><code>README.md</code></td><td>Tổng quan repo, danh sách server tham chiếu được duy trì, ví dụ cấu hình client và cảnh báo reference-only.</td></tr>
+<tr><td><code>package.json</code></td><td>Node workspace private cho các package TypeScript trong <code>src/*</code>.</td></tr>
+<tr><td><code>.mcp.json</code></td><td>Cấu hình MCP docs server cục bộ trỏ tới endpoint tài liệu MCP công khai.</td></tr>
+<tr><td><code>ADDITIONAL.md</code></td><td>Danh sách hệ sinh thái: framework, server bên thứ ba, client và tài nguyên cộng đồng.</td></tr>
+<tr><td><code>src/everything</code></td><td>Server TypeScript để kiểm thử/học MCP: tools, prompts, resources, subscriptions, tasks, sampling, elicitation và nhiều transport.</td></tr>
+<tr><td><code>src/filesystem</code></td><td>Server TypeScript cho truy cập filesystem có kiểm soát, path validation, roots, structured output và edit helper.</td></tr>
+<tr><td><code>src/memory</code></td><td>Server TypeScript lưu knowledge graph bằng JSONL.</td></tr>
+<tr><td><code>src/sequentialthinking</code></td><td>Server TypeScript ghi nhận suy luận theo bước, branch/revision và tùy chọn tắt log.</td></tr>
+<tr><td><code>src/fetch</code></td><td>Server Python lấy nội dung web bằng HTTPX, readability extraction, markdown conversion và robots.txt.</td></tr>
+<tr><td><code>src/git</code></td><td>Server Python dùng GitPython, có giới hạn repository và annotation cho thao tác đọc/ghi/nguy hiểm.</td></tr>
+<tr><td><code>src/time</code></td><td>Server Python cho thời gian/múi giờ bằng IANA timezone và <code>zoneinfo</code>.</td></tr>
+</tbody></table></div>
+<h2 id="kh-i-ni-m-c-t-l-i">Khái niệm cốt lõi</h2>
+<h3 id="primitive-c-a-mcp">Primitive của MCP</h3>
+<p>Repo này minh họa các primitive chính của MCP:</p>
+<ul>
+<li>Tool: thao tác có thể gọi như <code>read_text_file</code>, <code>git_status</code>, <code>fetch</code>, <code>create_entities</code>, <code>sequentialthinking</code>, <code>convert_time</code>.</li>
+<li>Resource: nội dung có địa chỉ URI, thể hiện rõ nhất trong <code>src/everything/resources</code>.</li>
+<li>Prompt: mẫu prompt có thể tái sử dụng, có trong <code>src/everything/prompts</code> và <code>src/fetch/server.py</code>.</li>
+<li>Root: scope do client khai báo, thường là thư mục hoặc repository.</li>
+<li>Notification và subscription: <code>everything</code> mô phỏng logging/resource updates.</li>
+<li>Structured content: nhiều tool TypeScript trả về dữ liệu có cấu trúc bên cạnh text cho người đọc.</li>
+<li>Annotation: metadata cho biết tool read-only, destructive, idempotent hoặc open-world để client trình bày quyết định tin cậy tốt hơn.</li>
+</ul>
+<h3 id="m-u-server-tham-chi-u">Mẫu server tham chiếu</h3>
+<p>Mỗi server giữ trách nhiệm hẹp. Package tạo MCP server, đăng ký tool/resource/prompt, rồi kết nối transport. Phần lớn server dùng stdio vì đây là transport phổ biến cho desktop MCP client. Riêng <code>everything</code> bổ sung SSE và Streamable HTTP để client author kiểm thử session, event replay, CORS, cleanup và endpoint HTTP.</p>
+<h3 id="scope-do-client-v-c-u-h-nh-ki-m-so-t">Scope do client và cấu hình kiểm soát</h3>
+<p>Một bài học lặp lại trong repo là MCP server không nên mặc định có toàn quyền trên host. <code>filesystem</code> cần allowed directories hoặc roots. <code>git</code> xác thực repository nằm trong scope cho phép. <code>fetch</code> tôn trọng robots.txt cho tool call tự động, trừ khi operator chủ động bỏ qua. Đây chưa phải hardening production, nhưng thể hiện đúng hướng least privilege.</p>
+<h2 id="ki-n-tr-c-n-i-b">Kiến trúc nội bộ</h2>
+<h3 id="d-ng-monorepo">Dạng monorepo</h3>
+<p>Node workspace ở root bao phủ các server TypeScript. Các server Python như <code>fetch</code>, <code>git</code> và <code>time</code> là project độc lập có <code>pyproject.toml</code> riêng. Không có runtime dùng chung cho toàn bộ repo; mỗi server là một tiến trình/capability độc lập.</p>
+<h3 id="ki-n-tr-c-theo-server">Kiến trúc theo server</h3>
+<p><strong><code>src/everything</code></strong></p>
+<ul>
+<li><code>index.ts</code> chọn transport <code>stdio</code>, <code>sse</code> hoặc <code>streamableHttp</code>.</li>
+<li><code>server/index.ts</code> tạo <code>McpServer</code>, khai báo capability, đăng ký tools/resources/prompts, quản lý subscriptions và cleanup.</li>
+<li><code>tools</code>, <code>resources</code>, <code>prompts</code> và <code>tasks</code> được tách module để dễ đọc từng phần của giao thức.</li>
+<li><code>transports/streamableHttp.ts</code> xử lý <code>/mcp</code> POST/GET/DELETE, session ID, CORS header và event replay bằng in-memory event store.</li>
+</ul>
+<p><strong><code>src/filesystem</code></strong></p>
+<ul>
+<li><code>index.ts</code> parse allowed directories, phản ứng với roots change notification và đăng ký filesystem tools.</li>
+<li><code>lib.ts</code> chứa logic chính: validate path, kiểm tra symlink, tạo directory tree, write/edit atomically, search và metadata.</li>
+<li><code>path-validation.ts</code> và <code>roots-utils.ts</code> tách riêng normalize path và parse roots.</li>
+</ul>
+<p><strong><code>src/memory</code></strong></p>
+<ul>
+<li><code>index.ts</code> chứa <code>KnowledgeGraphManager</code> và đăng ký tools.</li>
+<li>Persistence là file JSONL, chọn bằng <code>MEMORY_FILE_PATH</code> hoặc mặc định trong output của package.</li>
+<li>Entity, relation và observation là record đơn giản, dễ đọc và dễ migrate.</li>
+</ul>
+<p><strong><code>src/sequentialthinking</code></strong></p>
+<ul>
+<li><code>index.ts</code> đăng ký tool <code>sequentialthinking</code> và validate/coerce input.</li>
+<li><code>lib.ts</code> giữ thought history và branches trong bộ nhớ, format log bằng <code>chalk</code>, và cho phép tắt log bằng <code>DISABLE_THOUGHT_LOGGING</code>.</li>
+</ul>
+<p><strong><code>src/fetch</code></strong></p>
+<ul>
+<li><code>server.py</code> rút trích nội dung dễ đọc từ HTML, chuyển sang markdown, kiểm tra robots.txt bằng Protego, và expose cả tool lẫn prompt.</li>
+<li>Tool call dùng autonomous user agent và tôn trọng robots.txt trừ khi có <code>--ignore-robots-txt</code>.</li>
+<li>Prompt được xem như fetch thủ công theo yêu cầu người dùng và có cách xử lý lỗi riêng.</li>
+</ul>
+<p><strong><code>src/git</code></strong></p>
+<ul>
+<li><code>server.py</code> khai báo schema cho Git tools, dùng GitPython và validate repository scope.</li>
+<li>Các thao tác mutating như add, reset, commit, create branch và checkout được annotation rõ.</li>
+<li>Input có thể bị diễn giải thành command flag được reject như lớp phòng vệ bổ sung.</li>
+</ul>
+<p><strong><code>src/time</code></strong></p>
+<ul>
+<li><code>server.py</code> bao bọc timezone lookup, current time và chuyển đổi giờ trong cùng ngày.</li>
+<li>Server dùng IANA timezone name và trả về DST state, UTC offset, ISO datetime và day of week.</li>
+</ul>
+<h2 id="lu-ng-end-to-end">Luồng end-to-end</h2>
+<p>Sơ đồ dưới mô tả đường stdio phổ biến. Với HTTP, server có thêm session management và routing endpoint, nhưng mô hình handler vẫn tương tự.</p>
+<div class="mermaid">sequenceDiagram
+    participant User as Người dùng
+    participant Client as MCP client
+    participant Server as Tiến trình server tham chiếu
+    participant Handler as Handler tool/resource/prompt
+    participant System as Hệ thống cục bộ hoặc bên ngoài
+
+    User-&gt;&gt;Client: Yêu cầu ngữ cảnh hoặc hành động
+    Client-&gt;&gt;Server: initialize + thương lượng capability
+    Server--&gt;&gt;Client: capabilities, tools, resources, prompts
+    Client-&gt;&gt;Server: tools/call hoặc resources/read
+    Server-&gt;&gt;Handler: Validate schema và policy
+    Handler-&gt;&gt;System: Đọc, ghi, fetch, Git, memory hoặc timezone lookup
+    System--&gt;&gt;Handler: Kết quả hoặc lỗi
+    Handler--&gt;&gt;Server: MCP content + structuredContent
+    Server--&gt;&gt;Client: Kết quả tool, notification hoặc error
+    Client--&gt;&gt;User: Câu trả lời hoặc tóm tắt hành động</div>
+<h2 id="runtime-v-data-flow">Runtime và data flow</h2>
+<h3 id="lu-ng-g-i-tool">Luồng gọi tool</h3>
+<ol>
+<li>Client khởi chạy tiến trình server hoặc kết nối HTTP endpoint.</li>
+<li>Server công bố capabilities và handler đã đăng ký.</li>
+<li>Client liệt kê tool/resource/prompt hoặc gọi trực tiếp item đã biết.</li>
+<li>Server validate input bằng SDK schema, Zod hoặc Pydantic.</li>
+<li>Handler của package thực hiện thao tác trong scope cho phép.</li>
+<li>Server trả về content block, structured data hoặc protocol error.</li>
+</ol>
+<h3 id="tr-ng-th-i-v-persistence">Trạng thái và persistence</h3>
+<div class="table-scroll"><table>
+<thead><tr><th>Server</th><th>Mô hình trạng thái</th></tr></thead>
+<tbody>
+<tr><td><code>everything</code></td><td>In-memory tasks, subscriptions, simulated updates và event replay cache.</td></tr>
+<tr><td><code>filesystem</code></td><td>Không có durable state; allowed directories là runtime state và có thể đổi theo roots notification.</td></tr>
+<tr><td><code>memory</code></td><td>File graph JSONL bền vững.</td></tr>
+<tr><td><code>sequentialthinking</code></td><td>Thought history và branch map trong bộ nhớ của tiến trình.</td></tr>
+<tr><td><code>fetch</code></td><td>Gần như stateless; HTTP response và robots check theo từng request.</td></tr>
+<tr><td><code>git</code></td><td>State bền vững nằm trong Git repository mục tiêu.</td></tr>
+<tr><td><code>time</code></td><td>Stateless, suy ra từ timezone data của hệ thống.</td></tr>
+</tbody></table></div>
+<h3 id="x-l-l-i">Xử lý lỗi</h3>
+<ul>
+<li>Server TypeScript thường validate bằng Zod/SDK và trả lỗi tương thích MCP.</li>
+<li>Server Python dùng Pydantic và <code>McpError</code> khi cần protocol-level error code.</li>
+<li><code>filesystem</code> phòng vệ nhiều nhất vì validate path, symlink, parent directory và allowed scope trước khi thao tác file.</li>
+<li><code>fetch</code> bộc lộ lỗi HTTP, robots.txt, extraction và truncate nội dung qua <code>start_index</code>.</li>
+</ul>
+<h2 id="topology-tri-n-khai-v-v-n-h-nh">Topology triển khai và vận hành</h2>
+<div class="mermaid">flowchart TB
+    subgraph Desktop[&quot;Desktop / IDE runtime&quot;]
+        Client[&quot;MCP client&quot;]
+        Stdio[&quot;Tiến trình con qua stdio&quot;]
+    end
+
+    subgraph NodeServers[&quot;Package Node.js&quot;]
+        Everything[&quot;mcp-server-everything&quot;]
+        Filesystem[&quot;mcp-server-filesystem&quot;]
+        Memory[&quot;mcp-server-memory&quot;]
+        Sequential[&quot;mcp-server-sequential-thinking&quot;]
+    end
+
+    subgraph PythonServers[&quot;Package Python&quot;]
+        Fetch[&quot;mcp-server-fetch&quot;]
+        Git[&quot;mcp-server-git&quot;]
+        Time[&quot;mcp-server-time&quot;]
+    end
+
+    subgraph HostSystems[&quot;Host và hệ thống ngoài&quot;]
+        Disk[&quot;Thư mục được phép&quot;]
+        Repo[&quot;Git repo được phép&quot;]
+        MemoryJsonl[&quot;memory.jsonl&quot;]
+        Internet[&quot;Web target&quot;]
+        TzDb[&quot;Timezone database&quot;]
+    end
+
+    Client --&gt; Stdio
+    Stdio --&gt; Everything
+    Stdio --&gt; Filesystem
+    Stdio --&gt; Memory
+    Stdio --&gt; Sequential
+    Stdio --&gt; Fetch
+    Stdio --&gt; Git
+    Stdio --&gt; Time
+    Everything -. tùy chọn .-&gt; Http[&quot;SSE / Streamable HTTP&lt;br/&gt;PORT hoặc 3001&quot;]
+    Filesystem --&gt; Disk
+    Memory --&gt; MemoryJsonl
+    Fetch --&gt; Internet
+    Git --&gt; Repo
+    Time --&gt; TzDb</div>
+<h2 id="i-m-m-r-ng">Điểm mở rộng</h2>
+<h3 id="th-m-ho-c-s-a-server-typescript">Thêm hoặc sửa server TypeScript</h3>
+<p>Pattern hiện có là tạo <code>src/&lt;server&gt;</code> với:</p>
+<ul>
+<li><code>package.json</code> có bin entry và script build/test.</li>
+<li><code>src/index.ts</code> tạo MCP server và gắn transport.</li>
+<li>Tool schema bằng Zod và annotation rõ ràng.</li>
+<li>Test tập trung trong <code>*.test.ts</code>.</li>
+</ul>
+<p><code>everything</code> là tài liệu sống cho tính năng giao thức nâng cao. <code>filesystem</code> là ví dụ tốt nhất về truy cập hệ thống cục bộ có phòng vệ.</p>
+<h3 id="th-m-ho-c-s-a-server-python">Thêm hoặc sửa server Python</h3>
+<p>Pattern trong <code>fetch</code>, <code>git</code> và <code>time</code> gồm:</p>
+<ul>
+<li><code>pyproject.toml</code> với console script.</li>
+<li>Pydantic model cho input validation.</li>
+<li>Đăng ký tool qua Python MCP server.</li>
+<li>Làm rõ side effect và annotation cho thao tác ghi/nguy hiểm.</li>
+</ul>
+<h3 id="b-i-h-c-thi-t-k-tool">Bài học thiết kế tool</h3>
+<ul>
+<li>Scope least privilege phải xuất hiện cả trong cấu hình lẫn runtime validation.</li>
+<li>Trả structured output khi client cần dữ liệu machine-readable.</li>
+<li>Trả text content để người dùng dễ đọc.</li>
+<li>Ưu tiên tool nhỏ, rõ mục đích, ít mơ hồ.</li>
+<li>Khai báo read-only/destructive/idempotent để client có quyết định trust tốt hơn.</li>
+</ul>
+<h2 id="t-ch-h-p">Tích hợp</h2>
+<p>Các tích hợp chính:</p>
+<ul>
+<li>MCP client: Claude Desktop, IDE integration, agent runtime và MCP Inspector.</li>
+<li>Package runner: <code>npx</code> cho Node package, <code>uvx</code> cho Python package.</li>
+<li>Container: ví dụ Docker trong <code>README.md</code> cấp cao.</li>
+<li>Hệ thống cục bộ: filesystem, Git repository, timezone database và file JSONL.</li>
+<li>Hệ thống từ xa: HTTP website cho <code>fetch</code>.</li>
+<li>Hệ sinh thái MCP: <code>ADDITIONAL.md</code> liệt kê framework, client, registry và community server.</li>
+</ul>
+<h2 id="c-u-h-nh-tri-n-khai-v-v-n-h-nh">Cấu hình, triển khai và vận hành</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Hạng mục</th><th>Ghi chú thực tế</th></tr></thead>
+<tbody>
+<tr><td>Transport</td><td>Đa số server dùng stdio. <code>everything</code> có thêm SSE cũ và Streamable HTTP.</td></tr>
+<tr><td>Cổng của <code>everything</code></td><td>HTTP transport đọc <code>PORT</code>, mặc định <code>3001</code>.</td></tr>
+<tr><td>Scope filesystem</td><td>Truyền allowed directories qua command line hoặc dùng MCP roots. Không có scope thì initialization lỗi.</td></tr>
+<tr><td>Đường dẫn memory</td><td><code>MEMORY_FILE_PATH</code> ghi đè vị trí <code>memory.jsonl</code>.</td></tr>
+<tr><td>Log suy luận</td><td><code>DISABLE_THOUGHT_LOGGING=true</code> tắt formatted thought logs.</td></tr>
+<tr><td>Chính sách fetch</td><td>CLI flags cấu hình user agent, proxy và việc bỏ qua robots.txt cho autonomous fetch.</td></tr>
+<tr><td>Scope Git</td><td>Khởi động với repository rõ ràng hoặc dùng client roots; repo path được validate.</td></tr>
+<tr><td>Timezone</td><td><code>time</code> cho phép override local timezone và yêu cầu IANA timezone name.</td></tr>
+</tbody></table></div>
+<p>Về vận hành, hãy coi mỗi server là một ranh giới capability riêng. Không nên cấp đồng thời filesystem rộng và mutating Git tools cho cùng một client nếu workflow không thật sự cần.</p>
+<h2 id="observability-testing-evaluation-v-failure-modes">Observability, testing, evaluation và failure modes</h2>
+<h3 id="observability">Observability</h3>
+<p>Repo giữ thiết kế nhẹ. Observability chủ yếu đến từ log tiến trình, protocol response và client-side inspection:</p>
+<ul>
+<li><code>everything</code> có logging/resource update simulation.</li>
+<li><code>filesystem</code> ghi stderr về allowed directories và roots change.</li>
+<li><code>fetch</code> bộc lộ lỗi HTTP và robots.</li>
+<li><code>git</code> bộc lộ lỗi validate repository và GitPython.</li>
+<li><code>sequentialthinking</code> có formatted thought logging nếu không tắt.</li>
+</ul>
+<p>Nếu đưa vào production, nên bọc các server bằng process supervision, log collection và audit trail cho tool có side effect.</p>
+<h3 id="testing-v-evaluation">Testing và evaluation</h3>
+<p>Repo có test tập trung:</p>
+<ul>
+<li>Package TypeScript dùng Vitest, bao gồm <code>everything</code>, <code>filesystem</code>, <code>memory</code>, <code>sequentialthinking</code>.</li>
+<li>Package Python dùng pytest-style tests trong <code>fetch</code>, <code>git</code>, <code>time</code>.</li>
+<li><code>everything</code> có giá trị như target evaluation cho MCP client vì kết hợp tools, prompts, resources, subscriptions, HTTP transports và task-like behavior.</li>
+</ul>
+<p>Lượt tài liệu này không yêu cầu cài dependency hoặc chạy test.</p>
+<h3 id="failure-modes-ph-bi-n">Failure modes phổ biến</h3>
+<ul>
+<li>Client không cung cấp roots và server filesystem không nhận allowed directories.</li>
+<li>Path filesystem resolve qua symlink ra ngoài allowed scope.</li>
+<li>Target web bị chặn bởi robots.txt, timeout, HTML lỗi hoặc nội dung bị truncate.</li>
+<li>Git tool được trỏ tới đường dẫn ngoài repository được phép.</li>
+<li>File graph memory bị mất, không ghi được hoặc cần migrate từ định dạng JSON cũ.</li>
+<li>State của <code>sequentialthinking</code> mất khi tiến trình server dừng.</li>
+<li>Session HTTP của <code>everything</code> mất khi process restart vì session/event state nằm trong memory.</li>
+</ul>
+<h2 id="r-i-ro-b-o-m-t-v-governance">Rủi ro bảo mật và governance</h2>
+<p>Đây là repo tham chiếu, vì vậy production hardening thuộc về người áp dụng.</p>
+<p>Rủi ro chính:</p>
+<ul>
+<li><code>filesystem</code> có thể đọc, ghi, sửa, di chuyển và tìm file trong scope được phép. Chọn scope là quyết định governance quan trọng nhất.</li>
+<li><code>git</code> expose thao tác mutating như add, reset, commit, create branch và checkout.</li>
+<li><code>fetch</code> có thể truy cập URL; README cảnh báo rủi ro truy cập IP nội bộ/cục bộ. Robots.txt không phải biện pháp chống SSRF đầy đủ.</li>
+<li><code>memory</code> lưu entity/observation vào JSONL cục bộ, có thể chứa thông tin nhạy cảm.</li>
+<li><code>sequentialthinking</code> ghi log reasoning trace nếu không tắt; log này nên được xem là nhạy cảm.</li>
+<li><code>everything</code> có capability test rộng như đọc env, sampling, elicitation và CORS thoáng trong HTTP transport test.</li>
+<li>Docker bind mount và file cấu hình client có thể vô tình mở rộng quyền server.</li>
+</ul>
+<p>Khuyến nghị governance:</p>
+<ul>
+<li>Cấu hình server theo từng mục đích thay vì cấp mọi server cho mọi user.</li>
+<li>Ưu tiên roots và allowed directories hẹp.</li>
+<li>Chỉ dùng mutating server trong workspace tin cậy.</li>
+<li>Xem logs, memory files và Git diffs là artifact nhạy cảm.</li>
+<li>Đặt network egress control cho <code>fetch</code> nếu dùng ngoài môi trường cục bộ tin cậy.</li>
+</ul>
+<h2 id="v-ng-i-v-s-quy-t-nh">Vòng đời và sơ đồ quyết định</h2>
+<div class="mermaid">flowchart TD
+    Start[&quot;Cần expose ngữ cảnh hoặc hành động cho AI client&quot;] --&gt; NeedType{&quot;Capability cần là gì?&quot;}
+    NeedType --&gt;|Test MCP client| Everything[&quot;Dùng everything&quot;]
+    NeedType --&gt;|File cục bộ| FsScope{&quot;Có thể scope hẹp không?&quot;}
+    FsScope --&gt;|Có| Filesystem[&quot;Dùng filesystem với roots/allowed dirs&quot;]
+    FsScope --&gt;|Không| RejectFs[&quot;Không expose filesystem rộng&quot;]
+    NeedType --&gt;|Nội dung web| FetchPolicy{&quot;Cho phép autonomous fetch?&quot;}
+    FetchPolicy --&gt;|Tôn trọng robots| Fetch[&quot;Dùng fetch mặc định&quot;]
+    FetchPolicy --&gt;|Cần override| FetchRisk[&quot;Dùng fetch với governance rõ&quot;]
+    NeedType --&gt;|Git workflow| GitScope{&quot;Repository tin cậy?&quot;}
+    GitScope --&gt;|Có| Git[&quot;Dùng git server&quot;]
+    GitScope --&gt;|Không| RejectGit[&quot;Tránh Git tool có side effect&quot;]
+    NeedType --&gt;|Tri thức bền vững| Memory[&quot;Dùng memory JSONL graph&quot;]
+    NeedType --&gt;|Trace suy luận| Seq[&quot;Dùng sequentialthinking&quot;]
+    NeedType --&gt;|Múi giờ| Time[&quot;Dùng time&quot;]
+    Everything --&gt; Observe[&quot;Quan sát hành vi giao thức&quot;]
+    Filesystem --&gt; Observe
+    Fetch --&gt; Observe
+    Git --&gt; Observe
+    Memory --&gt; Observe
+    Seq --&gt; Observe
+    Time --&gt; Observe</div>
+<h2 id="h-ng-d-n-c-repo">Hướng dẫn đọc repo</h2>
+<p>Nên đọc theo thứ tự:</p>
+<ol>
+<li><code>README.md</code> để nắm mục tiêu, danh sách server và ví dụ cấu hình client.</li>
+<li><code>src/everything/README.md</code> và <code>src/everything/docs/*</code> để thấy đầy đủ primitive MCP.</li>
+<li><code>src/filesystem/src/lib.ts</code> và <code>src/filesystem/src/path-validation.ts</code> để học local access có phòng vệ.</li>
+<li><code>src/fetch/src/mcp_server_fetch/server.py</code> để hiểu web retrieval và robots policy.</li>
+<li><code>src/git/src/mcp_server_git/server.py</code> để hiểu repository scoping và annotation.</li>
+<li><code>src/memory/index.ts</code>, <code>src/sequentialthinking/src/lib.ts</code>, <code>src/time/src/mcp_server_time/server.py</code> để xem các ví dụ nhỏ gọn.</li>
+</ol>
+<h2 id="l-tr-nh-h-c-t-p">Lộ trình học tập</h2>
+<ol>
+<li>Bắt đầu với <code>time</code> vì nó nhỏ và stateless.</li>
+<li>Đọc <code>memory</code> để hiểu durable state cho tool.</li>
+<li>Đọc <code>filesystem</code> để học validation và roots negotiation.</li>
+<li>Đọc <code>fetch</code> để hiểu network governance và truncate nội dung.</li>
+<li>Đọc <code>git</code> để so sánh tool read-only và destructive.</li>
+<li>Đọc <code>everything</code> sau cùng vì nó tổng hợp hầu hết bề mặt giao thức.</li>
+</ol>
+<h2 id="b-ng-thu-t-ng">Bảng thuật ngữ</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Thuật ngữ</th><th>Nghĩa trong repo này</th></tr></thead>
+<tbody>
+<tr><td>MCP</td><td>Model Context Protocol, giao thức client/server mà các package implement.</td></tr>
+<tr><td>Client</td><td>Ứng dụng host hoặc agent runtime khởi chạy/kết nối server.</td></tr>
+<tr><td>Tool</td><td>Thao tác có thể gọi từ client.</td></tr>
+<tr><td>Resource</td><td>Nội dung có URI để truy cập.</td></tr>
+<tr><td>Prompt</td><td>Mẫu prompt server trả về để tái sử dụng.</td></tr>
+<tr><td>Root</td><td>Scope do client khai báo, thường là thư mục hoặc repository.</td></tr>
+<tr><td>Transport</td><td>Kênh giao tiếp như stdio, SSE hoặc Streamable HTTP.</td></tr>
+<tr><td>Structured content</td><td>Dữ liệu machine-readable trả về cùng với nội dung cho người đọc.</td></tr>
+<tr><td>Annotation</td><td>Metadata mô tả tool read-only, destructive, idempotent hay open-world.</td></tr>
+<tr><td>JSONL</td><td>Định dạng JSON mỗi dòng một record, được <code>memory</code> sử dụng.</td></tr>
+</tbody></table></div>
+<h2 id="deep-dive-b-m-theo-repository">Deep Dive Bám Theo Repository</h2>
+<p>Repository này là tập hợp implementation tham chiếu cho thiết kế capability MCP. Các server TypeScript dưới <code>github-repos/06-tooling-mcp-ai-platform/servers/src/everything/</code>, <code>src/filesystem/</code>, <code>src/memory/</code> và <code>src/sequentialthinking/</code> thể hiện các mức độ capability khác nhau, trong khi server Python dưới <code>src/fetch/</code>, <code>src/git/</code> và <code>src/time/</code> cho thấy cách expose hệ thống bên ngoài qua tool nhỏ hơn. Bài học kiến trúc quan trọng nhất là MCP server phải được đánh giá bằng scope control, tool annotations, transport assumptions và result structure, không chỉ bằng số lượng tool.</p>
+<div class="mermaid">flowchart LR
+  Client[&quot;MCP client hoac agent host&quot;] --&gt; Transport[&quot;stdio, SSE, hoac Streamable HTTP&quot;]
+  Transport --&gt; Server[&quot;server index.ts hoac Python server.py&quot;]
+  Server --&gt; Tools[&quot;tools registration&quot;]
+  Server --&gt; Resources[&quot;resources va templates&quot;]
+  Server --&gt; Prompts[&quot;prompt templates&quot;]
+  Server --&gt; Roots[&quot;client roots va scope&quot;]
+  Tools --&gt; Fs[&quot;filesystem path validation&quot;]
+  Tools --&gt; Mem[&quot;memory JSONL graph&quot;]
+  Tools --&gt; Net[&quot;fetch network access&quot;]
+  Tools --&gt; Git[&quot;git repository operations&quot;]
+  Resources --&gt; Everything[&quot;everything reference server&quot;]</div>
+<p>Server <code>everything</code> nên được đọc như bộ exerciser cho protocol: <code>src/everything/tools/</code>, <code>resources/</code>, <code>prompts/</code>, <code>transports/</code> và <code>server/</code> minh họa bề rộng. Các server nhỏ mới là ví dụ production tốt hơn. <code>src/filesystem/path-validation.ts</code>, <code>src/filesystem/roots-utils.ts</code> và <code>src/filesystem/lib.ts</code> cho thấy filesystem access bị giới hạn bởi root. <code>src/memory/index.ts</code> cho thấy knowledge graph persist bằng JSONL. <code>src/sequentialthinking/lib.ts</code> cho thấy dữ liệu suy luận có trạng thái. Các server Python <code>fetch</code>, <code>git</code> và <code>time</code> cho thấy cách bind external API hoặc operation kiểu command vào MCP mà không cần service monorepo lớn.</p>
+<div class="mermaid">sequenceDiagram
+  participant Host as Agent host
+  participant MCP as MCP server
+  participant Guard as Scope va validation
+  participant Impl as Tool implementation
+  participant Ext as Filesystem, network, git, hoac time
+  Host-&gt;&gt;MCP: initialize va list capabilities
+  MCP--&gt;&gt;Host: tools, resources, prompts, annotations
+  Host-&gt;&gt;MCP: call tool voi arguments
+  MCP-&gt;&gt;Guard: validate schema, roots, paths, va policy
+  Guard-&gt;&gt;Impl: approved invocation
+  Impl-&gt;&gt;Ext: perform scoped operation
+  Ext--&gt;&gt;Impl: raw result
+  Impl--&gt;&gt;MCP: content plus structured content
+  MCP--&gt;&gt;Host: result hoac explicit error</div>
+<div class="mermaid">flowchart TD
+  Risk[&quot;Rui ro production MCP&quot;] --&gt; Scope[&quot;scope qua rong&quot;]
+  Risk --&gt; Annotation[&quot;tool annotation sai&quot;]
+  Risk --&gt; Transport[&quot;transport mismatch&quot;]
+  Risk --&gt; Data[&quot;result thieu cau truc&quot;]
+  Risk --&gt; Persistence[&quot;state file corruption&quot;]
+  Risk --&gt; Network[&quot;open-world network access&quot;]
+  Scope --&gt; S1[&quot;filesystem hoac git tool vuot root&quot;]
+  Annotation --&gt; A1[&quot;client approve destructive tool nhu read-only&quot;]
+  Transport --&gt; T1[&quot;server deploy sai lifecycle expectation&quot;]
+  Data --&gt; D1[&quot;agent khong parse ket qua on dinh&quot;]
+  Persistence --&gt; P1[&quot;memory graph mat entities hoac relations&quot;]
+  Network --&gt; N1[&quot;fetch server truy cap host bi cam&quot;]</div>
+<h3 id="checklist-s-n-s-ng-production">Checklist Sẵn Sàng Production</h3>
+<ul>
+<li>Với mỗi server, document transport, lifecycle và trust boundary: local stdio helper, remote HTTP service hoặc sidecar tool server.</li>
+<li>Review tool annotations và destructive behavior. Client có thể dựa vào read-only, destructive, idempotent và open-world hints cho approval và UX.</li>
+<li>Với filesystem và git servers, test path traversal, symlink, Windows path normalization, root changes và denied paths bằng các test dưới <code>src/filesystem/__tests__/</code> và <code>src/git/tests/</code>.</li>
+<li>Với <code>fetch</code>, định nghĩa host allow/deny policy, content truncation policy, timeout policy và cách attribution nội dung fetch.</li>
+<li>Với <code>memory</code>, bảo vệ vị trí JSONL state, validate concurrent writes và định nghĩa backup hoặc export behavior.</li>
+<li>Ưu tiên structured content cho output machine-readable. Chỉ trả text cho người đọc khiến downstream agent behavior dễ vỡ.</li>
+<li>Tách example server khỏi production server. <code>everything</code> hữu ích cho protocol coverage nhưng quá rộng để dùng làm capability set production mặc định.</li>
+</ul>
+<h3 id="h-ng-d-n-c-cho-senior-architect">Hướng Dẫn Đọc Cho Senior Architect</h3>
+<p>Đọc <code>src/filesystem/</code> trước vì nó minh họa pattern production quan trọng nhất: client roots cộng với local validation. Sau đó đọc <code>src/memory/</code> cho persistent state, <code>src/sequentialthinking/</code> cho stateful tool data, và các package Python <code>src/fetch/</code>, <code>src/git/</code>, <code>src/time/</code> cho thiết kế external operation. Kết thúc bằng <code>src/everything/</code> để hiểu toàn bộ protocol surface sau khi đã rõ các safety pattern hẹp hơn.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

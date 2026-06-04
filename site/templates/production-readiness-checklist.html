@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Production Readiness Checklist | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../learn/en/index.html">English</a>
+        <a href="../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../learn/en/curriculum.html">Curriculum</a>
+        <a href="index.html">Toolkit</a>
+        <a href="../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../learn/en/index.html">English course</a>
+      <a href="../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../learn/en/curriculum.html">Curriculum</a>
+      <a href="../learn/en/projects.html">Projects</a>
+      <a href="index.html">Architecture toolkit</a>
+      <a href="../capstone/index.html">Capstone</a>
+      <a href="../assessments/index.html">Assessments</a>
+      <a href="../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/templates/production-readiness-checklist.md">View source</a>
+      <h1 id="production-readiness-checklist">Production Readiness Checklist</h1>
+<p>Use this checklist before an AI solution goes live.</p>
+<h2 id="ownership">Ownership</h2>
+<ul>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Product owner named.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Engineering owner named.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Runtime/on-call owner named.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Data owner named.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Security/governance reviewer named.</li>
+</ul>
+<h2 id="architecture-boundaries">Architecture Boundaries</h2>
+<ul>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; User workflow is documented.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Agent/workflow/retrieval boundaries are clear.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Runtime boundary is clear.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Data plane boundary is clear.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Tool side effects are isolated and governed.</li>
+</ul>
+<h2 id="reliability">Reliability</h2>
+<ul>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; p95/p99 latency targets are defined.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Capacity model includes prompt and completion token distribution.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Fallback behavior is defined.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Retry and timeout policy is tested.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Rollback path exists.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Incident runbook exists.</li>
+</ul>
+<h2 id="data-and-retrieval">Data And Retrieval</h2>
+<ul>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Data sources are approved.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Chunking and embedding versions are tracked.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Access control is enforced during retrieval.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Deletion and update workflows are tested.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Retrieval eval passes.</li>
+</ul>
+<h2 id="evaluation">Evaluation</h2>
+<ul>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Evaluation dataset exists.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Baseline and candidate results are compared.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Safety and policy evaluations are included.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Human review covers high-risk cases.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Promotion gate owner signs off.</li>
+</ul>
+<h2 id="security-and-governance">Security And Governance</h2>
+<ul>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Secrets are not exposed in prompts, traces, logs, or tools.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Tool execution uses least privilege.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Audit logs capture high-impact actions.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; PII redaction/retention policy is defined.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Model artifact provenance is tracked.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; External providers meet data policy requirements.</li>
+</ul>
+<h2 id="observability">Observability</h2>
+<ul>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Traces include model calls, retrieval, tools, scores, and errors.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Dashboards cover latency, cost, errors, retrieval quality, and safety events.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Alerts are configured.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Post-incident review process exists.</li>
+</ul>
+<h2 id="final-gate">Final Gate</h2>
+<div class="mermaid">flowchart TB
+  Ready[Readiness review] --&gt; Reliability{Reliability pass?}
+  Reliability --&gt;|No| Hold[Hold release]
+  Reliability --&gt;|Yes| Security{Security pass?}
+  Security --&gt;|No| Hold
+  Security --&gt;|Yes| Eval{Evaluation pass?}
+  Eval --&gt;|No| Hold
+  Eval --&gt;|Yes| Ops{Operational owner ready?}
+  Ops --&gt;|No| Hold
+  Ops --&gt;|Yes| Ship[Release]</div>
+<h2 id="review-method">Review Method</h2>
+<p>Run this checklist as a cross-functional review with product, engineering, data, security, and operations represented. The purpose is to decide whether the solution can be operated, not whether the prototype is impressive. Each unchecked item should have an owner, a due date, and a release impact. Some items can be accepted as known risks, but only when the decision is explicit and the mitigation is understood.</p>
+<p>The strongest readiness reviews use evidence from the other templates. The ADR explains why the architecture exists. The runtime matrix proves that serving constraints are understood. The RAG data contract proves that retrieval quality and data governance have owners. The LLMOps scorecard proves that prompt, model, retrieval, and tool changes have promotion gates. The security review proves that access, audit, and sensitive data controls are not afterthoughts.</p>
+<h2 id="common-release-blockers">Common Release Blockers</h2>
+<p>Common blockers include missing rollback paths, untested provider outages, no owner for evaluation datasets, unclear trace retention policy, secrets visible in prompts or logs, retrieval that bypasses tenant access control, tool calls without approval gates, and dashboards that only show infrastructure metrics while ignoring answer quality and cost. Treat these as architecture issues, not cleanup tasks, because they directly affect production trust.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

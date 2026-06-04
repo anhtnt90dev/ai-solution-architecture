@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kien truc llama.cpp | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/02-model-serving-inference/llama.cpp/README.vi.md">View source</a>
+      <h1 id="kien-truc-llama-cpp">Kien truc llama.cpp</h1>
+<p>Anh chup nguon: <code>github-repos/02-model-serving-inference/llama.cpp</code> tai commit <code>bfb4308</code> (<code>model : support granite multilingual embeddings R2 ... (#22716)</code>, tag <code>b9481</code>). Tai lieu nay dua tren cac tep va thu muc co trong anh chup do.</p>
+<h2 id="tom-tat-dieu-hanh">Tom tat dieu hanh</h2>
+<p>llama.cpp la stack inference C/C++ native de chay LLM voi thiet lap toi thieu tren may local, edge device va cloud instance. README tom tat muc tieu la &quot;LLM inference in C/C++&quot; va nhan manh it dependency, ho tro Apple Silicon, cac duong CPU SIMD, nhieu dinh dang quantization, CUDA/HIP/Vulkan/SYCL/OpenCL/Metal va cac backend khac, cung CPU/GPU hybrid inference.</p>
+<p>San pham cot loi la thu vien <code>llama</code>, voi public C API trong <code>include/llama.h</code> va C++ RAII helpers trong <code>include/llama-cpp.h</code>. Xung quanh core do la tooling chuyen model sang GGUF, quantization, CLI, OpenAI-compatible HTTP server, benchmarking, multimodal support, tests va thu vien tensor/runtime <code>ggml</code>.</p>
+<p>Voi solution architect, llama.cpp co gia tri khi dich trien khai can portability, footprint nho, local/edge execution, quantized-model support manh, hoac native integration. No co the chay nhu CLI local, embedded library, Docker container, web server, mobile demo hoac service multi-GPU tuy backend. Doi lai, model support, runtime features va tang toc phan cung phu thuoc chat vao GGUF metadata, graph construction code, backend kernels va build flags.</p>
+<h2 id="bai-toan-duoc-giai-quyet">Bai toan duoc giai quyet</h2>
+<p>Nhieu model serving stack mac dinh can Python runtime, GPU lon va managed server. llama.cpp phuc vu mo hinh khac:</p>
+<ul>
+<li>Chay LLM tu native executable hoac library khong can Python serving stack day du.</li>
+<li>Dung GGUF single-file gom metadata va tensors.</li>
+<li>Giam memory bang quantization manh.</li>
+<li>Chay tren CPU, Apple Silicon, consumer GPU, mobile device va he thong CPU/GPU hybrid.</li>
+<li>Expose ca CLI local va HTTP API.</li>
+<li>Cung cap tool convert, quantize, benchmark, inspect va test model.</li>
+</ul>
+<p>Diem neo trong repo gom <code>include/llama.h</code>, <code>src/llama.cpp</code>, <code>src/llama-context.cpp</code>, <code>src/llama-model.cpp</code>, <code>src/llama-kv-cache.cpp</code>, <code>tools/server/*</code>, <code>tools/cli/*</code>, <code>tools/quantize/*</code>, <code>convert_hf_to_gguf.py</code>, <code>gguf-py/gguf/*</code>, <code>ggml/src/*</code> va <code>tests/*</code>.</p>
+<h2 id="vai-tro-trong-ai-stack">Vai tro trong AI stack</h2>
+<p>llama.cpp la inference runtime va toolkit model serving. No khong chu yeu dinh nghia model cho training nhu Transformers, va khong phai Python-first high-throughput server nhu vLLM. Vai tro cua no gan voi mot portable native execution layer:</p>
+<ul>
+<li><strong>Model input:</strong> model Hugging Face da convert sang GGUF, repo GGUF san co, LoRA GGUF adapters, multimodal projector files.</li>
+<li><strong>Runtime:</strong> <code>libllama</code> cong <code>ggml</code> graph execution va backend scheduling.</li>
+<li><strong>Serving:</strong> <code>llama-cli</code>, <code>llama-server</code>, OpenAI-compatible routes, Anthropic-compatible messages, web UI, embeddings, reranking, function calling.</li>
+<li><strong>Van hanh:</strong> CMake builds, Docker images, backend-specific build flags, benchmarking, Prometheus-compatible server metrics, tests.</li>
+<li><strong>Cau noi ecosystem:</strong> Python conversion scripts phu thuoc <code>transformers</code>, <code>torch</code>, <code>sentencepiece</code> va package local <code>gguf-py</code>; runtime tieu thu GGUF assets da convert.</li>
+</ul>
+<h2 id="ban-do-source-tree">Ban do source tree</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Duong dan</th><th>Vai tro</th></tr></thead>
+<tbody>
+<tr><td><code>README.md</code></td><td>Tong quan du an, quick start, model families ho tro, hardware support, link install/build.</td></tr>
+<tr><td><code>include/llama.h</code></td><td>Public C API: model/context params, backend init/free, model loading, <code>llama_batch</code>, <code>llama_encode</code>, <code>llama_decode</code>, samplers, embeddings, KV operations.</td></tr>
+<tr><td><code>include/llama-cpp.h</code></td><td>C++ RAII helpers cho <code>llama_model</code>, <code>llama_context</code>, <code>llama_sampler</code>.</td></tr>
+<tr><td><code>src/llama.cpp</code></td><td>Glue implementation cho public API export.</td></tr>
+<tr><td><code>src/llama-model.cpp</code>, <code>src/llama-model.h</code></td><td>Model representation, graph construction theo architecture, logic RoPE/model.</td></tr>
+<tr><td><code>src/llama-model-loader.cpp</code></td><td>Nap GGUF model va xu ly metadata/tensor.</td></tr>
+<tr><td><code>src/llama-context.cpp</code></td><td>Runtime context, decode/encode execution, output extraction, embeddings, logits, behavior hieu nang.</td></tr>
+<tr><td><code>src/llama-batch.cpp</code></td><td>Cap phat batch va chia thanh micro-batch.</td></tr>
+<tr><td><code>src/llama-kv-cache*.cpp</code>, <code>src/llama-memory*.cpp</code></td><td>KV-cache va memory implementations, gom hybrid va recurrent paths.</td></tr>
+<tr><td><code>src/llama-sampler.cpp</code></td><td>Sampling chain va chon token.</td></tr>
+<tr><td><code>src/llama-vocab.cpp</code>, <code>src/unicode*.cpp</code></td><td>Tokenization, vocabulary, Unicode.</td></tr>
+<tr><td><code>src/llama-adapter.cpp</code></td><td>Nap LoRA/control-vector adapters va xu ly backend buffer.</td></tr>
+<tr><td><code>common/*</code></td><td>Utilities dung chung cho CLI/tools/server: args, sampling, chat templates, HF cache/download, logging, JSON/grammar helpers, speculative decoding.</td></tr>
+<tr><td><code>tools/server/*</code></td><td>HTTP server dua tren <code>httplib</code> va <code>nlohmann::json</code>; OpenAI-compatible, Anthropic-compatible, web UI, slots, queue, model routing.</td></tr>
+<tr><td><code>tools/cli/*</code>, <code>tools/completion/*</code></td><td>Interactive CLI va completion utilities.</td></tr>
+<tr><td><code>tools/quantize/*</code>, <code>tools/imatrix/*</code>, <code>tools/gguf-split/*</code></td><td>Quantization, importance matrix, GGUF splitting va model tooling.</td></tr>
+<tr><td><code>tools/llama-bench/*</code>, <code>tools/perplexity/*</code></td><td>Benchmarking va quality/perplexity utilities.</td></tr>
+<tr><td><code>tools/mtmd/*</code></td><td>Multimodal library va model-specific encoder/projector support.</td></tr>
+<tr><td><code>examples/*</code></td><td>Vi du dung library toi thieu, batched inference, embeddings, retrieval, speculative decoding, Android/Swift demos, training examples.</td></tr>
+<tr><td><code>ggml/include</code>, <code>ggml/src</code></td><td>Tensor library, graph execution, backend registry, CPU/CUDA/HIP/Metal/Vulkan/SYCL/OpenCL/RPC va backend khac.</td></tr>
+<tr><td><code>gguf-py/gguf/*</code></td><td>Python GGUF reader/writer, constants, quant helpers, metadata utilities, tensor mapping.</td></tr>
+<tr><td><code>conversion/*</code>, <code>convert_hf_to_gguf.py</code>, <code>convert_lora_to_gguf.py</code></td><td>Chuyen model/adapters tu HF/PyTorch formats sang GGUF.</td></tr>
+<tr><td><code>docs/*</code></td><td>Build, install, Docker, multi-GPU, function calling, multimodal, speculative, backend va model-development guides.</td></tr>
+<tr><td><code>tests/*</code></td><td>C/C++ va Python tests cho backends, GGUF, quantization, tokenizers, chat templates, grammar, thread safety, model load cancel, server.</td></tr>
+<tr><td><code>CMakeLists.txt</code>, <code>CMakePresets.json</code>, <code>Makefile</code></td><td>Native build system va presets.</td></tr>
+<tr><td><code>pyproject.toml</code></td><td>Metadata Python scripts; scripts nhu <code>llama-convert-hf-to-gguf</code>; dependencies cho conversion tooling.</td></tr>
+</tbody></table></div>
+<h2 id="khai-niem-cot-loi">Khai niem cot loi</h2>
+<p><strong>GGUF.</strong> GGUF la dinh dang single-file cua llama.cpp va ggml. Conversion code doc config goc, tokenizer data, tensor names va tensor values, roi ghi metadata va tensors chuan hoa. <code>gguf-py/gguf/constants.py</code> va <code>tensor_mapping.py</code> la hop dong trung tam.</p>
+<p><strong>libllama API.</strong> <code>include/llama.h</code> la contract ben ngoai de embed llama.cpp vao ung dung. No expose backend initialization, model/context creation, batches, encode/decode, samplers, embeddings va metadata APIs.</p>
+<p><strong>ggml graph execution.</strong> llama.cpp xay graph cho architecture model va giao tensor operations cho <code>ggml</code>. Backend trong <code>ggml/src/ggml-cpu</code>, <code>ggml-cuda</code>, <code>ggml-metal</code>, <code>ggml-vulkan</code>, <code>ggml-sycl</code> va cac thu muc khac thuc thi graph.</p>
+<p><strong>Context.</strong> <code>llama_context</code> giu runtime state cho inference: KV cache, backend scheduler, logits/embeddings buffers, batch handling va decode state.</p>
+<p><strong>Batch va micro-batch.</strong> <code>llama_batch</code> co the chua mot hoac nhieu sequence. <code>src/llama-batch.cpp</code> chia work thanh micro-batch (<code>ubatch</code>) de phu hop execution va memory constraints.</p>
+<p><strong>KV cache va memory.</strong> <code>src/llama-kv-cache.cpp</code>, <code>llama-memory.cpp</code>, <code>llama-memory-hybrid.cpp</code>, <code>llama-memory-recurrent.cpp</code> va cac file lien quan quan ly context memory. Server flags nhu <code>--ctx-size</code>, <code>--cache-type-k</code>, <code>--cache-type-v</code>, <code>--kv-offload</code>, <code>--kv-unified</code>, <code>--cache-prompt</code>, slot controls expose hanh vi nay.</p>
+<p><strong>Quantization.</strong> Du an ho tro nhieu quantization types, giam memory va giup local inference kha thi. Runtime quantized ops nam trong ggml backends, con tools nhu <code>tools/quantize</code> va scripts nhu <code>convert_hf_to_gguf.py</code> tao assets quantized.</p>
+<p><strong>Backend selection.</strong> Build flags va runtime flags quyet dinh CPU, Metal, CUDA, HIP, Vulkan, SYCL, OpenCL, RPC hoac path khac co san hay khong. <code>docs/build.md</code> va <code>docs/multi-gpu.md</code> mo ta cac lua chon van hanh.</p>
+<p><strong>Server slots va continuous batching.</strong> <code>tools/server</code> ho tro parallel decoding, multi-user serving, continuous batching, slots monitoring, prompt caching, metrics va model routing.</p>
+<h2 id="so-do-thanh-phan-he-thong">So do thanh phan he thong</h2>
+<div class="mermaid">flowchart LR
+    User[CLI, HTTP client, native app] --&gt; Tools[tools/cli, tools/server, examples]
+    Tools --&gt; Common[common\nargs, chat, sampling, HF cache, grammar]
+    Tools --&gt; API[include/llama.h\nlibllama C API]
+    API --&gt; Context[src/llama-context.cpp\nruntime context]
+    Context --&gt; Model[src/llama-model.cpp\narchitecture graph]
+    Context --&gt; KV[src/llama-kv-cache + llama-memory\ncache va state]
+    Context --&gt; Sampler[src/llama-sampler.cpp\nsampling chain]
+    Model --&gt; Loader[src/llama-model-loader.cpp\nGGUF tensors va metadata]
+    Loader --&gt; GGUF[gguf-py + ggml gguf\nsingle-file model format]
+    Context --&gt; GGML[ggml graph scheduler]
+    GGML --&gt; Backends[CPU, CUDA, HIP, Metal,\nVulkan, SYCL, OpenCL, RPC]
+    Conversion[convert_hf_to_gguf.py\nconversion/*] --&gt; GGUF
+    Tests[tests + server tests] --&gt; API</div>
+<h2 id="kien-truc-noi-bo">Kien truc noi bo</h2>
+<p>llama.cpp co native runtime core va cac tool bao quanh.</p>
+<p><strong>Public API layer.</strong> <code>include/llama.h</code> la interface on dinh cho consumer compile. Ung dung goi <code>llama_backend_init</code>, load model, tao context, build batch, goi <code>llama_decode</code> hoac <code>llama_encode</code>, roi doc logits, embeddings hoac token. <code>include/llama-cpp.h</code> them ownership helpers cho C++.</p>
+<p><strong>Model va metadata layer.</strong> <code>src/llama-model-loader.cpp</code> doc GGUF files, tensor metadata, architecture-specific keys va weight data. <code>src/llama-arch.h</code> va <code>src/llama-arch.cpp</code> dinh nghia architecture constants, tensor names va metadata mappings phai dong bo voi <code>gguf-py/gguf/constants.py</code>.</p>
+<p><strong>Graph construction layer.</strong> <code>src/llama-model.cpp</code> xay ggml graphs cho architectures duoc ho tro. Guide <code>docs/development/HOWTO-add-model.md</code> noi model moi can conversion support, architecture metadata, graph implementation va tuy chon multimodal encoder support.</p>
+<p><strong>Runtime context layer.</strong> <code>src/llama-context.cpp</code> giu execution state, quan ly decode/encode calls, trich logits/embeddings, xu ly output va goi backend scheduler.</p>
+<p><strong>Memory/KV layer.</strong> KV cache va memory duoc tach thanh nhieu file de xu ly recurrent, hybrid, sliding-window va standard attention models.</p>
+<p><strong>Shared tool layer.</strong> <code>common/arg.cpp</code>, <code>common/common.cpp</code>, <code>common/sampling.cpp</code>, <code>common/chat.cpp</code>, <code>common/hf-cache.cpp</code>, <code>common/download.cpp</code> duoc CLI, server va tools dung lai. Nho do moi binary khong phai tu cai dat argument parsing, sampling, chat templates, HF downloads hay logging.</p>
+<p><strong>Backend layer.</strong> <code>ggml</code> quan ly low-level tensor execution va backend registration. <code>ggml/src/ggml-backend-reg.cpp</code>, <code>ggml-backend.cpp</code> va backend directories cung cap ops theo implementation.</p>
+<h2 id="luong-runtime-dau-cuoi">Luong runtime dau cuoi</h2>
+<div class="mermaid">sequenceDiagram
+    participant C as User/client
+    participant T as llama-cli hoac llama-server
+    participant A as common args/chat/sampling
+    participant L as libllama API
+    participant M as model loader
+    participant X as llama_context
+    participant G as ggml backend scheduler
+    participant S as sampler
+
+    C-&gt;&gt;T: prompt, chat request, hoac API call
+    T-&gt;&gt;A: parse flags, chat template, sampling config
+    A-&gt;&gt;L: llama_backend_init + load model/context
+    L-&gt;&gt;M: doc GGUF metadata va tensors
+    M--&gt;&gt;L: llama_model
+    L--&gt;&gt;X: context voi KV cache va backend scheduler
+    loop generation
+        T-&gt;&gt;X: build llama_batch va goi llama_decode
+        X-&gt;&gt;G: execute model graph tren backend da chon
+        G--&gt;&gt;X: logits / embeddings / updated KV
+        X--&gt;&gt;S: logits
+        S--&gt;&gt;T: next token
+        T--&gt;&gt;C: token text, stream chunk, hoac JSON delta
+    end</div>
+<h2 id="runtime-va-data-flow">Runtime va data flow</h2>
+<ol>
+<li><strong>Lay model.</strong> User truyen <code>-m model.gguf</code>, <code>-hf user/repo</code>, <code>--model-url</code> hoac Docker model args. <code>common/hf-cache.cpp</code>, <code>common/download.cpp</code>, <code>common_get_model_endpoint()</code> ho tro cache va endpoint.</li>
+<li><strong>Nap model.</strong> <code>llama_model_loader</code> doc GGUF metadata va tensors, thuong dung memory mapping tru khi bi tat boi <code>--no-mmap</code>.</li>
+<li><strong>Khoi tao context.</strong> <code>llama_context</code> duoc tao voi context params, backend devices, KV cache settings, Flash Attention, thread settings va offload tuy chon.</li>
+<li><strong>Xu ly prompt.</strong> CLI/server tokenize input, ap dung chat templates tu <code>common/chat.cpp</code>, xu ly grammars/JSON schema va tao <code>llama_batch</code>.</li>
+<li><strong>Graph execution.</strong> Graph theo architecture duoc xay va chay qua ggml. Backend scheduler dat tensors va ops len CPU/GPU backends theo build/runtime availability.</li>
+<li><strong>Cap nhat KV.</strong> Attention state duoc luu trong cache va co the offload, quantize, unified, shift, save hoac restore theo flags va server slot state.</li>
+<li><strong>Sampling.</strong> <code>src/llama-sampler.cpp</code> va <code>common/sampling.cpp</code> ap dung sampler chains nhu penalties, top-k, top-p, min-p, temperature, Mirostat, grammar constraints va logit bias.</li>
+<li><strong>Output.</strong> CLI in tokens; server stream hoac tra JSON qua <code>tools/server/server-http.cpp</code>, <code>server-task.cpp</code>, <code>server-context.cpp</code> va route-specific code.</li>
+</ol>
+<h2 id="topology-trien-khai-va-van-hanh">Topology trien khai va van hanh</h2>
+<div class="mermaid">flowchart TB
+    subgraph Local
+        CLI[llama-cli / llama-completion]
+        Lib[Native application embedding libllama]
+    end
+    subgraph ServerNode[&quot;llama-server node&quot;]
+        HTTP[tools/server\nhttplib HTTP server]
+        Queue[server queue va slots]
+        Contexts[llama_context instances]
+        UI[Web UI / static assets]
+    end
+    subgraph Models
+        HF[Hugging Face repo]
+        GGUF[Local GGUF files]
+        LoRA[LoRA GGUF adapters]
+        MMProj[Multimodal projector]
+    end
+    subgraph Runtime
+        GGML[ggml backend registry]
+        CPU[CPU SIMD / BLAS]
+        GPU[CUDA/HIP/Metal/Vulkan/SYCL/OpenCL]
+        RPC[RPC backend]
+    end
+    subgraph Ops
+        Docker[GHCR images\nfull/light/server variants]
+        Metrics[Prometheus metrics endpoint]
+        Bench[llama-bench / perplexity]
+    end
+
+    CLI --&gt; GGUF
+    Lib --&gt; GGUF
+    HTTP --&gt; Queue --&gt; Contexts --&gt; GGML
+    HTTP --&gt; UI
+    HF --&gt; GGUF
+    LoRA --&gt; Contexts
+    MMProj --&gt; Contexts
+    GGML --&gt; CPU
+    GGML --&gt; GPU
+    GGML --&gt; RPC
+    Docker --&gt; HTTP
+    Metrics --&gt; HTTP
+    Bench --&gt; GGML</div>
+<p>Cac mau trien khai:</p>
+<ul>
+<li><strong>Single binary local inference:</strong> <code>llama-cli -m model.gguf</code>.</li>
+<li><strong>OpenAI-compatible local service:</strong> <code>llama-server -m model.gguf --host 0.0.0.0 --port 8080</code>.</li>
+<li><strong>Containerized service:</strong> <code>ghcr.io/ggml-org/llama.cpp:server</code> hoac image theo backend nhu <code>server-cuda</code>, <code>server-rocm</code>, <code>server-vulkan</code>, <code>server-intel</code>.</li>
+<li><strong>Embedded native library:</strong> ung dung link voi <code>libllama</code> va goi <code>include/llama.h</code>.</li>
+<li><strong>Multi-GPU:</strong> <code>docs/multi-gpu.md</code> mo ta <code>--split-mode none|layer|row|tensor</code>, <code>--tensor-split</code>, <code>--device</code>, <code>--n-gpu-layers</code> va backend caveats.</li>
+<li><strong>Mobile/edge:</strong> examples co Android va SwiftUI demos, backend docs co huong dan build theo device.</li>
+</ul>
+<h2 id="vong-doi-quyet-dinh-va-phu-thuoc-module">Vong doi, quyet dinh va phu thuoc module</h2>
+<div class="mermaid">stateDiagram-v2
+    [*] --&gt; Build
+    Build --&gt; SelectBackend: CMake flags quyet dinh backends
+    SelectBackend --&gt; AcquireModel: local GGUF, HF cache, URL, Docker volume
+    AcquireModel --&gt; LoadGGUF: metadata va tensors
+    LoadGGUF --&gt; InitContext: context params, KV cache, devices
+    InitContext --&gt; PromptReady: tokenize va ap dung chat template
+    PromptReady --&gt; DecodeLoop
+    DecodeLoop --&gt; DecodeLoop: batch -&gt; graph -&gt; logits -&gt; sample
+    DecodeLoop --&gt; Finished: EOS, max tokens, reverse prompt, stop
+    DecodeLoop --&gt; Error: OOM, invalid GGUF, backend unsupported
+    Finished --&gt; [*]
+    Error --&gt; [*]</div>
+<div class="mermaid">flowchart LR
+    Convert[convert_hf_to_gguf.py\nconversion/*] --&gt; GGUFConstants[gguf-py/gguf/constants.py]
+    GGUFConstants --&gt; Arch[src/llama-arch.h/.cpp]
+    Arch --&gt; Loader[src/llama-model-loader.cpp]
+    Loader --&gt; Model[src/llama-model.cpp]
+    Model --&gt; Context[src/llama-context.cpp]
+    Context --&gt; Batch[src/llama-batch.cpp]
+    Context --&gt; Memory[src/llama-kv-cache*.cpp\nllama-memory*.cpp]
+    Context --&gt; GGML[ggml/src/ggml-backend*.cpp]
+    GGML --&gt; BackendDirs[ggml/src/ggml-cpu\ncuda, metal, vulkan, sycl]</div>
+<h2 id="diem-mo-rong">Diem mo rong</h2>
+<ul>
+<li><strong>Them model architecture:</strong> <code>docs/development/HOWTO-add-model.md</code> dinh nghia duong di: cap nhat conversion, GGUF constants/tensor mappings, <code>src/llama-arch.*</code>, <code>src/llama-model-loader.cpp</code>, RoPE logic neu can, va <code>src/llama-model.cpp</code> graph construction.</li>
+<li><strong>Them conversion support:</strong> implement <code>TextModel</code> hoac <code>MmprojModel</code> subclass trong <code>conversion</code>, cap nhat <code>gguf-py/gguf/constants.py</code> va <code>tensor_mapping.py</code>, validate tokenizer/tensor mapping.</li>
+<li><strong>Them backend support:</strong> implement hoac mo rong backend code trong <code>ggml/src/ggml-*</code> va expose qua backend registry.</li>
+<li><strong>Them server routes/features:</strong> theo <code>tools/server/server-http.cpp</code>, <code>server-task.cpp</code>, <code>server-context.cpp</code>, <code>server-queue.cpp</code> va protocol helpers.</li>
+<li><strong>Them multimodal support:</strong> dung <code>tools/mtmd</code>, thu muc <code>models</code> va <code>docs/multimodal.md</code>; tranh hanh vi CLI rieng cho tung model neu co the dung preprocessor/projector model-agnostic.</li>
+<li><strong>Them tool:</strong> tool moi co the dung lai <code>common</code> cho argument parsing, logging, model loading, sampling va chat templates.</li>
+<li><strong>Them grammars/function calling:</strong> <code>common/json-schema-to-grammar.cpp</code>, <code>common/llguidance.cpp</code>, <code>grammars</code>, <code>docs/function-calling.md</code> la khu vuc mo rong.</li>
+</ul>
+<h2 id="tich-hop">Tich hop</h2>
+<ul>
+<li>Hugging Face downloads va cache qua <code>-hf</code>, <code>HF_TOKEN</code>, <code>HF_ENDPOINT</code>/<code>MODEL_ENDPOINT</code>, <code>common/hf-cache.cpp</code>.</li>
+<li>GGUF conversion tu Transformers/PyTorch qua <code>convert_hf_to_gguf.py</code>, <code>conversion</code>, Python dependencies trong <code>pyproject.toml</code>.</li>
+<li>OpenAI-compatible server routes duoc document trong <code>tools/server/README.md</code>.</li>
+<li>Tuong thich Anthropic Messages API trong server features.</li>
+<li>Prometheus-compatible metrics endpoint sau flag <code>--metrics</code>.</li>
+<li>Docker images cho full, light, server va backend-specific variants trong <code>docs/docker.md</code>.</li>
+<li>Multimodal projector support qua <code>tools/mtmd</code> va <code>docs/multimodal.md</code>.</li>
+<li>LoRA va control vectors qua <code>src/llama-adapter.cpp</code> va CLI/server flags.</li>
+<li>Speculative decoding qua <code>common/speculative.cpp</code>, <code>examples/speculative</code>, <code>docs/speculative.md</code>.</li>
+</ul>
+<h2 id="cau-hinh-trien-khai-va-ops">Cau hinh, trien khai va ops</h2>
+<p>Cau hinh llama.cpp tach thanh build-time va runtime.</p>
+<p><strong>Build-time:</strong> CMake options chon backend availability. <code>docs/build.md</code> bao phu CPU, BLAS, Metal, SYCL, CUDA, MUSA, HIP, Vulkan, CANN, ZenDNN, KleidiAI, OpenCL, Android va OpenVINO. Build flags quyet dinh binary co dung backend duoc hay khong.</p>
+<p><strong>Runtime:</strong> <code>common/arg.cpp</code> tap trung flags cho threads, CPU affinity, context size, batch/micro-batch size, Flash Attention, RoPE scaling, KV cache types, mmap/mlock/direct I/O, devices, GPU layers, split mode, LoRA, model source, logging, sampling, grammar, server host/port, API key, TLS, metrics, slots, props, prompt cache va model routing.</p>
+<p>Thuc hanh van hanh:</p>
+<ul>
+<li>Dung <code>--list-devices</code> de kiem tra accelerator thay duoc.</li>
+<li>Tune <code>--ctx-size</code>, <code>--batch-size</code>, <code>--ubatch-size</code>, <code>--n-gpu-layers</code> va KV cache types truoc khi expose server.</li>
+<li>Dung Docker images nhu loi tat trien khai, nhung rebuild local neu version backend/library khac.</li>
+<li>Voi multi-GPU, uu tien <code>layer</code> cho compatibility va chi dung <code>tensor</code> sau khi validate architecture/backend support va interconnect performance.</li>
+<li>Bao ve server endpoints bang <code>--api-key</code>, TLS, network policy va reverse proxy controls.</li>
+<li>Giu <code>--props</code>, <code>--tools</code>, local media paths va write-capable tools o trang thai tat trong moi truong khong tin cay, tru khi co governance ro.</li>
+</ul>
+<h2 id="observability-testing-evaluation-va-failure-modes">Observability, testing, evaluation va failure modes</h2>
+<p>Observability va benchmarking:</p>
+<ul>
+<li><code>tools/server/README.md</code> document <code>--metrics</code> cho Prometheus-compatible endpoint.</li>
+<li><code>common/log.cpp</code>, logging flags, verbosity, timestamps va log files ho tro diagnosis.</li>
+<li><code>--perf</code> va <code>--no-perf</code> dieu khien internal libllama timing output.</li>
+<li><code>tools/llama-bench</code>, <code>tools/batched-bench</code>, <code>tools/perplexity</code>, <code>examples/llama-eval</code> va benchmark scripts do speed va quality.</li>
+<li><code>tools/server/bench/prometheus.yml</code> va server bench files cho thay setup monitoring/benchmark.</li>
+</ul>
+<p>Diem neo testing:</p>
+<ul>
+<li><code>tests/test-backend-ops.cpp</code> bao phu backend operation behavior.</li>
+<li><code>tests/test-gguf.cpp</code>, <code>tests/test-gguf-model-data.cpp</code>, <code>gguf-py/tests/*</code> bao phu GGUF.</li>
+<li><code>tests/test-quantize-fns.cpp</code>, <code>test-quantize-perf.cpp</code>, <code>test-quant-type-selection.cpp</code> bao phu quantization.</li>
+<li><code>tests/test-tokenizer-*</code> va <code>tests/test-tokenizers-repo.sh</code> bao phu tokenizer correctness.</li>
+<li><code>tests/test-chat-template.cpp</code>, <code>test-chat.cpp</code>, <code>test-chat-auto-parser.cpp</code> bao phu chat formatting va parsing.</li>
+<li><code>tools/server/tests/*</code> bao phu server behavior.</li>
+<li><code>tests/test-thread-safety.cpp</code>, <code>test-save-load-state.cpp</code>, <code>test-model-load-cancel.cpp</code> bao phu reliability scenarios.</li>
+</ul>
+<p>Failure modes pho bien:</p>
+<ul>
+<li><strong>GGUF invalid hoac chua ho tro:</strong> metadata keys, tensor names, architecture mapping hoac tokenizer info khong khop runtime.</li>
+<li><strong>Backend chua build:</strong> flag nhu <code>-ngl all</code> khong the dung GPU neu binary khong co CUDA/Metal/HIP/Vulkan/SYCL.</li>
+<li><strong>OOM hoac fit kem:</strong> model, context, KV cache, parallel slots hoac GPU offload vuot memory.</li>
+<li><strong>Multi-GPU mismatch:</strong> <code>tensor</code> split khong ho tro architecture, thieu NCCL/RCCL, interconnect cham, hoac KV cache type khong compatible.</li>
+<li><strong>Giam chat luong do quantization:</strong> format nho hon co the lam giam output quality hoac pha workload cu the.</li>
+<li><strong>Chat template mismatch:</strong> function calling, tool use hoac role formatting loi neu template cua model sai.</li>
+<li><strong>Server overload:</strong> queue tang, generation dai, qua nhieu slots, hoac circuit breaking khong du.</li>
+<li><strong>Security exposure:</strong> thieu API key, tools bat, local media path lo rong, hoac CORS/web UI trien khai qua rong.</li>
+</ul>
+<h2 id="rui-ro-bao-mat-va-governance">Rui ro bao mat va governance</h2>
+<ul>
+<li><strong>License va provenance cua model:</strong> GGUF files co the den tu nhieu publisher. Can theo doi source, license, quantization method va conversion script version.</li>
+<li><strong>Supply chain:</strong> conversion tooling dung Python dependencies va model files; runtime load native binary data tu GGUF.</li>
+<li><strong>HTTP API exposure:</strong> <code>llama-server</code> co the expose chat, responses, embeddings, reranking, monitoring, slots, props, static UI va model routing. Can gioi han be mat.</li>
+<li><strong>Built-in tools:</strong> server flags co the bat read/write file, shell execution, grep, patch va datetime tools. README server canh bao cac tools nay experimental va khong nen bat trong moi truong khong tin cay.</li>
+<li><strong>Local media paths:</strong> multimodal <code>file://</code> access co the lam lo file neu <code>--media-path</code> qua rong.</li>
+<li><strong>Prompt/output logging:</strong> logs va metrics co the lo prompt, completion, model names va traffic patterns.</li>
+<li><strong>Quantized safety regression:</strong> doi quantization co the doi behavior. Governance can evaluation, khong chi throughput tests.</li>
+<li><strong>Native memory safety:</strong> C/C++ serving can patching discipline, fuzzing/tests va expose than trong sau reverse proxy.</li>
+</ul>
+<h2 id="huong-dan-doc-source">Huong dan doc source</h2>
+<ol>
+<li>Bat dau voi <code>README.md</code> de hieu muc tieu, quick start va model/hardware claims.</li>
+<li>Doc <code>docs/build.md</code>, <code>docs/docker.md</code>, <code>docs/multi-gpu.md</code> de hieu rang buoc trien khai.</li>
+<li>Doc <code>include/llama.h</code> truoc khi doc implementation.</li>
+<li>Trace model loading qua <code>src/llama-model-loader.cpp</code> va constants trong <code>src/llama-arch.*</code>.</li>
+<li>Hoc <code>src/llama-context.cpp</code>, <code>src/llama-batch.cpp</code>, <code>src/llama-kv-cache.cpp</code> cho runtime behavior.</li>
+<li>Doc <code>src/llama-model.cpp</code> cho graph construction.</li>
+<li>Doc <code>ggml/include/ggml.h</code>, <code>ggml/include/ggml-backend.h</code> va backend directories cho execution.</li>
+<li>Doc <code>tools/server/README.md</code> va <code>tools/server/*.cpp</code> cho service operation.</li>
+<li>Doc <code>docs/development/HOWTO-add-model.md</code> truoc khi them model support.</li>
+<li>Dung <code>tests/*</code> de hieu expected behavior truoc khi sua internals.</li>
+</ol>
+<h2 id="lo-trinh-hoc">Lo trinh hoc</h2>
+<ol>
+<li>Tao mental model CPU-only voi <code>examples/simple/simple.cpp</code>.</li>
+<li>Theo <code>tools/cli/main.cpp</code> vao common argument parsing va <code>libllama</code>.</li>
+<li>Xem cach <code>llama_batch</code> duoc tao va decode.</li>
+<li>Doc sampling chain trong <code>src/llama-sampler.cpp</code> va <code>common/sampling.cpp</code>.</li>
+<li>Nap architecture server tu <code>tools/server/server.cpp</code>, queue, context, task, HTTP va model files.</li>
+<li>Hoc GGUF conversion va constants truoc khi cham architecture support.</li>
+<li>So sanh backend implementations sau khi da hieu ggml backend API.</li>
+<li>Dung benchmarks va tests de validate moi thay doi ve performance hoac model support.</li>
+</ol>
+<h2 id="checklist-production-v-c-ng-runtime-native">Checklist production và cổng runtime native</h2>
+<p>Readiness của llama.cpp được tách thành gate build-time, model-time và runtime. Các neo source quan trọng gồm <code>include/llama.h</code>, <code>src/llama-model-loader.cpp</code>, <code>src/llama-context.cpp</code>, <code>src/llama-kv-cache*.cpp</code>, <code>src/llama-sampler.cpp</code>, <code>common/arg.cpp</code>, <code>tools/server/*</code>, <code>ggml/src/*</code>, <code>convert_hf_to_gguf.py</code>, <code>gguf-py/gguf/*</code> và <code>docs/build.md</code>.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Gate</th><th>Cần xác minh</th></tr></thead>
+<tbody>
+<tr><td>Build</td><td>Binary được compile với backend mong muốn: CPU BLAS, CUDA, HIP, Metal, Vulkan, SYCL, OpenCL, RPC hoặc option vendor-specific.</td></tr>
+<tr><td>GGUF provenance</td><td>Ghi lại source model, version conversion script, tokenizer metadata, quantization type và license.</td></tr>
+<tr><td>Memory fit</td><td><code>--ctx-size</code>, <code>--batch-size</code>, <code>--ubatch-size</code>, KV cache type, <code>--n-gpu-layers</code>, slots và split mode phải vừa RAM/VRAM.</td></tr>
+<tr><td>Server exposure</td><td><code>llama-server</code> phải đứng sau auth, TLS/reverse proxy, rate limit và chỉ bật route/feature cần thiết.</td></tr>
+<tr><td>Tool surface</td><td>Experimental server tools, local media paths, file access, shell-like actions và static UI phải tắt trừ khi có governance rõ.</td></tr>
+<tr><td>Observability</td><td><code>--metrics</code>, logs, <code>llama-bench</code>, perplexity checks và model-load diagnostics cần được thu trước canary traffic.</td></tr>
+</tbody></table></div>
+<div class="mermaid">flowchart LR
+  Build[CMake build flags] --&gt; Backend[ggml backend registry]
+  Backend --&gt; Binary[llama-cli, llama-server, libllama]
+  Model[HF hoac local model] --&gt; Convert[convert_hf_to_gguf.py va gguf-py]
+  Convert --&gt; GGUF[GGUF metadata va tensors]
+  GGUF --&gt; Loader[src/llama-model-loader.cpp]
+  Binary --&gt; Loader
+  Loader --&gt; Context[src/llama-context.cpp]
+  Context --&gt; KV[src/llama-kv-cache va memory files]
+  Context --&gt; Sampler[src/llama-sampler.cpp]
+  Context --&gt; Server[tools/server queue, slots, routes]
+  Server --&gt; Metrics[Prometheus metrics va logs]</div>
+<h2 id="b-n-c-l-p-l-i">Bản đồ cô lập lỗi</h2>
+<p>Runtime native lỗi khác với Python serving stack. Một triệu chứng như &quot;generation chậm&quot; có thể đến từ build flags, model format, backend placement, KV cache settings, sampler configuration, áp lực queue ở server hoặc client misuse.</p>
+<div class="mermaid">flowchart TD
+  Symptom[Trieu chung llama.cpp] --&gt; Domain{Domain}
+  Domain --&gt; Build[Backend chua compile hoac sai binary]
+  Domain --&gt; GGUF[GGUF hoac tokenizer metadata sai]
+  Domain --&gt; Memory[RAM, VRAM, KV, context, slots]
+  Domain --&gt; Backend[Backend op hoac split-mode issue]
+  Domain --&gt; Sampler[Chat template, grammar, sampling]
+  Domain --&gt; Server[Queue, route, auth, streaming]
+  Domain --&gt; Security[Tools, media path, API exposure]
+  Build --&gt; Files1[docs/build.md va CMake files]
+  GGUF --&gt; Files2[gguf-py, conversion, llama-model-loader]
+  Memory --&gt; Files3[llama-context, llama-kv-cache, common/arg.cpp]
+  Backend --&gt; Files4[ggml/src backends va docs/multi-gpu.md]
+  Sampler --&gt; Files5[common/chat.cpp, common/sampling.cpp, llama-sampler.cpp]
+  Server --&gt; Files6[tools/server server-http, queue, context]
+  Security --&gt; Files7[tools/server README va runtime flags]
+  Files1 --&gt; Remediate[Rebuild, reconvert, retune hoac isolate]
+  Files2 --&gt; Remediate
+  Files3 --&gt; Remediate
+  Files4 --&gt; Remediate
+  Files5 --&gt; Remediate
+  Files6 --&gt; Remediate
+  Files7 --&gt; Remediate</div>
+<h2 id="bang-chu-giai">Bang chu giai</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Thuat ngu</th><th>Nghia</th></tr></thead>
+<tbody>
+<tr><td>GGUF</td><td>Dinh dang single-file gom metadata va tensors cho inference ggml/llama.cpp.</td></tr>
+<tr><td>ggml</td><td>Thu vien tensor va graph execution duoc llama.cpp su dung.</td></tr>
+<tr><td>libllama</td><td>Native library interface expose qua <code>include/llama.h</code>.</td></tr>
+<tr><td>llama_context</td><td>Runtime state cho inference, gom KV cache, backend scheduler, logits va embeddings.</td></tr>
+<tr><td>llama_batch</td><td>Cau truc input gom tokens/embeddings, positions, sequence IDs va output flags.</td></tr>
+<tr><td>KV cache</td><td>Bo nho key/value attention tu token truoc.</td></tr>
+<tr><td>ubatch</td><td>Micro-batch duoc tao tu <code>llama_batch</code> lon hon.</td></tr>
+<tr><td>mmap</td><td>Memory mapping model files de giam load overhead va memory copy.</td></tr>
+<tr><td>mlock</td><td>Yeu cau giu model pages trong RAM.</td></tr>
+<tr><td>n-gpu-layers</td><td>Option runtime dieu khien so layer offload len GPU.</td></tr>
+<tr><td>split mode</td><td>Chien luoc multi-GPU nhu <code>layer</code> hoac <code>tensor</code>.</td></tr>
+<tr><td>LoRA adapter</td><td>Adapter low-rank thay doi hanh vi model ma khong thay base model.</td></tr>
+<tr><td>imatrix</td><td>Importance matrix dung de huong dan quantization.</td></tr>
+<tr><td>mtmd</td><td>Khu vuc library/tool multimodal cua llama.cpp.</td></tr>
+<tr><td>slot</td><td>Lane context/sequence dong thoi phia server.</td></tr>
+</tbody></table></div>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

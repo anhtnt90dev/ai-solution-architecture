@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DeepSpeed Architecture | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/03-fine-tuning-training/DeepSpeed/README.en.md">View source</a>
+      <h1 id="deepspeed-architecture">DeepSpeed Architecture</h1>
+<h2 id="scope-and-repository-facts">Scope And Repository Facts</h2>
+<p>This document is grounded in the local clone at <code>github-repos/03-fine-tuning-training/DeepSpeed</code>, inspected at commit <code>3e486febfcfc3c843a9066619697344d2cb7b9ec</code> from 2026-06-01. <code>version.txt</code> reports <code>0.19.2</code>. The package metadata in <code>setup.py</code> names the package <code>deepspeed</code>, uses Apache-2.0 licensing, installs the main Python package plus scripts such as <code>deepspeed</code>, <code>ds</code>, <code>ds_report</code>, <code>ds_bench</code>, <code>ds_elastic</code>, <code>ds_nvme_tune</code>, and <code>ds_io</code>, and supports Python 3.8 through 3.12.</p>
+<p>The local tree contains 696 Python files under <code>deepspeed</code>, 295 test files, 334 documentation files, and 193 native/kernel files under <code>csrc</code>. Runtime dependencies in <code>requirements/requirements.txt</code> include PyTorch 2.0+, pydantic 2+, hjson, ninja, numpy, packaging, psutil, py-cpuinfo, einops, msgpack, and tqdm. Optional requirement sets cover inference, sparse attention, sparse pruning, autotuning, Triton, DeepCompile, readthedocs, development tooling, and one-bit MPI support.</p>
+<p>Local project instructions in <code>AGENTS.md</code> and <code>CLAUDE.md</code> emphasize signed commits, formatting, pre-commit verification for changed files, and using <code>deepspeed.comm</code> rather than direct <code>torch.distributed</code> imports. This task only reads the source repo and writes documentation outside it.</p>
+<h2 id="executive-summary">Executive Summary</h2>
+<p>DeepSpeed is a distributed training, inference, and systems-optimization library for large deep learning models. Its central abstraction is the <code>DeepSpeedEngine</code>, created by <code>deepspeed.initialize(...)</code> in <code>deepspeed/__init__.py</code>. The engine wraps a user model, optimizer, scheduler, dataloader, precision policy, communication backend, checkpointing, timers, monitoring, and optional features such as ZeRO, pipeline parallelism, tensor parallelism, MoE, activation checkpointing, offload, and DeepCompile.</p>
+<p>The architecture is broader than a single optimizer:</p>
+<ul>
+<li><code>deepspeed/runtime/engine.py</code> implements the training engine lifecycle: forward, backward, step, checkpointing, timers, data loading, precision, optimizer wrapping, monitoring, and feature routing.</li>
+<li><code>deepspeed/runtime/config.py</code> and specialized config modules parse and validate the DeepSpeed JSON/HJSON configuration.</li>
+<li><code>deepspeed/runtime/zero/*</code> implements ZeRO stages, parameter partitioning, offload, optimizer state handling, ZeRO-Infinity-style behavior, MiCS, Muon support, and ZeRO-specific utilities.</li>
+<li><code>deepspeed/launcher/*</code> and <code>bin/*</code> launch multi-process and multi-node jobs.</li>
+<li><code>accelerator/*</code> abstracts CUDA, CPU, XPU, NPU, HPU, MLU, MPS, and SDAA backends.</li>
+<li><code>deepspeed/comm/*</code> provides a torch.distributed-compatible communication API with DeepSpeed logging and backend selection.</li>
+<li><code>op_builder/*</code>, <code>deepspeed/ops/*</code>, and <code>csrc/*</code> manage optional native kernels and JIT/precompiled extensions.</li>
+<li><code>deepspeed/monitor</code>, <code>deepspeed/profiling</code>, <code>deepspeed/inference</code>, <code>deepspeed/pipe</code>, <code>deepspeed/moe</code>, <code>deepspeed/sequence</code>, <code>deepspeed/compile</code>, and <code>deepspeed/autotuning</code> add operational and systems features around the core runtime.</li>
+</ul>
+<p>The key architectural choice is that users keep their PyTorch model code mostly intact while delegating distributed systems behavior to the engine and config. This reduces application code complexity, but makes config correctness, cluster launch environment, checkpoint discipline, native op compatibility, and distributed failure handling critical.</p>
+<h2 id="problem-solved">Problem Solved</h2>
+<p>Training and serving frontier-scale models is constrained by GPU memory, interconnect bandwidth, optimizer state size, activation memory, checkpoint volume, and cluster orchestration complexity. DeepSpeed addresses these constraints through:</p>
+<ul>
+<li>ZeRO optimizer stages that partition optimizer states, gradients, and parameters.</li>
+<li>CPU/NVMe offload paths for optimizer state and parameters.</li>
+<li>Mixed precision and low-precision optimizer states.</li>
+<li>Pipeline, tensor, expert, sequence, and data parallelism combinations.</li>
+<li>Custom fused kernels and transformer/inference kernels.</li>
+<li>Launching, hostfile parsing, multi-node execution, and elastic job support.</li>
+<li>Monitoring, profiling, autotuning, and environment reporting.</li>
+<li>Checkpointing utilities, including ZeRO partition recovery and universal checkpointing docs.</li>
+</ul>
+<p>In the fine-tuning/training stack, DeepSpeed is the systems layer that lets PEFT, Transformers, TRL, Megatron-style models, and custom PyTorch models run at larger scale than a plain single-process training loop.</p>
+<h2 id="ai-stack-role">AI Stack Role</h2>
+<p>DeepSpeed sits below model libraries and above hardware/distributed primitives:</p>
+<ul>
+<li><strong>Model layer:</strong> PyTorch <code>nn.Module</code>, Hugging Face Transformers, Megatron-style models, MoE layers, pipeline modules, LoRA-optimized linear paths.</li>
+<li><strong>Runtime layer:</strong> <code>DeepSpeedEngine</code>, <code>PipelineEngine</code>, <code>InferenceEngine</code>, ZeRO optimizers, activation checkpointing, data pipeline, scheduler/optimizer integration.</li>
+<li><strong>Distributed layer:</strong> <code>deepspeed.comm</code>, process groups, launcher backends, accelerator abstraction, tensor/pipeline/expert/data parallel groups.</li>
+<li><strong>Systems layer:</strong> native ops, JIT/precompiled kernels, offload, NVMe/AIO, GDS, timers, profiling, monitoring, checkpoint engines.</li>
+<li><strong>Operations layer:</strong> <code>deepspeed</code> launcher, hostfiles, environment export, <code>ds_report</code>, CI/test matrix, Docker/ROCm/Windows guidance.</li>
+</ul>
+<p>DeepSpeed is not an experiment tracker, dataset library, or model registry. It provides the runtime and operations substrate that those layers can call.</p>
+<h2 id="source-tree-map">Source Tree Map</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Path</th><th>Responsibility</th></tr></thead>
+<tbody>
+<tr><td><code>README.md</code></td><td>Project overview, news, integrations, installation, environment report, publications, and contribution pointers.</td></tr>
+<tr><td><code>version.txt</code></td><td>Base package version, <code>0.19.2</code> in this clone.</td></tr>
+<tr><td><code>setup.py</code></td><td>Build metadata, scripts, dependency extras, op precompile behavior, build-time git/version info, Windows packaging branches.</td></tr>
+<tr><td><code>requirements/*</code></td><td>Runtime and optional dependency sets.</td></tr>
+<tr><td><code>deepspeed/__init__.py</code></td><td>Public API, <code>initialize</code>, <code>init_inference</code>, distributed initialization, engine selection, exported runtime classes.</td></tr>
+<tr><td><code>deepspeed/runtime/engine.py</code></td><td>Core training engine: model wrapping, forward/backward/step, optimizer/scheduler, checkpoints, timers, monitors, ZeRO integration.</td></tr>
+<tr><td><code>deepspeed/runtime/config.py</code></td><td>Top-level config parser and feature routing for precision, communication, monitoring, profiling, autotuning, checkpointing, tensor parallelism, data efficiency, and compile.</td></tr>
+<tr><td><code>deepspeed/runtime/zero/*</code></td><td>ZeRO stages, parameter partitioning, offload, optimizer state, partition coordinators, MiCS, tiled linear, Muon, and config.</td></tr>
+<tr><td><code>deepspeed/runtime/pipe/*</code></td><td>Pipeline parallel module and engine.</td></tr>
+<tr><td><code>deepspeed/moe/*</code></td><td>Mixture-of-Experts layers, gating, sharded MoE, and expert utilities.</td></tr>
+<tr><td><code>deepspeed/sequence/*</code></td><td>Sequence parallel and AutoSP components.</td></tr>
+<tr><td><code>deepspeed/inference/*</code></td><td>Inference engine, kernel injection, tensor parallel inference, quantization and CUDA graph related behavior.</td></tr>
+<tr><td><code>deepspeed/launcher/*</code></td><td>Hostfile parsing, resource selection, environment propagation, PDSH/OpenMPI/MVAPICH/Slurm/MPICH/IMPI launchers.</td></tr>
+<tr><td><code>accelerator/*</code></td><td>Build/runtime accelerator abstraction for CUDA, CPU, XPU, NPU, MPS, HPU, MLU, and SDAA.</td></tr>
+<tr><td><code>deepspeed/comm/*</code></td><td>torch.distributed-compatible communication wrapper, backend selection, comm logging, timed operations.</td></tr>
+<tr><td><code>op_builder/*</code></td><td>Build-time and runtime builders for optional ops; detects accelerator-specific builders.</td></tr>
+<tr><td><code>deepspeed/ops/*</code>, <code>csrc/*</code></td><td>Python wrappers and native implementation sources for fused optimizers, transformer kernels, sparse attention, AIO, GDS, quantization, random LTD, DeepCompile, and platform-specific ops.</td></tr>
+<tr><td><code>deepspeed/env_report.py</code></td><td><code>ds_report</code> implementation for op compatibility, installed op state, torch/CUDA/HIP/NPU/system diagnostics, <code>/dev/shm</code> warning.</td></tr>
+<tr><td><code>deepspeed/monitor/*</code></td><td>TensorBoard, W&amp;B, Comet, and CSV monitoring.</td></tr>
+<tr><td><code>deepspeed/profiling/*</code></td><td>FLOPs profiler and profiling utilities.</td></tr>
+<tr><td><code>docs/_tutorials/*</code></td><td>User-facing tutorials for getting started, ZeRO, offload, pipeline, MoE, monitor, profiler, autotuning, DeepNVMe, Ulysses, AutoTP, and more.</td></tr>
+<tr><td><code>tests/*</code></td><td>Unit, runtime, ZeRO, launcher, accelerator, inference, compile, checkpoint, model, one-bit, and performance tests.</td></tr>
+<tr><td><code>examples/sdma_allgather/*</code></td><td>Local runnable examples around SDMA allgather and ZeRO-3.</td></tr>
+</tbody></table></div>
+<h2 id="component-diagram">Component Diagram</h2>
+<div class="mermaid">flowchart TB
+    app[User PyTorch training code]
+    launcher[deepspeed launcher / bin scripts]
+    init[deepspeed.initialize]
+    config[DeepSpeedConfig and feature configs]
+    engine[DeepSpeedEngine]
+    pipe[PipelineEngine]
+    zero[ZeRO optimizers and partitioning]
+    comm[deepspeed.comm]
+    accel[Accelerator abstraction]
+    ops[Native ops and op builders]
+    monitor[Monitor, timers, profiler]
+    ckpt[Checkpoint engines and ZeRO recovery]
+    hw[GPU, CPU, XPU, HPU, NPU, NVMe, network]
+
+    launcher --&gt; app
+    app --&gt; init
+    init --&gt; config
+    init --&gt; engine
+    init --&gt; pipe
+    engine --&gt; zero
+    engine --&gt; comm
+    engine --&gt; monitor
+    engine --&gt; ckpt
+    engine --&gt; ops
+    pipe --&gt; comm
+    zero --&gt; comm
+    zero --&gt; ops
+    comm --&gt; accel
+    ops --&gt; accel
+    accel --&gt; hw</div>
+<h2 id="core-concepts">Core Concepts</h2>
+<p><strong>DeepSpeedEngine:</strong> the central training wrapper. It is callable for forward passes and exposes <code>backward</code>, <code>step</code>, <code>save_checkpoint</code>, and <code>load_checkpoint</code>.</p>
+<p><strong>DeepSpeedConfig:</strong> parsed representation of the JSON/HJSON config. It routes settings for batch size, optimizer, scheduler, precision, ZeRO, communication, monitoring, autotuning, tensor parallelism, checkpointing, and data efficiency.</p>
+<p><strong>ZeRO:</strong> Zero Redundancy Optimizer. Stage 1 partitions optimizer states, Stage 2 also partitions gradients, and Stage 3 also partitions model parameters. <code>deepspeed/runtime/zero/config.py</code> represents this as <code>ZeroStageEnum</code>.</p>
+<p><strong>Offload:</strong> moving optimizer states and/or parameters to CPU or NVMe to reduce GPU memory pressure. ZeRO-2 supports optimizer offload; ZeRO-3 supports parameter and optimizer offload.</p>
+<p><strong>Accelerator abstraction:</strong> <code>accelerator/real_accelerator.py</code> chooses or validates an accelerator through <code>DS_ACCELERATOR</code> or auto-detection, then exposes backend-specific device, dtype, stream, communication, and op-builder behavior.</p>
+<p><strong>Communication wrapper:</strong> <code>deepspeed.comm</code> keeps compatibility with torch.distributed-style APIs while adding DeepSpeed backend selection and communication logging.</p>
+<p><strong>Launcher:</strong> the <code>deepspeed</code> script routes hostfile/resource selection into launcher backends such as PDSH, OpenMPI, MVAPICH, Slurm, MPICH, and IMPI.</p>
+<p><strong>Native ops:</strong> optional C++/CUDA/HIP/SYCL/platform-specific extensions built by <code>op_builder</code>. They can be precompiled through setup environment variables or JIT compiled at runtime if compatible.</p>
+<p><strong>Pipeline parallelism:</strong> <code>PipelineModule</code> expresses a model as layers; <code>PipelineEngine</code> trains micro-batches through scheduled pipeline stages.</p>
+<p><strong>MoE:</strong> mixture-of-experts layers combine expert, data, model, and ZeRO parallelism using expert groups.</p>
+<p><strong>Monitoring and profiling:</strong> Monitor backends, wall-clock timers, comm logging, FLOPs profiler, PyTorch profiler tutorial, and <code>ds_report</code> provide operational visibility.</p>
+<h2 id="internal-architecture">Internal Architecture</h2>
+<p>The public entry point is <code>deepspeed.initialize(...)</code> in <code>deepspeed/__init__.py</code>. It logs version metadata, shuts down any active <code>zero.Init</code> context, initializes distributed communication through the current accelerator backend, normalizes config input, optionally initializes mesh devices for sequence/data parallelism, merges tensor-parallel model init settings, builds <code>DeepSpeedConfig</code>, then chooses one of three engine paths:</p>
+<ul>
+<li><code>DeepSpeedHybridEngine</code> when hybrid engine is enabled.</li>
+<li><code>DeepSpeedEngine</code> for standard non-pipeline training.</li>
+<li><code>PipelineEngine</code> when the model is a <code>PipelineModule</code>.</li>
+</ul>
+<p><code>DeepSpeedEngine.__init__</code> in <code>runtime/engine.py</code> then validates arguments, configures distributed variables, configures <code>deepspeed.comm</code>, creates <code>MonitorMaster</code>, configures the distributed model, registers hooks used by DeepCompile, records parameter names, configures timers, sets up optimizer/scheduler/data loader, and wires optional systems features. The class later implements <code>forward</code>, <code>backward</code>, <code>step</code>, <code>load_checkpoint</code>, and <code>save_checkpoint</code>.</p>
+<p>The ZeRO implementation is split by stage. <code>runtime/zero/stage_1_and_2.py</code> implements <code>DeepSpeedZeroOptimizer</code>, while <code>runtime/zero/stage3.py</code> implements <code>DeepSpeedZeroOptimizer_Stage3</code>. Stage 3 coordinates parameter gathering/release, gradient partitioning, offload, optimizer state swapping, bucket sizing, persistence thresholds, reduce-scatter, quantized communication options, and special contexts such as <code>GatheredParameters</code>.</p>
+<p>Config is not a loose dictionary once parsed. <code>runtime/config.py</code> imports feature-specific config modules, and <code>runtime/zero/config.py</code> uses pydantic models with aliases and deprecated-field migration. <code>tests/unit/runtime/zero/test_zero_config.py</code> verifies deprecated fields such as <code>cpu_offload</code> and aliases such as <code>stage3_prefetch_bucket_size</code>.</p>
+<p>Native ops are discovered dynamically. <code>op_builder/all_ops.py</code> imports the current accelerator&#x27;s op-builder package, collects classes ending in <code>Builder</code>, creates builder instances, and exposes <code>ALL_OPS</code>. <code>setup.py</code> uses environment variables such as <code>DS_BUILD_OPS</code> and op-specific build vars to decide precompilation. If ops are not preinstalled, <code>env_report.py</code> notes that compatible ops can be JIT compiled at runtime.</p>
+<h2 id="end-to-end-training-flow">End-To-End Training Flow</h2>
+<div class="mermaid">sequenceDiagram
+    participant CLI as deepspeed CLI
+    participant Script as User script
+    participant Init as deepspeed.initialize
+    participant Config as DeepSpeedConfig
+    participant Dist as deepspeed.comm
+    participant Engine as DeepSpeedEngine
+    participant Zero as ZeRO optimizer
+    participant Mon as Monitor/Timers
+    participant Store as Checkpoint directory
+
+    CLI-&gt;&gt;Script: launch ranks with local_rank and env
+    Script-&gt;&gt;Init: model, optimizer, data, config
+    Init-&gt;&gt;Dist: init_distributed backend from accelerator
+    Init-&gt;&gt;Config: parse JSON/HJSON config
+    Init-&gt;&gt;Engine: construct engine or pipeline engine
+    Engine-&gt;&gt;Zero: wrap optimizer if ZeRO enabled
+    Engine-&gt;&gt;Mon: configure monitor and timers
+    Script-&gt;&gt;Engine: loss = engine(batch)
+    Script-&gt;&gt;Engine: engine.backward(loss)
+    Engine-&gt;&gt;Zero: partition/reduce/offload gradients and states
+    Script-&gt;&gt;Engine: engine.step()
+    Engine-&gt;&gt;Mon: write timing and training metrics
+    Engine-&gt;&gt;Store: save_checkpoint on all ranks</div>
+<h2 id="runtime-and-data-flow">Runtime And Data Flow</h2>
+<p>The simplest training loop from the getting-started docs is:</p>
+<ol>
+<li>Call <code>deepspeed.initialize(...)</code>.</li>
+<li>Use the returned engine as the model callable for forward.</li>
+<li>Call <code>engine.backward(loss)</code>.</li>
+<li>Call <code>engine.step()</code>.</li>
+</ol>
+<p>Under the hood, <code>engine.backward</code> handles gradient scaling, gradient averaging or partitioning, and optimizer-specific behavior. <code>engine.step</code> applies gradient accumulation boundaries, optimizer updates, learning-rate scheduler steps, timers, monitor events, overflow handling, and ZeRO state transitions.</p>
+<p>For ZeRO-3, parameter data is not always resident on every device. The runtime gathers parameters before module computation and releases or partitions them afterward. Offload paths may move parameter or optimizer state between accelerator memory, CPU memory, and NVMe. This means ordinary direct parameter access can be incorrect unless done through documented contexts such as <code>deepspeed.zero.GatheredParameters</code>.</p>
+<p>For pipeline parallelism, the training loop changes. <code>PipelineEngine</code> exposes <code>train_batch</code> and <code>eval_batch</code> because pipeline scheduling interleaves forward and backward passes over micro-batches. The docs explicitly note that pipeline training cannot be expressed as separate user-level <code>forward</code>, <code>backward</code>, and <code>step</code> calls in the same way as the standard engine.</p>
+<p>For inference, <code>deepspeed/inference/engine.py</code> builds an <code>InferenceEngine</code> around a module and <code>DeepSpeedInferenceConfig</code>, optionally replacing transformer layers with optimized kernels, creating tensor-parallel groups, applying injection policies, converting dtype, supporting CUDA graph constraints, and profiling model time.</p>
+<h2 id="deployment-and-operations-topology">Deployment And Operations Topology</h2>
+<div class="mermaid">flowchart LR
+    subgraph Control[Control plane]
+        hostfile[Hostfile or scheduler allocation]
+        cli[deepspeed launcher]
+        env[Rank env and exported variables]
+    end
+    subgraph NodeA[Node A]
+        r0[Rank 0 engine]
+        r1[Rank 1 engine]
+        gpuA[Accelerators]
+    end
+    subgraph NodeB[Node B]
+        r2[Rank 2 engine]
+        r3[Rank 3 engine]
+        gpuB[Accelerators]
+    end
+    subgraph Shared[Shared services]
+        ckpt[Checkpoint storage]
+        logs[TensorBoard/WandB/Comet/CSV]
+        report[ds_report diagnostics]
+        nvme[CPU/NVMe offload]
+    end
+
+    hostfile --&gt; cli
+    cli --&gt; env
+    env --&gt; r0
+    env --&gt; r1
+    env --&gt; r2
+    env --&gt; r3
+    r0 &lt;--&gt; r1
+    r1 &lt;--&gt; r2
+    r2 &lt;--&gt; r3
+    r0 --&gt; gpuA
+    r1 --&gt; gpuA
+    r2 --&gt; gpuB
+    r3 --&gt; gpuB
+    r0 --&gt; ckpt
+    r1 --&gt; ckpt
+    r2 --&gt; ckpt
+    r3 --&gt; ckpt
+    r0 --&gt; logs
+    r1 --&gt; nvme
+    r2 --&gt; nvme
+    report --&gt; cli</div>
+<p>Operationally important behaviors:</p>
+<ul>
+<li>The launcher defaults to hostfile discovery but can restrict nodes and slots through <code>--num_nodes</code>, <code>--num_gpus</code>, <code>--include</code>, and <code>--exclude</code>.</li>
+<li><code>--no_ssh</code> supports environments such as Kubernetes where each node launches independently.</li>
+<li>Environment propagation includes selected prefixes and <code>.deepspeed_env</code>.</li>
+<li><code>ds_report</code> should be used to inspect installed and compatible ops, torch/CUDA/HIP/NPU metadata, and <code>/dev/shm</code> warnings.</li>
+<li>All ranks must participate in <code>save_checkpoint</code>; the getting-started docs warn that calling it only on rank 0 can hang.</li>
+<li>Native op compatibility depends on PyTorch, CUDA/HIP/SYCL/compiler versions, ninja, and accelerator-specific support.</li>
+</ul>
+<h2 id="lifecycle-and-decision-diagram">Lifecycle And Decision Diagram</h2>
+<div class="mermaid">flowchart TD
+    start[Start with PyTorch model and training goal] --&gt; scale{Main bottleneck?}
+    scale --&gt;|Fits memory, need speed| fp[Mixed precision and fused ops]
+    scale --&gt;|Optimizer state too large| z1[ZeRO Stage 1]
+    scale --&gt;|Gradients too large| z2[ZeRO Stage 2]
+    scale --&gt;|Parameters too large| z3[ZeRO Stage 3]
+    scale --&gt;|Activation memory high| ac[Activation checkpointing or pipeline]
+    scale --&gt;|Model has experts| moe[MoE and expert parallelism]
+    scale --&gt;|Long sequence| sp[Sequence parallel / Ulysses / AutoSP]
+    scale --&gt;|Serving latency| inf[Inference kernel injection or TP]
+    z1 --&gt; cfg[DeepSpeed config]
+    z2 --&gt; cfg
+    z3 --&gt; offload{Need offload?}
+    offload --&gt;|No| cfg
+    offload --&gt;|CPU/NVMe| cfg
+    fp --&gt; cfg
+    ac --&gt; cfg
+    moe --&gt; cfg
+    sp --&gt; cfg
+    inf --&gt; cfg
+    cfg --&gt; report[Run ds_report and small-scale smoke test]
+    report --&gt; launch[Launch distributed job]
+    launch --&gt; monitor[Monitor throughput, memory, comms, loss]
+    monitor --&gt; checkpoint[Checkpoint all ranks]</div>
+<h2 id="module-dependency-diagram">Module Dependency Diagram</h2>
+<div class="mermaid">flowchart TB
+    api[deepspeed/__init__.py]
+    engine[runtime/engine.py]
+    config[runtime/config.py]
+    zero[runtime/zero/*]
+    pipe[runtime/pipe/*]
+    moe[moe/*]
+    comm[comm/*]
+    accel[accelerator/*]
+    ops[ops/* and op_builder/*]
+    csrc[csrc/*]
+    monitor[monitor/*]
+    profile[profiling/*]
+    launcher[launcher/*]
+    inference[inference/*]
+
+    api --&gt; engine
+    api --&gt; pipe
+    api --&gt; inference
+    api --&gt; config
+    engine --&gt; zero
+    engine --&gt; comm
+    engine --&gt; monitor
+    engine --&gt; profile
+    engine --&gt; ops
+    engine --&gt; moe
+    pipe --&gt; engine
+    zero --&gt; comm
+    zero --&gt; ops
+    comm --&gt; accel
+    ops --&gt; accel
+    ops --&gt; csrc
+    launcher --&gt; comm
+    inference --&gt; comm
+    inference --&gt; ops</div>
+<h2 id="extension-points">Extension Points</h2>
+<p>DeepSpeed exposes several extension surfaces:</p>
+<ul>
+<li><strong>Application integration:</strong> call <code>deepspeed.initialize</code> with model, optimizer, parameters, scheduler, data, config path/dict, and optional model-parallel unit.</li>
+<li><strong>Launcher integration:</strong> use hostfiles, Slurm/MPI launchers, <code>--no_ssh</code>, resource include/exclude strings, environment files, and scheduler-provided rank metadata.</li>
+<li><strong>Config extension:</strong> add or tune feature sections in DeepSpeed config, such as <code>zero_optimization</code>, <code>fp16</code>, <code>bf16</code>, <code>torch_autocast</code>, <code>tensorboard</code>, <code>wandb</code>, <code>csv_monitor</code>, <code>flops_profiler</code>, <code>autotuning</code>, <code>aio</code>, and checkpoint settings.</li>
+<li><strong>Custom optimizer/scheduler:</strong> pass optimizer and scheduler objects or callables to <code>initialize</code>, overriding config-defined construction.</li>
+<li><strong>Accelerator support:</strong> implement the abstract accelerator contract and op builders, then select through <code>DS_ACCELERATOR</code> or auto-detection.</li>
+<li><strong>Native ops:</strong> add an op builder under <code>op_builder</code>, sources under <code>csrc</code>, Python wrappers under <code>deepspeed/ops</code>, and compatibility checks.</li>
+<li><strong>Parallelism:</strong> use <code>PipelineModule</code>, MoE layers, tensor parallel config, sequence parallel settings, and expert group parameters.</li>
+<li><strong>Monitoring:</strong> configure built-in monitors or instantiate <code>MonitorMaster(ds_config.monitor_config)</code> for custom event writes.</li>
+<li><strong>Inference:</strong> use <code>init_inference</code> / <code>InferenceEngine</code> with kernel injection, injection policy, tensor parallel size, dtype, quantization, and CUDA graph options.</li>
+</ul>
+<h2 id="integrations">Integrations</h2>
+<p>The README and docs identify integrations with:</p>
+<ul>
+<li>Hugging Face Transformers and Accelerate, commonly through <code>--deepspeed</code> config files or Accelerate DeepSpeed configs.</li>
+<li>PyTorch Lightning, MosaicML Composer, Determined, and MMEngine.</li>
+<li>Megatron-style model-parallel training.</li>
+<li>PEFT and QLoRA workflows through Accelerate/Transformers/TRL, especially ZeRO-3 large-model fine-tuning.</li>
+<li>TensorBoard, W&amp;B, Comet, and CSV for monitoring.</li>
+<li>PyTorch Profiler and DeepSpeed FLOPs profiler for performance analysis.</li>
+<li>AzureML examples, Docker/ROCm images, Windows build guidance, and multiple accelerator vendors.</li>
+</ul>
+<h2 id="configuration-deployment-and-operations">Configuration, Deployment, And Operations</h2>
+<p>DeepSpeed is configured primarily by JSON/HJSON. A minimal config includes batch size, optimizer, precision, and ZeRO settings. Larger deployments add bucket sizes, offload device settings, gradient accumulation, checkpoint behavior, monitoring, communication logging, tensor parallelism, and autotuning.</p>
+<p>Operational checklist:</p>
+<ul>
+<li>Run <code>ds_report</code> before training to verify op compatibility and environment details.</li>
+<li>Validate the config on a small model or reduced dataset before scaling out.</li>
+<li>Confirm <code>train_batch_size</code>, <code>train_micro_batch_size_per_gpu</code>, and <code>gradient_accumulation_steps</code> are consistent.</li>
+<li>Pin PyTorch, CUDA/HIP/toolchain versions when relying on native ops.</li>
+<li>Decide whether ops should be precompiled (<code>DS_BUILD_OPS</code> and op-specific vars) or JIT compiled.</li>
+<li>Set <code>DS_ACCELERATOR</code> only when auto-detection is wrong or ambiguous.</li>
+<li>For ZeRO-3, tune <code>stage3_prefetch_bucket_size</code>, <code>stage3_param_persistence_threshold</code>, <code>stage3_max_live_parameters</code>, <code>stage3_max_reuse_distance</code>, and offload settings based on memory/communication tradeoffs.</li>
+<li>For containers, ensure <code>/dev/shm</code> is large enough for distributed communication.</li>
+<li>Ensure checkpoint storage is reachable and performant for all ranks.</li>
+<li>Monitor wall-clock breakdown, throughput, GPU memory, communication timings, and loss curves.</li>
+<li>Treat DeepSpeed config changes as production changes; small changes can alter memory residency, optimizer numerics, checkpoint shape, or communication volume.</li>
+</ul>
+<h2 id="observability-testing-evaluation-and-failure-modes">Observability, Testing, Evaluation, And Failure Modes</h2>
+<p>Observability surfaces include:</p>
+<ul>
+<li><code>ds_report</code> from <code>deepspeed/env_report.py</code>.</li>
+<li><code>MonitorMaster</code> and backends in <code>deepspeed/monitor</code>.</li>
+<li><code>ThroughputTimer</code>, <code>SynchronizedWallClockTimer</code>, and named timers in <code>deepspeed/utils/timer.py</code>.</li>
+<li>Communication logging in <code>deepspeed/comm/comm.py</code> and <code>deepspeed/utils/comms_logging.py</code>.</li>
+<li>FLOPs profiler in <code>deepspeed/profiling/flops_profiler/profiler.py</code>.</li>
+<li>PyTorch profiler workflow described in <code>docs/_tutorials/pytorch-profiler.md</code>.</li>
+<li>Memory logging via runtime utility calls such as <code>see_memory_usage</code>.</li>
+</ul>
+<p>Tests in this clone cover accelerator init, launcher argument/resource handling, ZeRO config, ZeRO runtime behavior, compile integration, inference, sequence parallelism, one-bit communication, performance microbenchmarks, and Megatron GPT-2 model scenarios. Representative files include <code>tests/unit/runtime/zero/test_zero_config.py</code>, <code>tests/unit/launcher/*</code>, <code>tests/accelerator/test_ds_init.py</code>, <code>tests/unit/v1/zero/*</code>, and <code>tests/unit/v1/compile/*</code>.</p>
+<p>Common failure modes:</p>
+<ul>
+<li>Config batch-size mismatch causing incorrect gradient accumulation or runtime assertion.</li>
+<li>Calling checkpoint save/load on only one rank.</li>
+<li>Native op build failure because CUDA/HIP/compiler/PyTorch versions do not match.</li>
+<li><code>/dev/shm</code> too small in containers, causing NCCL or shared-memory instability.</li>
+<li>Hostfile, SSH, or scheduler rank mismatch.</li>
+<li>Direct use of <code>torch.distributed</code> inside DeepSpeed code instead of <code>deepspeed.comm</code>.</li>
+<li>ZeRO-3 direct parameter access without <code>GatheredParameters</code>.</li>
+<li>Offload path too slow because CPU/NVMe bandwidth is insufficient.</li>
+<li>Pipeline stage count not divisible by total GPU count.</li>
+<li>Unsupported dtype for the selected accelerator.</li>
+<li>JIT compile latency on first use of optional ops.</li>
+</ul>
+<p>Evaluation should include loss quality, samples/sec, tokens/sec, step latency, GPU memory, CPU memory, NVMe bandwidth, communication time, checkpoint time, restart success, and numerical stability across precision and ZeRO-stage choices.</p>
+<h2 id="security-and-governance-risks">Security And Governance Risks</h2>
+<p>DeepSpeed operates close to cluster infrastructure and native code, so governance must cover both ML and systems risks:</p>
+<ul>
+<li><strong>Native code supply chain:</strong> C++/CUDA/HIP extensions compile and load dynamically; pin versions and validate build provenance.</li>
+<li><strong>Cluster access:</strong> hostfiles, SSH, scheduler variables, and environment export can expose credentials or launch jobs on unintended nodes.</li>
+<li><strong>Checkpoint sensitivity:</strong> optimizer states and model weights may contain proprietary or sensitive training signal.</li>
+<li><strong>Config drift:</strong> a JSON change can alter precision, optimizer, offload, checkpoint format, or communication behavior.</li>
+<li><strong>Data privacy:</strong> distributed logs and monitor backends can leak metrics, dataset names, prompts, or sample text if custom events are not controlled.</li>
+<li><strong>Artifact trust:</strong> loading arbitrary checkpoints or custom model code can execute untrusted paths outside DeepSpeed itself.</li>
+<li><strong>Resource isolation:</strong> offload and NVMe paths can interfere with other workloads if storage quotas and I/O controls are weak.</li>
+<li><strong>License compliance:</strong> downstream models, datasets, and native dependencies may impose obligations beyond DeepSpeed&#x27;s Apache-2.0 license.</li>
+</ul>
+<h2 id="reading-guide">Reading Guide</h2>
+<p>Recommended reading order:</p>
+<ol>
+<li><code>README.md</code> for project scope, installation, supported accelerators, integrations, and <code>ds_report</code>.</li>
+<li><code>docs/_tutorials/getting-started.md</code> for the minimal engine lifecycle.</li>
+<li><code>deepspeed/__init__.py</code> for <code>initialize</code> and engine selection.</li>
+<li><code>deepspeed/runtime/engine.py</code> for training runtime internals.</li>
+<li><code>deepspeed/runtime/config.py</code> and <code>deepspeed/runtime/zero/config.py</code> for config semantics.</li>
+<li><code>docs/_tutorials/zero.md</code>, <code>zero-offload.md</code>, and <code>zeropp.md</code> for ZeRO stages and offload.</li>
+<li><code>deepspeed/runtime/zero/stage_1_and_2.py</code>, <code>stage3.py</code>, and <code>partition_parameters.py</code> for ZeRO implementation.</li>
+<li><code>deepspeed/launcher/runner.py</code> for multi-node launch behavior.</li>
+<li><code>accelerator/real_accelerator.py</code> and <code>deepspeed/comm/comm.py</code> for backend selection and communication.</li>
+<li><code>op_builder/all_ops.py</code>, <code>op_builder/builder.py</code>, and <code>deepspeed/env_report.py</code> for native op lifecycle.</li>
+<li><code>docs/_tutorials/monitor.md</code>, <code>pytorch-profiler.md</code>, and <code>flops-profiler.md</code> for observability.</li>
+<li>Tests under <code>tests/unit/runtime/zero</code>, <code>tests/unit/launcher</code>, and <code>tests/accelerator</code> for expected behavior.</li>
+</ol>
+<h2 id="learning-path">Learning Path</h2>
+<p>For application developers:</p>
+<ol>
+<li>Wrap a small PyTorch model with <code>deepspeed.initialize</code>.</li>
+<li>Use the standard engine loop: forward, <code>backward</code>, <code>step</code>.</li>
+<li>Add fp16 or bf16 only after the fp32 path is stable.</li>
+<li>Enable ZeRO Stage 1, then Stage 2, then Stage 3 as memory pressure requires.</li>
+<li>Add monitoring and run <code>ds_report</code> before scaling to multi-node.</li>
+<li>Add checkpoint save/load and test restart on all ranks.</li>
+<li>Introduce offload, pipeline, tensor parallelism, or MoE only when the simpler engine path has measured bottlenecks.</li>
+</ol>
+<p>For platform engineers:</p>
+<ol>
+<li>Read launcher, accelerator, comm, and op-builder code.</li>
+<li>Standardize hostfiles/scheduler integration and environment propagation.</li>
+<li>Pre-validate native op compatibility for each cluster image.</li>
+<li>Define config templates for common model sizes and ZeRO stages.</li>
+<li>Establish monitoring, checkpoint, and restart policies.</li>
+<li>Run representative tests and smoke jobs for every PyTorch/CUDA/HIP image update.</li>
+</ol>
+<h2 id="production-readiness-and-distributed-training-gate">Production Readiness And Distributed Training Gate</h2>
+<p>DeepSpeed readiness must be checked before a large run, because many failures only appear after multiple ranks, native ops, checkpoint storage, and offload paths are active. The most useful source anchors are <code>deepspeed/__init__.py</code>, <code>deepspeed/runtime/engine.py</code>, <code>deepspeed/runtime/config.py</code>, <code>deepspeed/runtime/zero/*</code>, <code>deepspeed/launcher/*</code>, <code>deepspeed/comm/*</code>, <code>accelerator/real_accelerator.py</code>, <code>op_builder/*</code>, <code>deepspeed/env_report.py</code>, <code>deepspeed/monitor/*</code>, and <code>tests/unit/runtime/zero/*</code>.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Readiness area</th><th>What to verify</th></tr></thead>
+<tbody>
+<tr><td>Environment</td><td><code>ds_report</code> confirms accelerator, torch/CUDA/HIP/compiler compatibility, installed/JIT-able ops, and <code>/dev/shm</code> health.</td></tr>
+<tr><td>Config arithmetic</td><td><code>train_batch_size</code>, <code>train_micro_batch_size_per_gpu</code>, gradient accumulation, world size, precision, and ZeRO stage are consistent.</td></tr>
+<tr><td>Launcher topology</td><td>Hostfile, scheduler allocation, rank env, include/exclude filters, SSH/no-SSH mode, and exported environment are deterministic.</td></tr>
+<tr><td>ZeRO/offload</td><td>Stage, bucket sizes, persistence thresholds, CPU/NVMe bandwidth, and <code>GatheredParameters</code> usage are tested on a reduced job.</td></tr>
+<tr><td>Checkpointing</td><td>All ranks save/load, storage bandwidth is adequate, and recovery is tested before a long training run.</td></tr>
+<tr><td>Monitoring</td><td>Timers, throughput, comm logging, memory logs, profiler, and monitor backends are enabled with safe metadata.</td></tr>
+</tbody></table></div>
+<div class="mermaid">flowchart LR
+  Env[Cluster image and ds_report] --&gt; Config[DeepSpeed JSON/HJSON config]
+  Config --&gt; Launch[launcher runner and rank env]
+  Launch --&gt; Init[deepspeed.initialize]
+  Init --&gt; Engine[DeepSpeedEngine or PipelineEngine]
+  Engine --&gt; Zero[ZeRO, offload, precision]
+  Engine --&gt; Comm[deepspeed.comm groups]
+  Engine --&gt; Ops[op_builder and native ops]
+  Engine --&gt; Monitor[monitor, timers, profiler]
+  Engine --&gt; Checkpoint[checkpoint engines and storage]
+  Monitor --&gt; Decision{Small-scale smoke passes?}
+  Checkpoint --&gt; Decision
+  Decision --&gt;|No| Tune[Fix env, config, op, topology, storage]
+  Tune --&gt; Env
+  Decision --&gt;|Yes| Scale[Scale nodes and run canary steps]</div>
+<h2 id="failure-isolation-map">Failure Isolation Map</h2>
+<p>Distributed training failures are expensive when the only observable symptom is a hung job. Triage should separate launcher setup, distributed communication, ZeRO partitioning, native ops, precision/overflow, offload storage, checkpointing, and monitoring.</p>
+<div class="mermaid">flowchart TD
+  Symptom[DeepSpeed symptom] --&gt; Domain{Domain}
+  Domain --&gt; Launcher[Launcher, hostfile, rank env]
+  Domain --&gt; Comm[deepspeed.comm or backend]
+  Domain --&gt; Config[Config parse or batch arithmetic]
+  Domain --&gt; Zero[ZeRO partitioning or GatheredParameters]
+  Domain --&gt; Ops[Native op build or JIT]
+  Domain --&gt; Offload[CPU or NVMe offload bandwidth]
+  Domain --&gt; Checkpoint[Checkpoint save/load across ranks]
+  Domain --&gt; Precision[fp16, bf16, overflow, dtype]
+  Launcher --&gt; Files1[launcher/runner.py and bin scripts]
+  Comm --&gt; Files2[comm/* and accelerator/*]
+  Config --&gt; Files3[runtime/config.py and runtime/zero/config.py]
+  Zero --&gt; Files4[runtime/zero/stage_1_and_2.py, stage3.py]
+  Ops --&gt; Files5[op_builder, csrc, env_report.py]
+  Offload --&gt; Files6[runtime/swap_tensor, nvme, aio]
+  Checkpoint --&gt; Files7[runtime/engine.py checkpoint paths]
+  Precision --&gt; Files8[runtime/fp16, bf16, amp paths]
+  Files1 --&gt; Action[Stop, inspect, reduce, patch, and rerun smoke]
+  Files2 --&gt; Action
+  Files3 --&gt; Action
+  Files4 --&gt; Action
+  Files5 --&gt; Action
+  Files6 --&gt; Action
+  Files7 --&gt; Action
+  Files8 --&gt; Action</div>
+<h2 id="glossary">Glossary</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>DeepSpeedEngine</td><td>Main runtime wrapper for training.</td></tr>
+<tr><td>ZeRO</td><td>Optimizer, gradient, and parameter partitioning family.</td></tr>
+<tr><td>ZeRO-1</td><td>Partitions optimizer states.</td></tr>
+<tr><td>ZeRO-2</td><td>Partitions optimizer states and gradients.</td></tr>
+<tr><td>ZeRO-3</td><td>Partitions optimizer states, gradients, and parameters.</td></tr>
+<tr><td>Offload</td><td>Moving optimizer or parameter state to CPU/NVMe.</td></tr>
+<tr><td><code>zero.Init</code></td><td>Memory-scalable model initialization context for large models.</td></tr>
+<tr><td><code>GatheredParameters</code></td><td>Context for safe access to partitioned ZeRO-3 parameters.</td></tr>
+<tr><td>PipelineModule</td><td>Layer-sequence model representation for pipeline parallelism.</td></tr>
+<tr><td>PipelineEngine</td><td>Engine that schedules pipeline micro-batches.</td></tr>
+<tr><td>MoE</td><td>Mixture of Experts, sparse expert-layer training/inference.</td></tr>
+<tr><td>Accelerator</td><td>DeepSpeed abstraction over CUDA, CPU, XPU, NPU, HPU, MLU, MPS, and SDAA.</td></tr>
+<tr><td><code>deepspeed.comm</code></td><td>DeepSpeed communication wrapper compatible with torch.distributed-style APIs.</td></tr>
+<tr><td>Op builder</td><td>Python class that builds or JIT-loads native DeepSpeed extensions.</td></tr>
+<tr><td><code>ds_report</code></td><td>Environment and op compatibility report.</td></tr>
+<tr><td>Wall-clock breakdown</td><td>Timing instrumentation around forward, backward, reduction, and step phases.</td></tr>
+<tr><td>Autotuning</td><td>DeepSpeed feature that searches performance-related config choices.</td></tr>
+<tr><td>Universal checkpointing</td><td>Checkpoint portability concept documented by DeepSpeed for distributed state.</td></tr>
+</tbody></table></div>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

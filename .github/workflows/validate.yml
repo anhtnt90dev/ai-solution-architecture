@@ -13,6 +13,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Build static documentation pages
+        shell: pwsh
+        run: python scripts\build-site.py
+
+      - name: Check static documentation pages are current
+        shell: pwsh
+        run: git diff --exit-code -- site
+
       - name: Validate knowledge system
         shell: pwsh
         run: powershell -ExecutionPolicy Bypass -File learn-ai-solution-architecture\validate-knowledge-system.ps1
@@ -20,3 +28,7 @@ jobs:
       - name: Validate repository deep dives
         shell: pwsh
         run: powershell -ExecutionPolicy Bypass -File repo-architecture-docs\validate-docs.ps1
+
+      - name: Validate static documentation pages
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File scripts\validate-site-pages.ps1

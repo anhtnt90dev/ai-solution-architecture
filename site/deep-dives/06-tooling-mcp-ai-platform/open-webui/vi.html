@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Open WebUI - Ghi chú kiến trúc | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/06-tooling-mcp-ai-platform/open-webui/README.vi.md">View source</a>
+      <h1 id="open-webui-ghi-ch-ki-n-tr-c">Open WebUI - Ghi chú kiến trúc</h1>
+<h2 id="t-m-t-t-i-u-h-nh">Tóm tắt điều hành</h2>
+<p><code>github-repos/06-tooling-mcp-ai-platform/open-webui</code> là một nền tảng AI tự host theo mô hình full-stack. Repo kết hợp frontend SvelteKit, backend FastAPI, cấu hình lưu trong cơ sở dữ liệu, gateway tới nhiều nhà cung cấp mô hình, pipeline RAG, thực thi tool/function, tích hợp tool server qua OpenAPI/MCP, lưu trữ file, mở rộng bằng Redis, và quan sát hệ thống bằng OpenTelemetry.</p>
+<p>Đây không chỉ là một giao diện chat. Open WebUI đóng vai trò như một workbench và control plane cho AI: người dùng có thể chat với mô hình local hoặc remote, upload và lập chỉ mục tài liệu, quản lý quyền truy cập mô hình, chạy tool và function, kết nối tool server bên ngoài, quản trị user/group, cấu hình retrieval, dùng pipeline, và triển khai qua Docker hoặc Python package. Ranh giới kiến trúc chính khá rõ: frontend ở <code>src/</code>, backend ở <code>backend/open_webui/</code>, cấu hình và triển khai ở <code>.env.example</code>, <code>Dockerfile</code>, <code>docker-compose.yaml</code>, và <code>pyproject.toml</code>.</p>
+<h2 id="v-n-c-gi-i-quy-t">Vấn đề được giải quyết</h2>
+<p>API mô hình thô chỉ cung cấp endpoint sinh văn bản hoặc embedding. Một nhóm sản phẩm hoặc nền tảng cần nhiều hơn:</p>
+<ul>
+<li>Giao diện web để chat, quản lý workspace và làm việc lặp lại hằng ngày.</li>
+<li>Quản lý tập trung user, role, group và quyền truy cập mô hình.</li>
+<li>Điều phối nhiều nhà cung cấp mô hình như Ollama, OpenAI-compatible API, Azure/OpenAI-style deployment và các SDK provider khác.</li>
+<li>Ingestion tài liệu, vector search, hybrid search, reranking, web search và knowledge collection.</li>
+<li>Thực thi tool/function, bao gồm tool server OpenAPI và MCP.</li>
+<li>Năng lực vận hành: cấu hình bền vững, health check, Redis, backend lưu trữ file, audit logging và OpenTelemetry.</li>
+</ul>
+<p>Repo hiện thực các năng lực này trong một ứng dụng có thể triển khai, thay vì tách rời thành nhiều script riêng lẻ.</p>
+<h2 id="vai-tr-trong-ai-stack">Vai trò trong AI stack</h2>
+<p>Open WebUI nằm ở tầng nền tảng ứng dụng. Nó vừa là giao diện người dùng, vừa là AI gateway, retrieval orchestrator, tool broker và bề mặt quản trị.</p>
+<div class="mermaid">flowchart LR
+    Browser[&quot;Trình duyệt / web UI&lt;br/&gt;ứng dụng SvelteKit&quot;] --&gt; Backend[&quot;Backend FastAPI&lt;br/&gt;backend/open_webui/main.py&quot;]
+    Browser &lt;--&gt; Socket[&quot;Socket.IO&lt;br/&gt;/ws/socket.io&quot;]
+    Backend --&gt; DB[&quot;Cơ sở dữ liệu SQL&lt;br/&gt;SQLite hoặc PostgreSQL&quot;]
+    Backend --&gt; Redis[&quot;Redis / Valkey&lt;br/&gt;session, scale websocket, cache&quot;]
+    Backend --&gt; Storage[&quot;Lưu trữ file&lt;br/&gt;local, S3, GCS, Azure Blob&quot;]
+    Backend --&gt; Vector[&quot;Vector DB&lt;br/&gt;Chroma, Qdrant, Milvus, PGVector, Pinecone, ...&quot;]
+    Backend --&gt; Ollama[&quot;Backend Ollama&quot;]
+    Backend --&gt; OpenAI[&quot;API OpenAI-compatible&lt;br/&gt;bao gồm cấu hình kiểu Azure&quot;]
+    Backend --&gt; Tools[&quot;Tools, functions, skills&lt;br/&gt;DB nội bộ + server ngoài&quot;]
+    Tools --&gt; MCP[&quot;MCP Streamable HTTP server&quot;]
+    Tools --&gt; OpenAPI[&quot;OpenAPI tool server&quot;]
+    Backend --&gt; Telemetry[&quot;OpenTelemetry collector&lt;br/&gt;tùy chọn&quot;]</div>
+<h2 id="b-n-c-y-ngu-n">Bản đồ cây nguồn</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Đường dẫn</th><th>Vai trò</th></tr></thead>
+<tbody>
+<tr><td><code>README.md</code></td><td>Tổng quan sản phẩm, tính năng, cách cài đặt, ví dụ Docker/pip, offline mode và hỗ trợ provider.</td></tr>
+<tr><td><code>package.json</code></td><td>Metadata frontend, script SvelteKit/Vite, kiểm tra, lint, test frontend và tải asset Pyodide.</td></tr>
+<tr><td><code>pyproject.toml</code></td><td>Metadata Python package, dependency backend FastAPI, optional dependency cho vector DB và entry point <code>open-webui</code>.</td></tr>
+<tr><td><code>.env.example</code></td><td>Ví dụ biến môi trường cho provider, CORS, opt-out telemetry và cấu hình vector DB.</td></tr>
+<tr><td><code>Dockerfile</code></td><td>Build image nhiều stage, build frontend bằng Node, runtime Python 3.11, tùy chọn CUDA/Ollama/slim, prefetch model và healthcheck.</td></tr>
+<tr><td><code>docker-compose.yaml</code></td><td>Triển khai local mặc định với <code>ollama</code>, <code>open-webui</code>, volume data, port mapping và <code>OLLAMA_BASE_URL</code>.</td></tr>
+<tr><td><code>docker-compose.otel.yaml</code></td><td>Ví dụ triển khai OpenTelemetry/Grafana LGTM.</td></tr>
+<tr><td><code>TROUBLESHOOTING.md</code></td><td>Giải thích backend reverse proxy tới Ollama và hướng dẫn network khi chạy Docker.</td></tr>
+<tr><td><code>docs/SECURITY.md</code></td><td>Chính sách bảo mật, đặc biệt về code execution của tool/function và ranh giới tin cậy của admin.</td></tr>
+<tr><td><code>src/</code></td><td>Frontend SvelteKit: routes, component, store, API client, worker, workspace/admin views.</td></tr>
+<tr><td><code>backend/open_webui/main.py</code></td><td>Tạo app FastAPI, lifespan startup/shutdown, middleware, router mounting, config endpoint, health/readiness và phục vụ static SPA.</td></tr>
+<tr><td><code>backend/open_webui/config.py</code></td><td>Default cấu hình bền vững, parse môi trường, provider URL, feature flag, RAG settings, auth settings và đường dẫn storage/cache.</td></tr>
+<tr><td><code>backend/open_webui/env.py</code></td><td>Load <code>.env</code>, logging, version/data directory, DB/Redis options, safe mode, audit logging và telemetry env flags.</td></tr>
+<tr><td><code>backend/open_webui/internal/</code></td><td>Database engine/session và cấu hình runtime lưu trong database.</td></tr>
+<tr><td><code>backend/open_webui/models/</code></td><td>Model dữ liệu cho users, chats, files, tools, functions, groups, memories, prompts, knowledge và nhiều thực thể khác.</td></tr>
+<tr><td><code>backend/open_webui/routers/</code></td><td>Router FastAPI cho auth, users, chats, models, Ollama, OpenAI, retrieval, tools, functions, files, evaluations, pipelines, SCIM, terminals và admin utilities.</td></tr>
+<tr><td><code>backend/open_webui/retrieval/</code></td><td>Document loading, embeddings, reranking, vector DB abstraction, web search và helper RAG query.</td></tr>
+<tr><td><code>backend/open_webui/storage/</code></td><td>Provider lưu trữ local và cloud.</td></tr>
+<tr><td><code>backend/open_webui/utils/</code></td><td>Chat pipeline, middleware, helper provider/model, MCP client, chuyển OpenAPI thành tool, telemetry và nhiều utility tích hợp.</td></tr>
+<tr><td><code>backend/open_webui/socket/</code></td><td>Tích hợp Socket.IO dùng bởi frontend cho sự kiện realtime và tác vụ chạy trong trình duyệt.</td></tr>
+</tbody></table></div>
+<h2 id="kh-i-ni-m-c-t-l-i">Khái niệm cốt lõi</h2>
+<h3 id="workspace-ai-t-host">Workspace AI tự host</h3>
+<p>Ứng dụng được thiết kế để chạy dưới quyền kiểm soát của operator. Nó hỗ trợ Ollama local, endpoint OpenAI-compatible, offline mode, volume dữ liệu local, và các backend lưu trữ/vector bên ngoài khi cần. Vì vậy Open WebUI là một thành phần nền tảng, không chỉ là wrapper cho API được host sẵn.</p>
+<h3 id="gateway-m-h-nh">Gateway mô hình</h3>
+<p><code>routers/ollama.py</code> và <code>routers/openai.py</code> gom và proxy API mô hình. Ứng dụng có thể list model, route chat completion, xử lý response streaming, gọi embedding API và expose các endpoint tương thích như OpenAI-style chat/completions hoặc responses. <code>utils/chat.py</code> và <code>utils/middleware.py</code> điều phối model selection, direct connection, arena model, function, file, tool và post-processing response.</p>
+<h3 id="rag-v-knowledge">RAG và knowledge</h3>
+<p><code>routers/retrieval.py</code>, <code>retrieval/vector/factory.py</code> và <code>retrieval/vector/main.py</code> tạo nên tầng retrieval. Tài liệu và web result có thể được chunk, embed, lưu vào collection và truy vấn bằng vector hoặc hybrid search. Factory hỗ trợ nhiều backend như Chroma, Qdrant, Milvus, Pinecone, PGVector, OpenSearch, Elasticsearch, Oracle, Weaviate, S3 vector storage và Valkey.</p>
+<h3 id="tool-function-skill-v-tool-server">Tool, function, skill và tool server</h3>
+<p>Open WebUI có tool/function nội bộ lưu trong database và hỗ trợ tool server bên ngoài. <code>utils/tools.py</code> xử lý access check, built-in tool catalog, chuyển OpenAPI operation thành tool payload, thực thi HTTP operation và khám phá MCP tool server. <code>utils/mcp/client.py</code> hiện thực MCP client qua Streamable HTTP với initialize, list tools, call tool, list resources và read resource.</p>
+<h3 id="c-u-h-nh-b-n-v-ng">Cấu hình bền vững</h3>
+<p>Cấu hình không chỉ đến từ biến môi trường. <code>internal/config.py</code> định nghĩa <code>ConfigVar</code> và <code>AppConfig</code> lưu trong database, có thể đồng bộ qua Redis. <code>main.py</code> nạp <code>app.state.config</code> với provider settings, auth settings, feature toggles, RAG options, web search provider, image/audio settings, tool server connection, terminal server connection và nhiều cấu hình khác.</p>
+<h3 id="realtime-v-browser-execution">Realtime và browser execution</h3>
+<p>Root layout của frontend mở kết nối Socket.IO và lưu vào Svelte store. Nó cũng khởi tạo Pyodide worker để chạy Python phía trình duyệt, đồng thời xử lý các event theo session như <code>execute:python</code>, <code>execute:tool</code> và direct chat completion request.</p>
+<h2 id="ki-n-tr-c-n-i-b">Kiến trúc nội bộ</h2>
+<h3 id="kh-i-ng-backend">Khởi động backend</h3>
+<p><code>backend/open_webui/main.py</code> là entry point runtime quan trọng nhất. Lifespan handler thực hiện:</p>
+<ul>
+<li>Khởi tạo event loop và instance ID.</li>
+<li>Chạy startup configuration và safe mode nếu bật.</li>
+<li>Tạo admin user từ environment khi được cấu hình và chưa có user.</li>
+<li>Kết nối Redis nếu có và khởi động Redis task command listener.</li>
+<li>Khởi tạo cache model cơ sở, tool servers và terminal servers.</li>
+<li>Đánh dấu <code>/ready</code> sẵn sàng bằng <code>startup_complete</code>.</li>
+<li>Hủy background listener task khi shutdown.</li>
+</ul>
+<p>Cùng file này cũng mount middleware, routers, static assets, Socket.IO app, health endpoint, config/version endpoint, OAuth client callback route và fallback cho SPA.</p>
+<h3 id="t-ng-d-li-u-v-c-u-h-nh">Tầng dữ liệu và cấu hình</h3>
+<p><code>internal/db.py</code> tạo cả engine SQLAlchemy sync và async. Engine sync phục vụ startup task, migration, health check và đọc cấu hình. Engine async được dùng bởi dependency FastAPI trong runtime. Code có nhánh cho SQLite, SQLCipher và PostgreSQL, bao gồm SQLite WAL pragma và cấu hình async driver cho PostgreSQL.</p>
+<p><code>internal/config.py</code> lưu cấu hình ứng dụng dưới dạng JSON trong database. Đây là điểm quan trọng về vận hành vì admin có thể cập nhật cấu hình lúc runtime mà không cần build lại image.</p>
+<h3 id="c-u-tr-c-frontend">Cấu trúc frontend</h3>
+<p>Frontend nằm trong <code>src/</code>:</p>
+<ul>
+<li><code>src/routes/+layout.svelte</code> tải config backend, tạo socket, xử lý thay đổi version/deployment, khởi tạo Pyodide và điều phối hành vi global của trình duyệt.</li>
+<li><code>src/routes/(app)/+layout.svelte</code> dựng shell cho user đã đăng nhập, tải dữ liệu workspace, quản lý settings/sidebar và shortcut cấp ứng dụng.</li>
+<li><code>src/routes/(app)/+page.svelte</code> render màn hình chat chính.</li>
+<li><code>src/lib/stores/index.ts</code> tập trung Svelte store cho user/config, socket, models, chats, tools, knowledge, functions, UI state, worker và resource workspace.</li>
+<li><code>src/lib/apis/*</code> chứa fetch helper cho backend API, direct model connection, Ollama, OpenAI, tool server và endpoint tạo task.</li>
+</ul>
+<h3 id="ranh-gi-i-router-v-model">Ranh giới router và model</h3>
+<p>Router backend phản ánh các capability của sản phẩm:</p>
+<ul>
+<li>Truy cập và định danh: <code>auths.py</code>, <code>users.py</code>, <code>groups.py</code>, <code>scim.py</code>.</li>
+<li>Hội thoại AI: <code>chats.py</code>, <code>models.py</code>, <code>ollama.py</code>, <code>openai.py</code>, <code>tasks.py</code>.</li>
+<li>Retrieval và file: <code>retrieval.py</code>, <code>knowledge.py</code>, <code>files.py</code>.</li>
+<li>Tài nguyên workspace: <code>tools.py</code>, <code>functions.py</code>, <code>skills.py</code>, <code>prompts.py</code>, <code>folders.py</code>, <code>memories.py</code>.</li>
+<li>Cộng tác và productivity: <code>channels.py</code>, <code>notes.py</code>, <code>automations.py</code>, <code>calendar.py</code>.</li>
+<li>Vận hành và quản trị: <code>configs.py</code>, <code>analytics.py</code>, <code>evaluations.py</code>, <code>utils.py</code>, <code>terminals.py</code>, <code>pipelines.py</code>.</li>
+</ul>
+<p>Các model trong <code>backend/open_webui/models/</code> định nghĩa lớp dữ liệu bền vững đứng sau các router này.</p>
+<h2 id="lu-ng-end-to-end">Luồng end-to-end</h2>
+<div class="mermaid">sequenceDiagram
+    participant User as Người dùng
+    participant UI as Frontend SvelteKit
+    participant API as Backend FastAPI
+    participant DB as Database SQL
+    participant RAG as Tầng retrieval/vector
+    participant Tool as Tool hoặc MCP/OpenAPI server
+    participant Model as Provider Ollama/OpenAI-compatible
+
+    User-&gt;&gt;UI: Gửi chat message kèm file/tool tùy chọn
+    UI-&gt;&gt;API: POST payload chat + auth token
+    API-&gt;&gt;DB: Tải user, model, quyền và trạng thái chat
+    API-&gt;&gt;RAG: Truy vấn file/knowledge/web result đã chọn
+    RAG--&gt;&gt;API: Context chunk đã xếp hạng
+    API-&gt;&gt;Tool: Khám phá hoặc gọi tool tùy chọn
+    Tool--&gt;&gt;API: Kết quả tool/resource
+    API-&gt;&gt;Model: Completion request gồm messages, context, tools
+    Model--&gt;&gt;API: Response streaming hoặc non-streaming
+    API-&gt;&gt;DB: Lưu messages, metadata, usage
+    API--&gt;&gt;UI: Stream token/event hoặc trả response cuối
+    UI--&gt;&gt;User: Render câu trả lời, citation, tool result, artifact</div>
+<h2 id="runtime-v-data-flow">Runtime và data flow</h2>
+<h3 id="authentication-v-session">Authentication và session</h3>
+<p>Frontend gọi <code>/api/config</code>, xác thực với backend, lưu user state trong Svelte store và mở Socket.IO connection kèm token. Backend middleware xử lý auth token, session, CORS, security headers, audit logging tùy chọn và session storage qua Redis nếu được bật.</p>
+<h3 id="lu-ng-chat">Luồng chat</h3>
+<p>Đường runtime của chat được phối hợp bởi:</p>
+<ul>
+<li><code>src/lib/apis/*</code> cho request từ frontend và direct provider call.</li>
+<li><code>backend/open_webui/main.py</code> để mount route và đăng ký <code>CHAT_COMPLETION_HANDLER</code>.</li>
+<li><code>backend/open_webui/utils/chat.py</code> để dispatch provider.</li>
+<li><code>backend/open_webui/utils/middleware.py</code> để xử lý payload, file, tool, filter, code interpreter tag, streaming event và post-processing response.</li>
+<li><code>routers/ollama.py</code> và <code>routers/openai.py</code> cho proxy provider cụ thể.</li>
+</ul>
+<h3 id="lu-ng-ingestion-v-truy-v-n-rag">Luồng ingestion và truy vấn RAG</h3>
+<ol>
+<li>User upload file, nhập text, cung cấp URL hoặc kích hoạt web search.</li>
+<li><code>routers/files.py</code> và <code>routers/retrieval.py</code> lưu file và trích xuất text.</li>
+<li>Retrieval helper chunk tài liệu và gọi embedding function.</li>
+<li><code>retrieval/vector/factory.py</code> chọn vector backend theo cấu hình.</li>
+<li>Collection được tạo hoặc cập nhật bằng các record <code>VectorItem</code>.</li>
+<li>Khi chat, retrieval query collection, có thể áp dụng hybrid search/reranking, rồi inject context đã chọn vào model payload.</li>
+</ol>
+<h3 id="lu-ng-tool-v-mcp">Luồng tool và MCP</h3>
+<p>Kết nối tool bên ngoài được lưu trong cấu hình ứng dụng. <code>utils/tools.py</code> có thể đọc OpenAPI spec, chuyển operation thành tool payload, thực thi HTTP operation và cache dữ liệu server. Với MCP server, <code>utils/mcp/client.py</code> khởi tạo MCP session qua Streamable HTTP, list tools/resources và call tools. Tool/function nội bộ trong DB vẫn phải đi qua access check trước khi thực thi.</p>
+<h3 id="lu-ng-file-v-object-storage">Luồng file và object storage</h3>
+<p><code>storage/provider.py</code> định nghĩa abstraction cho storage. Mặc định là local storage, nhưng cùng interface hỗ trợ S3, Google Cloud Storage và Azure Blob Storage. Provider cloud hỗ trợ credential tường minh hoặc identity của nền tảng, tùy provider.</p>
+<h2 id="topology-tri-n-khai-v-v-n-h-nh">Topology triển khai và vận hành</h2>
+<div class="mermaid">flowchart TB
+    subgraph ClientLayer[&quot;Tầng client&quot;]
+        Browser[&quot;Trình duyệt web&quot;]
+        Electron[&quot;Desktop shell tùy chọn&quot;]
+    end
+
+    subgraph AppContainer[&quot;Container open-webui hoặc Python process&quot;]
+        Frontend[&quot;Asset Svelte đã build&lt;br/&gt;/app/build&quot;]
+        FastAPI[&quot;FastAPI app&lt;br/&gt;port 8080&quot;]
+        SocketIO[&quot;Socket.IO app&lt;br/&gt;/ws&quot;]
+        Static[&quot;Static/cache files&quot;]
+    end
+
+    subgraph StateLayer[&quot;Tầng state&quot;]
+        SQL[&quot;SQLite volume hoặc PostgreSQL&quot;]
+        Redis[&quot;Redis/Valkey&lt;br/&gt;tùy chọn&quot;]
+        ObjectStore[&quot;Local/S3/GCS/Azure storage&quot;]
+        VectorDB[&quot;Vector DB backend&quot;]
+    end
+
+    subgraph ProviderLayer[&quot;Tầng provider và tích hợp&quot;]
+        Ollama[&quot;Ollama service&quot;]
+        OpenAI[&quot;Endpoint OpenAI-compatible&quot;]
+        WebSearch[&quot;Web search providers&quot;]
+        ToolServers[&quot;OpenAPI/MCP tool servers&quot;]
+        OTel[&quot;OpenTelemetry collector&quot;]
+    end
+
+    Browser --&gt; FastAPI
+    Browser &lt;--&gt; SocketIO
+    Electron --&gt; Browser
+    FastAPI --&gt; Frontend
+    FastAPI --&gt; Static
+    FastAPI --&gt; SQL
+    FastAPI --&gt; Redis
+    FastAPI --&gt; ObjectStore
+    FastAPI --&gt; VectorDB
+    FastAPI --&gt; Ollama
+    FastAPI --&gt; OpenAI
+    FastAPI --&gt; WebSearch
+    FastAPI --&gt; ToolServers
+    FastAPI -. tùy chọn .-&gt; OTel</div>
+<h2 id="i-m-m-r-ng">Điểm mở rộng</h2>
+<h3 id="backend-route-v-data-model">Backend route và data model</h3>
+<p>Một capability backend mới thường cần:</p>
+<ul>
+<li>Router trong <code>backend/open_webui/routers/</code>.</li>
+<li>Model bền vững trong <code>backend/open_webui/models/</code> nếu cần state.</li>
+<li>Cấu hình trong <code>config.py</code> hoặc <code>AppConfig</code> nếu admin cần điều chỉnh hành vi.</li>
+<li>API helper phía frontend trong <code>src/lib/apis/</code>.</li>
+<li>Store trong <code>src/lib/stores/index.ts</code> nếu state phải dùng chung trên nhiều màn hình.</li>
+</ul>
+<h3 id="t-ch-h-p-provider">Tích hợp provider</h3>
+<p>Tích hợp provider thường mở rộng <code>routers/openai.py</code>, <code>routers/ollama.py</code>, <code>utils/chat.py</code> hoặc utility riêng theo provider. Pattern hiện tại là normalize khác biệt provider ở backend boundary để frontend vẫn tập trung vào abstraction chat/model.</p>
+<h3 id="retrieval-v-vector-db">Retrieval và vector DB</h3>
+<p>Vector DB được thiết kế để cắm thêm. Để thêm backend mới, cần implement contract <code>VectorDBBase</code> trong <code>retrieval/vector/main.py</code> rồi wire vào <code>retrieval/vector/factory.py</code>. Cần giữ nhất quán collection naming, tenant behavior, shape của search result và semantics của delete/reset.</p>
+<h3 id="tool-server-v-mcp">Tool server và MCP</h3>
+<p>External tool có thể đi vào hệ thống qua:</p>
+<ul>
+<li>OpenAPI spec được chuyển đổi bởi <code>utils/tools.py</code>.</li>
+<li>MCP Streamable HTTP connection qua <code>utils/mcp/client.py</code>.</li>
+<li>Định nghĩa tool/function nội bộ lưu trong DB và quản lý bởi workspace routes.</li>
+<li>Built-in tool category như knowledge, web search, image generation, code execution, notes, channels, automations và calendar.</li>
+</ul>
+<h3 id="frontend-application">Frontend application</h3>
+<p>Pattern mở rộng frontend là route-first. Thêm route trong <code>src/routes/</code>, component dùng lại trong <code>src/lib/components/</code>, API helper trong <code>src/lib/apis/</code>, và chỉ thêm store khi state cần chia sẻ giữa nhiều màn hình.</p>
+<h2 id="t-ch-h-p">Tích hợp</h2>
+<p>Các tích hợp chính được thể hiện qua source và metadata package:</p>
+<ul>
+<li>Model provider: Ollama, OpenAI-compatible endpoint, cấu hình kiểu Azure OpenAI, Anthropic, Google GenAI và các SDK provider trong dependency backend.</li>
+<li>Vector store: Chroma, Qdrant, Milvus, Pinecone, PGVector, OpenSearch, Elasticsearch, Oracle, Weaviate, S3 vector storage, Valkey và các backend tùy chọn khác.</li>
+<li>Xử lý tài liệu: PDF, Office, markdown, OCR, loader, web extraction, embedding và reranking engine.</li>
+<li>Tooling: tool/function nội bộ, OpenAPI tool server, MCP tool server, terminal server và code execution.</li>
+<li>Auth và identity: local auth, OAuth/OIDC pattern, LDAP, SCIM, trusted headers, RBAC/groups.</li>
+<li>Storage: filesystem local, S3, Google Cloud Storage, Azure Blob Storage.</li>
+<li>Operations: Redis/Valkey, Docker Compose, OpenTelemetry, ví dụ Grafana LGTM, health/readiness endpoint.</li>
+</ul>
+<h2 id="c-u-h-nh-tri-n-khai-v-v-n-h-nh">Cấu hình, triển khai và vận hành</h2>
+<h3 id="packaging-v-startup">Packaging và startup</h3>
+<ul>
+<li>Docker là đường triển khai thân thiện nhất cho production-like usage. <code>Dockerfile</code> build asset frontend bằng Node 22 và đóng gói backend trong runtime Python 3.11.</li>
+<li><code>docker-compose.yaml</code> chạy <code>ollama</code> và <code>open-webui</code>, map <code>${OPEN_WEBUI_PORT-3000}:8080</code>, đồng thời persist <code>/app/backend/data</code>.</li>
+<li>Python package expose <code>open-webui = open_webui:app</code> qua <code>pyproject.toml</code>.</li>
+<li>Docker healthcheck gọi <code>/health</code>.</li>
+</ul>
+<h3 id="nh-m-c-u-h-nh-quan-tr-ng">Nhóm cấu hình quan trọng</h3>
+<div class="table-scroll"><table>
+<thead><tr><th>Nhóm</th><th>Ví dụ và nguồn trong repo</th></tr></thead>
+<tbody>
+<tr><td>Model backend</td><td><code>OLLAMA_BASE_URL</code>, <code>OLLAMA_BASE_URLS</code>, <code>OPENAI_API_BASE_URL</code>, <code>OPENAI_API_BASE_URLS</code>, <code>OPENAI_API_KEY</code> từ <code>.env.example</code> và backend config.</td></tr>
+<tr><td>Secret</td><td><code>WEBUI_SECRET_KEY</code>, provider keys, OAuth secrets, storage credentials.</td></tr>
+<tr><td>Dữ liệu</td><td>Docker volume <code>/app/backend/data</code>, <code>DATA_DIR</code>, <code>DATABASE_URL</code>, upload/cache directories.</td></tr>
+<tr><td>Redis</td><td><code>REDIS_URL</code>, websocket/session settings, Redis task listener, config sync.</td></tr>
+<tr><td>RAG</td><td>Embedding/reranking engine, vector DB selection, web search provider settings, document loader settings.</td></tr>
+<tr><td>Tooling</td><td>Tool server connections, MCP initialize timeout, terminal server connections, code interpreter settings.</td></tr>
+<tr><td>Security</td><td>CORS, trusted forwarded headers, safe mode, audit logging, OAuth/LDAP/SCIM settings.</td></tr>
+<tr><td>Telemetry</td><td><code>ENABLE_OTEL</code>, <code>ENABLE_OTEL_METRICS</code>, OTLP endpoint trong <code>docker-compose.otel.yaml</code> và telemetry utilities.</td></tr>
+</tbody></table></div>
+<h3 id="endpoint-v-n-h-nh">Endpoint vận hành</h3>
+<ul>
+<li><code>/health</code>: health cơ bản của ứng dụng.</li>
+<li><code>/ready</code>: startup completion cùng kiểm tra database và Redis khi có cấu hình.</li>
+<li><code>/health/db</code>: health của database.</li>
+<li><code>/api/config</code>: cấu hình ứng dụng mà frontend được phép thấy.</li>
+<li><code>/api/version</code>: thông tin version.</li>
+<li><code>/ws/socket.io</code>: kênh realtime cho browser event.</li>
+</ul>
+<h3 id="ghi-ch-m-r-ng-quy-m">Ghi chú mở rộng quy mô</h3>
+<p>Với cài đặt một node, SQLite và local storage là đường đơn giản nhất. Khi cần tính bền vững hoặc horizontal scale, nên dùng PostgreSQL, Redis/Valkey, object storage ngoài và vector DB ngoài. Redis đặc biệt quan trọng cho websocket coordination, session, task command và nhiều instance ứng dụng.</p>
+<h2 id="observability-testing-evaluation-v-failure-modes">Observability, testing, evaluation và failure modes</h2>
+<h3 id="observability">Observability</h3>
+<p>Backend có OpenTelemetry tùy chọn trong <code>backend/open_webui/utils/telemetry</code>. Instrumentation bao gồm FastAPI, SQLAlchemy, Redis, requests, HTTP client, logging và system metrics, sau đó gửi OTLP tới collector. <code>docker-compose.otel.yaml</code> cung cấp ví dụ Grafana LGTM. Backend cũng hỗ trợ JSON-style logging và audit logging tùy chọn qua middleware.</p>
+<h3 id="testing-v-quality-gate">Testing và quality gate</h3>
+<p>Metadata repo cho thấy các điểm kiểm tra chính:</p>
+<ul>
+<li>Frontend: <code>npm run check</code>, <code>npm run lint</code>, <code>npm run test:frontend</code>.</li>
+<li>Backend: dev dependency Python có pytest và ruff; script lint backend dùng ruff.</li>
+<li>Evaluation: <code>routers/evaluations.py</code> và cấu hình liên quan hỗ trợ workflow đánh giá model/response.</li>
+</ul>
+<p>Trong lượt tài liệu này không cài dependency và không chạy build dài.</p>
+<h3 id="failure-modes-th-ng-g-p">Failure modes thường gặp</h3>
+<ul>
+<li>Sai cấu hình provider: base URL sai, API key không hợp lệ, container Ollama không reachable, hoặc credential Azure/OpenAI không khớp.</li>
+<li>Startup readiness lỗi: database không sẵn sàng, Redis lỗi khi đã cấu hình, migration lỗi, hoặc thiếu secret.</li>
+<li>RAG không nhất quán: schema vector DB lệch, embedding model chưa tải, lỗi quyền collection, hoặc lỗi extract file lớn.</li>
+<li>Tool lỗi hoặc rủi ro: OpenAPI/MCP server ngoài không reachable, OAuth/token lỗi, OpenAPI schema sai, tool chạy quá lâu, hoặc local function không an toàn.</li>
+<li>Websocket lỗi: thiếu Redis coordination khi scale-out, token hết hạn, reverse proxy không forward websocket upgrade.</li>
+<li>Storage lỗi: quyền volume, credential cloud, xung đột object key, hoặc lộ cache directory.</li>
+<li>Offline mode thiếu artifact: model hoặc embedding artifact chưa được pre-download khi network bị tắt.</li>
+</ul>
+<h2 id="r-i-ro-b-o-m-t-v-governance">Rủi ro bảo mật và governance</h2>
+<p>Open WebUI là một bề mặt quản trị mạnh. Mức an toàn phụ thuộc nhiều vào cấu hình triển khai và phân quyền.</p>
+<p>Rủi ro và kiểm soát chính:</p>
+<ul>
+<li>Thực thi tool/function có chủ đích là quyền rất mạnh. <code>docs/SECURITY.md</code> nêu rõ cấp quyền tạo/thực thi tool cho non-admin tương đương trao quyền kiểm soát rất cao. Nên giữ <code>workspace.tools</code> bị giới hạn.</li>
+<li>Niềm tin vào admin là ranh giới cốt lõi. Hành động độc hại của admin và server ngoài độc hại nằm ngoài boundary bảo mật mong muốn, nên production cần governance định danh admin chặt.</li>
+<li>Provider secret và dữ liệu user được lưu hoặc tham chiếu bởi ứng dụng. Cần bảo vệ <code>WEBUI_SECRET_KEY</code>, API key, OAuth secret, credential database, credential Redis và credential storage.</li>
+<li>RBAC, group, quyền model và access check theo route phải đồng bộ. Chính sách model không đủ nếu tool và retrieval không được scope tương ứng.</li>
+<li>CORS và trusted forwarded headers chỉ nên nới lỏng sau reverse proxy đáng tin cậy.</li>
+<li>Direct connection và tác vụ chạy trong browser có thể bypass một phần control plane backend nếu không quản trị kỹ.</li>
+<li>Tool server MCP/OpenAPI bên ngoài mở rộng trust boundary. Cần coi schema, OAuth flow và nội dung trả về là không đáng tin cho tới khi được kiểm soát.</li>
+<li>Upload file, artifact sinh ra, cache và tài liệu đã vector hóa có thể chứa dữ liệu nhạy cảm. Backup, retention, deletion và mã hóa storage cần có policy rõ.</li>
+</ul>
+<h2 id="v-ng-i-v-s-ph-thu-c">Vòng đời và sơ đồ phụ thuộc</h2>
+<div class="mermaid">flowchart TD
+    Request[&quot;Yêu cầu người dùng&quot;] --&gt; Auth{&quot;Đã xác thực và đủ quyền?&quot;}
+    Auth --&gt;|Không| Reject[&quot;Từ chối hoặc chuyển tới auth&quot;]
+    Auth --&gt;|Có| ModelChoice[&quot;Resolve model và access policy&quot;]
+    ModelChoice --&gt; Inputs{&quot;Có file, knowledge, tool hoặc direct connection?&quot;}
+    Inputs --&gt;|File / knowledge| Retrieval[&quot;Retrieval pipeline&lt;br/&gt;load, chunk, embed, query&quot;]
+    Inputs --&gt;|Tool call| ToolPath[&quot;Tool pipeline&lt;br/&gt;local, OpenAPI hoặc MCP&quot;]
+    Inputs --&gt;|Direct provider| Direct[&quot;Đường direct connection&quot;]
+    Inputs --&gt;|Chat thường| Prompt[&quot;Tạo model payload&quot;]
+    Retrieval --&gt; Prompt
+    ToolPath --&gt; Prompt
+    Direct --&gt; Provider[&quot;Gửi request tới provider&quot;]
+    Prompt --&gt; Provider
+    Provider --&gt; Stream{&quot;Streaming?&quot;}
+    Stream --&gt;|Có| Events[&quot;Stream event/token tới UI&quot;]
+    Stream --&gt;|Không| Final[&quot;Trả response cuối&quot;]
+    Events --&gt; Persist[&quot;Lưu messages, metadata, usage&quot;]
+    Final --&gt; Persist
+    Persist --&gt; Audit[&quot;Audit/telemetry/evaluation tùy chọn&quot;]</div>
+<h2 id="h-ng-d-n-c-repo">Hướng dẫn đọc repo</h2>
+<p>Thứ tự đọc khuyến nghị:</p>
+<ol>
+<li><code>README.md</code>, <code>.env.example</code>, <code>docker-compose.yaml</code> và <code>Dockerfile</code> để hiểu phạm vi sản phẩm và giả định runtime.</li>
+<li><code>backend/open_webui/main.py</code> để hiểu startup, middleware, routers và health endpoints.</li>
+<li><code>backend/open_webui/config.py</code>, <code>env.py</code>, <code>internal/db.py</code> và <code>internal/config.py</code> để hiểu cấu hình và persistence.</li>
+<li><code>backend/open_webui/routers/openai.py</code>, <code>routers/ollama.py</code>, <code>utils/chat.py</code> và <code>utils/middleware.py</code> để hiểu luồng chat/model.</li>
+<li><code>backend/open_webui/routers/retrieval.py</code> và <code>retrieval/vector/*</code> để hiểu RAG.</li>
+<li><code>backend/open_webui/utils/tools.py</code> và <code>utils/mcp/client.py</code> để hiểu tích hợp tool server.</li>
+<li><code>src/routes/+layout.svelte</code>, <code>src/routes/(app)/+layout.svelte</code>, <code>src/lib/stores/index.ts</code> và <code>src/lib/apis/*</code> để hiểu frontend.</li>
+<li><code>docs/SECURITY.md</code> trước khi bật tool/function cho nhóm user rộng.</li>
+</ol>
+<h2 id="l-tr-nh-h-c-t-p">Lộ trình học tập</h2>
+<ol>
+<li>Bắt đầu với triển khai Docker một user, local storage và một provider Ollama hoặc OpenAI-compatible.</li>
+<li>Thêm database bền vững và xem chats, users, models, files map vào backend models thế nào.</li>
+<li>Cấu hình một knowledge collection và trace luồng upload-to-vector-to-chat.</li>
+<li>Thêm một OpenAPI hoặc MCP tool server bên ngoài và kiểm tra access check.</li>
+<li>Bật Redis và quan sát websocket/session behavior.</li>
+<li>Bật OpenTelemetry và audit logging trước khi dùng chung hoặc tiến gần production.</li>
+<li>Cuối cùng tinh chỉnh RBAC, groups, model access, storage retention và backup policy.</li>
+</ol>
+<h2 id="b-ng-thu-t-ng">Bảng thuật ngữ</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Thuật ngữ</th><th>Nghĩa trong repo này</th></tr></thead>
+<tbody>
+<tr><td>Open WebUI</td><td>Nền tảng AI tự host full-stack được repo này hiện thực.</td></tr>
+<tr><td>SvelteKit</td><td>Framework frontend dùng trong <code>src/</code>.</td></tr>
+<tr><td>FastAPI</td><td>Framework backend dùng trong <code>backend/open_webui/</code>.</td></tr>
+<tr><td>Ollama router</td><td>Router/proxy backend cho các instance Ollama local hoặc remote.</td></tr>
+<tr><td>OpenAI router</td><td>Router/proxy backend cho API mô hình OpenAI-compatible.</td></tr>
+<tr><td>RAG</td><td>Retrieval-augmented generation dùng file, web content, embedding, vector search và reranking.</td></tr>
+<tr><td>Vector DB</td><td>Backend lưu trữ/tìm kiếm các chunk đã embed.</td></tr>
+<tr><td>Tool server</td><td>Server OpenAPI hoặc MCP bên ngoài expose tool có thể gọi.</td></tr>
+<tr><td>Function</td><td>Extension có thể thực thi, được Open WebUI quản lý nội bộ.</td></tr>
+<tr><td>AppConfig</td><td>Wrapper cấu hình runtime lưu trong database.</td></tr>
+<tr><td>Redis/Valkey</td><td>Tầng cache/session/websocket/task coordination tùy chọn.</td></tr>
+<tr><td>OTEL</td><td>OpenTelemetry instrumentation và export.</td></tr>
+</tbody></table></div>
+<h2 id="deep-dive-b-m-theo-repository">Deep Dive Bám Theo Repository</h2>
+<p>Open WebUI là control plane AI full-stack: frontend SvelteKit, backend FastAPI, router cho model provider, pipeline RAG, thực thi tool/function, tích hợp MCP client, cấu hình lưu trong database và hạ tầng telemetry/cache tùy chọn. Các ranh giới source quan trọng gồm <code>github-repos/06-tooling-mcp-ai-platform/open-webui/src/</code> cho frontend routes/components, <code>backend/open_webui/main.py</code> cho backend bootstrap, <code>backend/open_webui/routers/</code> cho các domain API, <code>backend/open_webui/retrieval/</code> cho ingestion/retrieval, <code>backend/open_webui/retrieval/vector/</code> cho vector database adapters, <code>backend/open_webui/utils/mcp/client.py</code> cho MCP integration, <code>backend/open_webui/utils/telemetry/</code> cho OTEL và <code>docker-compose*.yaml</code> cho topology runtime mẫu.</p>
+<div class="mermaid">flowchart LR
+  Browser[&quot;SvelteKit UI src/routes va src/lib&quot;] --&gt; API[&quot;FastAPI backend backend/open_webui/main.py&quot;]
+  API --&gt; Auth[&quot;auths, users, groups routers&quot;]
+  API --&gt; Chat[&quot;chats, models, openai, ollama routers&quot;]
+  API --&gt; RAG[&quot;retrieval, files, knowledge routers&quot;]
+  API --&gt; Tools[&quot;tools, functions, skills routers&quot;]
+  API --&gt; Config[&quot;internal db va AppConfig&quot;]
+  Chat --&gt; Providers[&quot;Ollama va OpenAI-compatible providers&quot;]
+  RAG --&gt; Vector[&quot;retrieval/vector adapters&quot;]
+  Tools --&gt; MCP[&quot;utils/mcp/client.py&quot;]
+  API --&gt; Telemetry[&quot;utils/telemetry&quot;]</div>
+<p>Vấn đề kiến trúc chính là chat, retrieval, tool execution và provider routing đều gặp nhau tại boundary của cuộc hội thoại người dùng. Một prompt có thể đi qua auth policy, model access policy, file permissions, vector search, reranking, function execution, MCP calls và outbound model requests. Vì vậy review production phải bao gồm data governance và action governance, không chỉ cấu hình model provider.</p>
+<div class="mermaid">sequenceDiagram
+  participant User as Browser user
+  participant UI as SvelteKit frontend
+  participant API as FastAPI backend
+  participant RAG as Retrieval pipeline
+  participant Tool as Function hoac MCP tool
+  participant Model as Model provider
+  participant DB as Database va config
+  User-&gt;&gt;UI: send chat message
+  UI-&gt;&gt;API: authenticated chat request
+  API-&gt;&gt;DB: load user, model, group, va config policy
+  API-&gt;&gt;RAG: optional file hoac knowledge retrieval
+  RAG--&gt;&gt;API: chunks, citations, rerank scores
+  API-&gt;&gt;Tool: optional tool hoac MCP invocation
+  Tool--&gt;&gt;API: structured tool result
+  API-&gt;&gt;Model: prompt, context, tools, policy
+  Model--&gt;&gt;API: streamed hoac full completion
+  API--&gt;&gt;UI: response, citations, events</div>
+<div class="mermaid">flowchart TD
+  Risk[&quot;Rui ro production&quot;] --&gt; Auth[&quot;auth va RBAC drift&quot;]
+  Risk --&gt; Provider[&quot;provider key va routing drift&quot;]
+  Risk --&gt; Retrieval[&quot;RAG index inconsistency&quot;]
+  Risk --&gt; Tool[&quot;tool hoac function overreach&quot;]
+  Risk --&gt; Config[&quot;database-backed config mutation&quot;]
+  Risk --&gt; Telemetry[&quot;missing audit/telemetry&quot;]
+  Auth --&gt; A1[&quot;user truy cap sai model hoac file&quot;]
+  Provider --&gt; P1[&quot;request route den backend khong mong doi&quot;]
+  Retrieval --&gt; R1[&quot;chunks embed bang model cu van active&quot;]
+  Tool --&gt; T1[&quot;MCP/function vuot scope du kien&quot;]
+  Config --&gt; C1[&quot;runtime setting doi khong co release trace&quot;]
+  Telemetry --&gt; O1[&quot;incident khong reconstruct duoc prompt path&quot;]</div>
+<h3 id="checklist-s-n-s-ng-production">Checklist Sẵn Sàng Production</h3>
+<ul>
+<li>Xem <code>.env.example</code>, <code>backend/open_webui/config.py</code>, <code>backend/open_webui/env.py</code> và các giá trị <code>AppConfig</code> lưu trong database như một hệ cấu hình duy nhất. Runtime UI settings có thể quan trọng ngang environment variables.</li>
+<li>Review auth, SCIM, users, groups, model access và file access cùng nhau: <code>routers/auths.py</code>, <code>routers/scim.py</code>, <code>routers/users.py</code>, <code>routers/groups.py</code>, <code>routers/models.py</code> và <code>utils/access_control/</code>.</li>
+<li>Với RAG, pin embedding model, chunking policy, vector database adapter, reranker, file loader và retention policy. Source liên quan trải qua <code>backend/open_webui/retrieval/</code>, <code>retrieval/vector/dbs/</code> và <code>utils/embeddings.py</code>.</li>
+<li>Với tools và MCP, định nghĩa allowed servers, tool scopes, network reachability, secret handling và audit behavior. Review <code>routers/tools.py</code>, <code>routers/functions.py</code>, <code>routers/skills.py</code>, <code>tools/</code> và <code>utils/mcp/client.py</code>.</li>
+<li>Monitor model latency, streaming disconnects, vector DB errors, file ingestion failures, websocket/socket health, Redis/Valkey health nếu bật, task failures và OTEL export status.</li>
+<li>Validate backup/restore cho database state, uploaded files, vector indexes, user/group/model policies, prompts, functions và knowledge collections.</li>
+<li>Diễn tập provider failover và rate-limit scenarios cho <code>routers/openai.py</code>, <code>routers/ollama.py</code> và mọi external model endpoint được cấu hình.</li>
+</ul>
+<h3 id="h-ng-d-n-c-cho-senior-architect">Hướng Dẫn Đọc Cho Senior Architect</h3>
+<p>Bắt đầu với <code>backend/open_webui/main.py</code>, <code>backend/open_webui/config.py</code> và <code>backend/open_webui/internal/db.py</code> để hiểu process và state. Sau đó đọc routers theo domain vận hành: auth/users/groups, models/openai/ollama, chats, retrieval/files/knowledge và tools/functions/skills. Tiếp theo đọc <code>backend/open_webui/retrieval/vector/</code> và <code>backend/open_webui/utils/mcp/client.py</code>. Kết thúc với frontend paths dưới <code>src/routes/</code>, <code>src/lib/apis/</code>, <code>src/lib/stores/</code> và <code>src/lib/components/</code> để thấy backend capabilities thành user workflows như thế nào.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

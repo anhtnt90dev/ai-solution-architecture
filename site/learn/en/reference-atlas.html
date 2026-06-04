@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Repository Atlas | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="index.html">English</a>
+        <a href="../vi/index.html">Tiếng Việt</a>
+        <a href="curriculum.html">Curriculum</a>
+        <a href="../../templates/index.html">Toolkit</a>
+        <a href="../../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="index.html">English course</a>
+      <a href="../vi/index.html">Trang tiếng Việt</a>
+      <a href="curriculum.html">Curriculum</a>
+      <a href="projects.html">Projects</a>
+      <a href="../../templates/index.html">Architecture toolkit</a>
+      <a href="../../capstone/index.html">Capstone</a>
+      <a href="../../assessments/index.html">Assessments</a>
+      <a href="../../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/reference-atlas.md">View source</a>
+      <h1 id="repository-atlas">Repository Atlas</h1>
+<p>Use this atlas when selecting libraries or explaining how the 17 repositories fit into a complete AI architecture.</p>
+<h2 id="system-level-placement">System-Level Placement</h2>
+<div class="mermaid">flowchart TB
+  subgraph App[AI app and agent architecture]
+    OA[OpenAI Agents Python]
+    LC[LangChain]
+    AG[AutoGen]
+    LI[LlamaIndex]
+  end
+  subgraph Serving[Model serving and inference]
+    HF[Transformers]
+    VLLM[vLLM]
+    LCPP[llama.cpp]
+  end
+  subgraph Train[Training and adaptation]
+    PEFT[PEFT]
+    DS[DeepSpeed]
+  end
+  subgraph RAG[RAG and vector data]
+    QD[Qdrant]
+    CH[Chroma]
+  end
+  subgraph Ops[Observability and LLMOps]
+    LF[Langfuse]
+    PX[Phoenix]
+    MF[MLflow]
+    TL[TruLens]
+  end
+  subgraph Platform[Tools and platform]
+    MCP[MCP Servers]
+    OW[Open WebUI]
+  end
+  App --&gt; Serving
+  App --&gt; RAG
+  Train --&gt; Serving
+  App --&gt; Ops
+  Serving --&gt; Ops
+  RAG --&gt; Ops
+  Platform --&gt; App
+  Platform --&gt; Ops</div>
+<h2 id="repository-matrix">Repository Matrix</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Repository</th><th>Primary Role</th><th>Use When</th><th>Watch For</th></tr></thead>
+<tbody>
+<tr><td>OpenAI Agents Python</td><td>Agent runtime with tools, handoffs, guardrails, tracing</td><td>You want a focused agent SDK with explicit handoff/tool semantics</td><td>Tool permissions, guardrail coverage, trace completeness</td></tr>
+<tr><td>LangChain</td><td>Composable app framework and workflow ecosystem</td><td>You need chains, retrievers, tools, model abstraction, LangGraph workflows</td><td>Over-composition, unclear state boundaries, dependency sprawl</td></tr>
+<tr><td>AutoGen</td><td>Multi-agent framework with Core, AgentChat, extensions</td><td>You need role-based agent collaboration or existing AutoGen assets</td><td>Maintenance-mode implications, code execution risk, extension governance</td></tr>
+<tr><td>LlamaIndex</td><td>Data-centric agent and retrieval framework</td><td>Knowledge ingestion, indices, query engines, RAG workflows</td><td>Chunking quality, index freshness, retrieval confidence</td></tr>
+<tr><td>Transformers</td><td>Model API and compatibility backbone</td><td>Model experimentation, tokenizer/model loading, pipelines, training utilities</td><td>Runtime performance, artifact trust, remote code, memory use</td></tr>
+<tr><td>vLLM</td><td>High-throughput LLM serving runtime</td><td>Token throughput, concurrent serving, OpenAI-compatible endpoints</td><td>Capacity planning, scheduler behavior, model support, GPU memory</td></tr>
+<tr><td>llama.cpp</td><td>Local and edge inference runtime</td><td>CPU/edge/local serving, quantized models, portable binaries</td><td>Quantization quality, context limits, API exposure, model conversion</td></tr>
+<tr><td>PEFT</td><td>Parameter-efficient fine-tuning</td><td>Domain/task adaptation with adapters instead of full fine-tuning</td><td>Adapter compatibility, unsafe artifacts, evaluation before promotion</td></tr>
+<tr><td>DeepSpeed</td><td>Distributed training optimization</td><td>Large training jobs, ZeRO, memory partitioning, checkpoint scale</td><td>Cluster reliability, optimizer state, checkpoint recovery</td></tr>
+<tr><td>Qdrant</td><td>Vector database with strong search and operations model</td><td>Durable vector search, payload filtering, sharding, distributed operation</td><td>WAL/segment recovery, filter correctness, tenancy boundaries</td></tr>
+<tr><td>Chroma</td><td>Developer-friendly vector database and RAG store</td><td>Local/server RAG development and Python-first workflows</td><td>Mode selection, persistence settings, distributed maturity</td></tr>
+<tr><td>Langfuse</td><td>LLM tracing, prompt, dataset, evaluation, feedback platform</td><td>Product teams need trace and score visibility</td><td>PII retention, project isolation, ClickHouse/Postgres operations</td></tr>
+<tr><td>Phoenix</td><td>LLM observability and evaluation</td><td>Trace analysis, datasets, annotations, evaluators</td><td>Auth, evaluator safety, trace volume, database isolation</td></tr>
+<tr><td>MLflow</td><td>Experiment tracking, model registry, artifacts</td><td>You need ML lifecycle lineage across experiments and models</td><td>Artifact access, auth, registry policy, tracking server security</td></tr>
+<tr><td>TruLens</td><td>Feedback functions and LLM app evaluation</td><td>You need groundedness, relevance, and app-level eval checks</td><td>Eval cost, feedback calibration, metric misuse</td></tr>
+<tr><td>MCP Servers</td><td>Reference tool server patterns</td><td>You need tool contracts between models/clients and external systems</td><td>Least privilege, schema quality, sandboxing, audit logs</td></tr>
+<tr><td>Open WebUI</td><td>Self-hosted AI workspace and provider gateway</td><td>You need a UI, model routing, RAG, tools, admin controls</td><td>Admin boundary, tool execution, provider secrets, CORS/auth</td></tr>
+</tbody></table></div>
+<h2 id="decision-guide">Decision Guide</h2>
+<div class="mermaid">flowchart TB
+  Start[Architecture question] --&gt; AppQ{Need app orchestration?}
+  AppQ --&gt;|Yes| AgentChoice{Main control model}
+  AgentChoice --&gt;|Agent SDK| OA
+  AgentChoice --&gt;|Workflow graph| LC
+  AgentChoice --&gt;|Multi-agent team| AG
+  AgentChoice --&gt;|RAG/query engine| LI
+  Start --&gt; RuntimeQ{Need model runtime?}
+  RuntimeQ --&gt;|Compatibility| HF
+  RuntimeQ --&gt;|Throughput| VLLM
+  RuntimeQ --&gt;|Local/edge| LCPP
+  Start --&gt; DataQ{Need knowledge retrieval?}
+  DataQ --&gt;|Operational vector DB| QD
+  DataQ --&gt;|Developer-friendly RAG store| CH
+  Start --&gt; EvalQ{Need evidence loop?}
+  EvalQ --&gt;|LLM traces| LF
+  EvalQ --&gt;|Observability/evals| PX
+  EvalQ --&gt;|Experiment lineage| MF
+  EvalQ --&gt;|Feedback metrics| TL</div>
+<h2 id="cross-cutting-production-risks">Cross-Cutting Production Risks</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Risk</th><th>Appears In</th><th>Architecture Response</th></tr></thead>
+<tbody>
+<tr><td>Tool side effects</td><td>Agents, AutoGen, MCP servers, Open WebUI</td><td>Use explicit schemas, approvals, audit logs, sandboxing, and least privilege.</td></tr>
+<tr><td>Model artifact trust</td><td>Transformers, PEFT, llama.cpp, vLLM</td><td>Pin artifacts, prefer safe formats, review remote code, track provenance.</td></tr>
+<tr><td>Retrieval drift</td><td>LlamaIndex, LangChain, Qdrant, Chroma</td><td>Version embeddings, chunks, metadata, and query configs; evaluate retrieval separately.</td></tr>
+<tr><td>Trace and PII exposure</td><td>Langfuse, Phoenix, TruLens, MLflow</td><td>Redact inputs, define retention, isolate tenants, encrypt secrets.</td></tr>
+<tr><td>Serving overload</td><td>vLLM, llama.cpp, Open WebUI</td><td>Add admission control, capacity metrics, scaling policy, fallback routing.</td></tr>
+<tr><td>Training irreproducibility</td><td>PEFT, DeepSpeed, MLflow</td><td>Track dataset, seed, config, checkpoint, adapter, tokenizer, and evaluation run.</td></tr>
+</tbody></table></div>
+<h2 id="how-to-use-the-atlas-in-design-reviews">How To Use The Atlas In Design Reviews</h2>
+<ol>
+<li>Start from the product workflow, not from a favorite library.</li>
+<li>Assign each requirement to a layer.</li>
+<li>Use the matrix to identify candidate repositories.</li>
+<li>Check the deep-dive docs for source tree, extension points, and failure modes.</li>
+<li>Document why each rejected alternative was rejected.</li>
+<li>Define the evidence required to revisit the decision later.</li>
+</ol>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

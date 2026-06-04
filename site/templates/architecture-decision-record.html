@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Architecture Decision Record | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../learn/en/index.html">English</a>
+        <a href="../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../learn/en/curriculum.html">Curriculum</a>
+        <a href="index.html">Toolkit</a>
+        <a href="../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../learn/en/index.html">English course</a>
+      <a href="../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../learn/en/curriculum.html">Curriculum</a>
+      <a href="../learn/en/projects.html">Projects</a>
+      <a href="index.html">Architecture toolkit</a>
+      <a href="../capstone/index.html">Capstone</a>
+      <a href="../assessments/index.html">Assessments</a>
+      <a href="../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/templates/architecture-decision-record.md">View source</a>
+      <h1 id="architecture-decision-record">Architecture Decision Record</h1>
+<h2 id="decision">Decision</h2>
+<p>Short name:</p>
+<p>Status: Proposed / Accepted / Deprecated / Superseded</p>
+<p>Date:</p>
+<p>Owner:</p>
+<h2 id="context">Context</h2>
+<p>Describe the product workflow, users, operating environment, and constraints.</p>
+<p>Key constraints:</p>
+<ul>
+<li>Latency:</li>
+<li>Throughput:</li>
+<li>Cost:</li>
+<li>Security:</li>
+<li>Data residency:</li>
+<li>Model/provider constraints:</li>
+<li>Team skill constraints:</li>
+</ul>
+<h2 id="options-considered">Options Considered</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Option</th><th>Description</th><th>Strengths</th><th>Weaknesses</th><th>Decision</th></tr></thead>
+<tbody>
+<tr><td>Option A</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Option B</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Option C</td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h2 id="chosen-architecture">Chosen Architecture</h2>
+<div class="mermaid">flowchart LR
+  User[User workflow] --&gt; App[Application boundary]
+  App --&gt; Agent[Agent or workflow layer]
+  Agent --&gt; Runtime[Model runtime]
+  Agent --&gt; Retrieval[Retrieval/data plane]
+  Agent --&gt; Tools[Tools/API actions]
+  Agent --&gt; Observability[Tracing and evaluation]
+  Observability --&gt; Gate[Promotion gate]</div>
+<h2 id="consequences">Consequences</h2>
+<p>Positive consequences:</p>
+<p>-</p>
+<p>Trade-offs accepted:</p>
+<p>-</p>
+<p>Operational consequences:</p>
+<p>-</p>
+<h2 id="evidence-required">Evidence Required</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Claim</th><th>Evidence</th><th>Owner</th><th>Due Date</th></tr></thead>
+<tbody>
+<tr><td>Quality improves</td><td>Evaluation dataset and score delta</td><td></td><td></td></tr>
+<tr><td>Latency is acceptable</td><td>Load test and p95/p99 results</td><td></td><td></td></tr>
+<tr><td>Retrieval is grounded</td><td>Retrieval eval and citation audit</td><td></td><td></td></tr>
+<tr><td>Tools are safe</td><td>Security/governance review</td><td></td><td></td></tr>
+</tbody></table></div>
+<h2 id="failure-modes">Failure Modes</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Failure Mode</th><th>Detection</th><th>Mitigation</th><th>Rehearsal</th></tr></thead>
+<tbody>
+<tr><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h2 id="review-checklist">Review Checklist</h2>
+<ul>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; The decision maps to a clear architecture layer.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Alternatives are real, not strawmen.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Evidence is measurable.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Security and privacy impact are included.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Rollback path is defined.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Owner and review date are defined.</li>
+</ul>
+<h2 id="filling-guidance">Filling Guidance</h2>
+<p>Write the context in business and engineering terms. A strong context section explains the user workflow, the expected traffic shape, the data classification, the deployment environment, the team constraints, and the reason a decision is needed now. Do not start with a favorite tool. Start with the pressure that the system must survive: latency, cost, compliance, quality, operations, release speed, or integration complexity.</p>
+<p>The options table should include at least one credible rejected alternative. For example, when selecting a RAG design, compare naive keyword search, vector-only retrieval, hybrid retrieval, and agentic retrieval. When selecting serving, compare hosted APIs, vLLM, Transformers, and llama.cpp if they are realistic for the workload. Rejected alternatives should have honest strengths, because a weak comparison makes the final decision look predetermined.</p>
+<p>The evidence section is the most important part of the ADR. Every important claim should be testable. Quality claims need evaluation datasets and reviewer criteria. Latency claims need p50, p95, and p99 targets with realistic input and output token distributions. Security claims need control evidence such as least privilege permissions, trace redaction, secret handling, and audit events. Cost claims need usage assumptions and quota limits.</p>
+<h2 id="review-cadence">Review Cadence</h2>
+<p>Review the ADR when the design moves from prototype to pilot, when the workload changes materially, when a model or runtime is replaced, when a production incident exposes a wrong assumption, or when cost and latency drift outside the accepted envelope. Supersede old ADRs rather than editing history. The goal is to preserve architectural reasoning so future engineers can understand why the current design exists.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

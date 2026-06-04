@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Capstone: Enterprise Knowledge Copilot For Architecture Review | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../learn/en/index.html">English</a>
+        <a href="../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../learn/en/curriculum.html">Curriculum</a>
+        <a href="../templates/index.html">Toolkit</a>
+        <a href="../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../learn/en/index.html">English course</a>
+      <a href="../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../learn/en/curriculum.html">Curriculum</a>
+      <a href="../learn/en/projects.html">Projects</a>
+      <a href="../templates/index.html">Architecture toolkit</a>
+      <a href="index.html">Capstone</a>
+      <a href="../assessments/index.html">Assessments</a>
+      <a href="../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/capstone/README.md">View source</a>
+      <h1 id="capstone-enterprise-knowledge-copilot-for-architecture-review">Capstone: Enterprise Knowledge Copilot For Architecture Review</h1>
+<p>The capstone is a concrete end-to-end AI solution architecture project. It connects all six course domains into one product scenario.</p>
+<h2 id="scenario">Scenario</h2>
+<p>Your organization wants an internal copilot that helps engineers and architects review architecture proposals, design documents, and production readiness plans. The copilot can retrieve internal knowledge, compare designs against architecture standards, call approved tools, produce review notes, and generate a release readiness summary.</p>
+<h2 id="success-criteria">Success Criteria</h2>
+<ul>
+<li>The copilot answers with cited evidence from approved sources.</li>
+<li>Tool calls are governed and auditable.</li>
+<li>Model/runtime choices are justified by latency, cost, and security constraints.</li>
+<li>Evaluation data exists before launch.</li>
+<li>Production readiness has a measurable gate.</li>
+<li>Security review covers prompt injection, data access, traces, tools, and model artifacts.</li>
+</ul>
+<h2 id="milestones">Milestones</h2>
+<div class="mermaid">flowchart TB
+  M1[M1 Product and architecture context] --&gt; M2[M2 Agent and workflow design]
+  M2 --&gt; M3[M3 RAG data contract]
+  M3 --&gt; M4[M4 Runtime and serving plan]
+  M4 --&gt; M5[M5 LLMOps and evaluation gate]
+  M5 --&gt; M6[M6 Security and production readiness]</div>
+<h2 id="required-artifacts">Required Artifacts</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Artifact</th><th>Template</th></tr></thead>
+<tbody>
+<tr><td>Architecture decision record</td><td><a href="../templates/architecture-decision-record.html">ADR</a></td></tr>
+<tr><td>Runtime decision matrix</td><td><a href="../templates/runtime-decision-matrix.html">Runtime Matrix</a></td></tr>
+<tr><td>RAG data contract</td><td><a href="../templates/rag-data-contract.html">RAG Data Contract</a></td></tr>
+<tr><td>LLMOps scorecard</td><td><a href="../templates/llmops-evaluation-scorecard.html">Evaluation Scorecard</a></td></tr>
+<tr><td>Security review</td><td><a href="../templates/security-governance-review.html">Security Review</a></td></tr>
+<tr><td>Production readiness gate</td><td><a href="../templates/production-readiness-checklist.html">Production Checklist</a></td></tr>
+</tbody></table></div>
+<h2 id="suggested-stack">Suggested Stack</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Layer</th><th>Candidate Repositories</th></tr></thead>
+<tbody>
+<tr><td>Agent/workflow</td><td>OpenAI Agents Python, LangChain/LangGraph, LlamaIndex</td></tr>
+<tr><td>Retrieval</td><td>LlamaIndex or LangChain with Qdrant or Chroma</td></tr>
+<tr><td>Model runtime</td><td>Hosted API, vLLM, llama.cpp, or Transformers depending on constraints</td></tr>
+<tr><td>Adaptation</td><td>PEFT if domain style adaptation is needed; DeepSpeed only if scale requires it</td></tr>
+<tr><td>Observability/evaluation</td><td>Langfuse, Phoenix, TruLens, MLflow</td></tr>
+<tr><td>Tool/platform</td><td>MCP servers and Open WebUI for workspace/gateway patterns</td></tr>
+</tbody></table></div>
+<h2 id="architecture-skeleton">Architecture Skeleton</h2>
+<div class="mermaid">flowchart LR
+  User[Engineer or architect] --&gt; UI[Copilot UI]
+  UI --&gt; Orchestrator[Agent/workflow orchestrator]
+  Orchestrator --&gt; Policy[Policy and guardrails]
+  Policy --&gt; Retrieval[RAG query engine]
+  Retrieval --&gt; VectorDB[Vector DB]
+  Retrieval --&gt; Sources[Architecture standards and docs]
+  Policy --&gt; Tools[MCP tools / approved APIs]
+  Policy --&gt; Runtime[Model runtime]
+  Runtime --&gt; Answer[Review answer with citations]
+  Orchestrator --&gt; Trace[Traces, scores, feedback]
+  Trace --&gt; Gate[Evaluation and release gate]</div>
+<h2 id="review-questions">Review Questions</h2>
+<ul>
+<li>Which documents can the copilot access?</li>
+<li>What should happen when retrieval confidence is low?</li>
+<li>Which tool calls require human approval?</li>
+<li>What trace fields are required for incident review?</li>
+<li>What evaluation dataset proves the copilot improves architecture review quality?</li>
+<li>What must be true before the copilot can be used for release decisions?</li>
+</ul>
+<h2 id="vietnamese-summary">Vietnamese Summary</h2>
+<p>Capstone này là bài thiết kế một copilot nội bộ hỗ trợ review kiến trúc. Người học phải thiết kế toàn bộ hệ thống: agent/workflow, RAG, runtime mô hình, evaluation, governance tool, security và production readiness. Đầu ra không phải là demo chat đơn giản, mà là bộ artifact kiến trúc đủ để review trong môi trường enterprise.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

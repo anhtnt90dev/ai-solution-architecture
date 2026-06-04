@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ghi Chú Kiến Trúc Qdrant | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/04-rag-vector-database/qdrant/README.vi.md">View source</a>
+      <h1 id="ghi-ch-ki-n-tr-c-qdrant">Ghi Chú Kiến Trúc Qdrant</h1>
+<h2 id="c-s-ngu-n">Cơ Sở Nguồn</h2>
+<p>Tài liệu này dựa trên việc đọc tĩnh kho mã nguồn tại <code>github-repos/04-rag-vector-database/qdrant</code>. Các tệp và thư mục chính đã được đối chiếu gồm <code>README.md</code>, <code>Cargo.toml</code>, <code>Dockerfile</code>, <code>config/config.yaml</code>, <code>src/main.rs</code>, <code>src/settings.rs</code>, <code>src/startup.rs</code>, <code>src/actix</code>, <code>src/tonic</code>, <code>src/consensus.rs</code>, <code>src/snapshots.rs</code>, <code>lib/storage</code>, <code>lib/collection</code>, <code>lib/shard</code>, <code>lib/segment</code>, <code>lib/sparse</code>, <code>lib/wal</code>, <code>lib/edge</code>, <code>openapi</code>, và <code>tests/e2e_tests</code>.</p>
+<h2 id="t-m-t-t-i-u-h-nh">Tóm Tắt Điều Hành</h2>
+<p>Qdrant là cơ sở dữ liệu vector và công cụ tìm kiếm vector viết bằng Rust, hướng tới các ứng dụng AI thế hệ mới. Trong kiến trúc RAG, Qdrant đóng vai trò tầng truy xuất bền vững: lưu embeddings, payload metadata, sparse vectors, multivectors, trạng thái vận hành, và phục vụ truy vấn nearest-neighbor có độ trễ thấp qua REST và gRPC.</p>
+<p>Kho mã nguồn được tổ chức như một Rust workspace. Binary chính trong <code>src/main.rs</code> ghép các phần: cấu hình tiến trình, telemetry, xác thực, API server, consensus cho cluster, dịch vụ chuyển shard, inference, và facade lưu trữ chính. Logic cơ sở dữ liệu nằm ở các crate trong <code>lib/</code>: <code>storage</code> sở hữu <code>TableOfContent</code> và đường dispatch, <code>collection</code> quản lý collection và shard, <code>shard</code> và <code>segment</code> hiện thực dữ liệu/index cục bộ, còn <code>wal</code> cung cấp write-ahead log để khôi phục sau sự cố.</p>
+<p>Về vận hành, Qdrant có thể chạy như một container đơn, như thư viện nhúng cục bộ Qdrant Edge, hoặc như cluster phân tán dùng peer-to-peer gRPC, Raft consensus, shard replication, và shard transfer. Kiến trúc này phù hợp khi hệ thống AI cần retrieval có payload filter, hybrid dense/sparse search, snapshot recovery, multitenancy, TLS, API keys, JWT RBAC, metrics, telemetry, và audit logging.</p>
+<h2 id="b-i-to-n-c-gi-i-quy-t">Bài Toán Được Giải Quyết</h2>
+<p>Embedding model biến tài liệu, chunk, ảnh, hoặc ngữ cảnh người dùng thành vector. Hệ thống RAG sau đó cần một retrieval engine có khả năng:</p>
+<ul>
+<li>Lưu vector record bền vững kèm metadata tùy biến.</li>
+<li>Tìm kiếm bằng dense vector, sparse vector, hoặc nhiều named vector.</li>
+<li>Kết hợp vector similarity với payload filter.</li>
+<li>Giữ latency ổn định khi dữ liệu tăng.</li>
+<li>Cập nhật online mà không cần rebuild toàn bộ index.</li>
+<li>Mở rộng qua nhiều node bằng shard placement, replication, và recovery.</li>
+<li>Cung cấp API ổn định cho application service và SDK.</li>
+<li>Hỗ trợ snapshot, health, metrics, và bảo mật cho vận hành production.</li>
+</ul>
+<p>Qdrant giải quyết bài toán này như một vector database đúng nghĩa, không chỉ là wrapper mỏng quanh ANN index. Điều này thể hiện rõ trong repo: request handling, consensus, collection metadata, shard lifecycle, WAL recovery, segment optimization, vector storage, payload indexing, và API schema đều là module riêng.</p>
+<h2 id="vai-tr-trong-ai-stack">Vai Trò Trong AI Stack</h2>
+<p>Qdrant thường nằm giữa tầng ứng dụng/orchestration và các pipeline embedding:</p>
+<ul>
+<li>Ingestion service gọi embedding provider hoặc local model, rồi upsert points vào Qdrant.</li>
+<li>RAG query service embed câu hỏi người dùng, search Qdrant, áp dụng metadata filter, có thể rerank, rồi đưa context vào LLM.</li>
+<li>Agent dùng Qdrant làm long-term memory, semantic cache, document memory, hoặc index kết quả tool.</li>
+<li>Evaluation pipeline replay query set trên collection để đo recall, latency, filter correctness, và chất lượng retrieval.</li>
+<li>Operation team quản lý Qdrant như một stateful data service với backup, API security, resource budget, và cluster health.</li>
+</ul>
+<p>Qdrant không thay thế embedding model, chunking pipeline, reranker, LLM, hay governance layer. Nó là hệ thống retrieval và vector-state mà các tầng đó phụ thuộc.</p>
+<h2 id="b-n-source-tree">Bản Đồ Source Tree</h2>
+<p>Các khu vực quan trọng trong repo:</p>
+<pre><code class="language-text">qdrant/
+  README.md                         Tổng quan sản phẩm, quick start, tính năng.
+  Cargo.toml                        Rust workspace, binary package, features, crate dependencies.
+  Dockerfile                        Multi-stage build, GPU variants, runtime image, exposed ports.
+  config/config.yaml                Cấu hình mặc định cho service, storage, cluster, TLS, audit, GPU.
+  openapi/                          REST API schema.
+  src/
+    main.rs                         Bootstrap tiến trình và ghép service.
+    settings.rs                     Mô hình cấu hình và layered config loading.
+    startup.rs                      Helper khởi động API server.
+    actix/                          REST API handlers và middleware.
+    tonic/                          gRPC API và service wiring.
+    consensus.rs                    Tích hợp distributed consensus.
+    snapshots.rs                    Snapshot recovery và startup handling.
+    common/                         Auth, telemetry, inference, logging, helper.
+  lib/
+    api/                            Shared API types và gRPC proto definitions.
+    storage/                        TableOfContent, dispatcher, cluster metadata, snapshots.
+    collection/                     Collection, shard holder, replica set, local shard.
+    shard/                          Abstraction mức shard.
+    segment/                        Segment storage, vector indexes, payload index, persistence.
+    sparse/                         Hỗ trợ sparse vector.
+    wal/                            Write-ahead log.
+    edge/                           Qdrant Edge embedded/local shard API.
+    common/, gridstore/, posting_list/, gpu/ Utility và indexing support.
+  tests/
+    e2e_tests/                      End-to-end, TLS, compatibility, snapshot scenarios.</code></pre>
+<h2 id="kh-i-ni-m-c-t-l-i">Khái Niệm Cốt Lõi</h2>
+<h3 id="point">Point</h3>
+<p>Point là đơn vị truy xuất được lưu. Nó thường gồm một hoặc nhiều vector, point identifier, và payload metadata. Trong RAG, một point thường tương ứng với document chunk, vùng ảnh, đoạn transcript, hoặc memory item.</p>
+<h3 id="vector-v-named-vector">Vector và Named Vector</h3>
+<p>Qdrant hỗ trợ dense vector, sparse vector, và nhiều named vector. Named vector cho phép một collection mang nhiều không gian embedding, ví dụ title embedding, body embedding, image embedding, hoặc tách riêng dense và sparse retrieval signals.</p>
+<h3 id="payload">Payload</h3>
+<p>Payload là metadata có cấu trúc gắn với point. Payload index giúp Qdrant filter theo tenant, loại tài liệu, thời gian, access group, ngôn ngữ, hoặc source system.</p>
+<h3 id="collection">Collection</h3>
+<p>Crate <code>lib/collection</code> xem collection là tập point có cùng cấu hình vector và payload schema. Collection sở hữu shard metadata, optimizers, runtime handles, và callback dùng trong cluster coordination.</p>
+<h3 id="shard-v-replica-set">Shard và Replica Set</h3>
+<p>Collection được chia thành shard. Trong distributed mode, một shard có thể có nhiều replica trên nhiều peer. <code>ShardReplicaSet</code> theo dõi local/remote replicas, replica states, write ordering, transfer state, và routing đọc/ghi.</p>
+<h3 id="local-shard">Local Shard</h3>
+<p><code>LocalShard</code> sở hữu dữ liệu cục bộ của shard: segments, WAL, update pipeline, optimizers, rate limiters, và consistency checks. Đây là cầu nối giữa orchestration mức cluster và storage/index mức segment.</p>
+<h3 id="segment">Segment</h3>
+<p><code>lib/segment</code> hiện thực đơn vị storage và index độc lập. Một segment sở hữu vector storage, vector index, quantized vectors, payload storage, payload index, point versioning, và metadata persistence. Segment optimization là cơ chế Qdrant compact và sắp xếp lại dữ liệu theo thời gian.</p>
+<h3 id="wal">WAL</h3>
+<p>Write-ahead log ghi update trước khi áp dụng vào segment state. Nó là thành phần trung tâm cho crash recovery và quá trình load/repair local shard.</p>
+<h3 id="tableofcontent">TableOfContent</h3>
+<p><code>TableOfContent</code> trong <code>lib/storage/src/content_manager/toc</code> là service object chính của storage. Nó sở hữu các collection đã load, alias persistence, optimizer budget, runtime nội bộ, tham chiếu channel service, và thao tác lifecycle collection.</p>
+<h3 id="dispatcher-v-consensus">Dispatcher và Consensus</h3>
+<p><code>Dispatcher</code> route metadata/update operations qua local execution hoặc distributed consensus. Trong distributed mode, nó đề xuất collection metadata operation qua Raft và chờ đến khi operation dự kiến được áp dụng khi cần.</p>
+<h2 id="s-component-v-h-th-ng">Sơ Đồ Component và Hệ Thống</h2>
+<div class="mermaid">flowchart TB
+    Client[Ứng dụng, SDK, RAG services]
+    Rest[REST API&lt;br/&gt;src/actix]
+    Grpc[gRPC API&lt;br/&gt;src/tonic + lib/api/proto]
+    Auth[Auth, TLS, RBAC, telemetry middleware&lt;br/&gt;src/common]
+    Dispatcher[Dispatcher&lt;br/&gt;lib/storage]
+    Consensus[ConsensusManager / Raft&lt;br/&gt;src/consensus]
+    Toc[TableOfContent&lt;br/&gt;lib/storage/content_manager/toc]
+    Collection[Collection&lt;br/&gt;lib/collection]
+    ShardHolder[ShardHolder]
+    ReplicaSet[ShardReplicaSet]
+    LocalShard[LocalShard]
+    Segment[Segment&lt;br/&gt;lib/segment]
+    Wal[WAL&lt;br/&gt;lib/wal]
+    Payload[Payload storage và payload indexes]
+    Vector[Vector storage, HNSW, sparse, quantization]
+    Snapshot[Snapshots và shard transfer]
+
+    Client --&gt; Rest
+    Client --&gt; Grpc
+    Rest --&gt; Auth
+    Grpc --&gt; Auth
+    Auth --&gt; Dispatcher
+    Dispatcher --&gt; Consensus
+    Dispatcher --&gt; Toc
+    Consensus --&gt; Toc
+    Toc --&gt; Collection
+    Collection --&gt; ShardHolder
+    ShardHolder --&gt; ReplicaSet
+    ReplicaSet --&gt; LocalShard
+    ReplicaSet -. remote peer .-&gt; Grpc
+    LocalShard --&gt; Wal
+    LocalShard --&gt; Segment
+    Segment --&gt; Payload
+    Segment --&gt; Vector
+    Toc --&gt; Snapshot</div>
+<h2 id="ki-n-tr-c-n-i-b">Kiến Trúc Nội Bộ</h2>
+<h3 id="bootstrap-ti-n-tr-nh">Bootstrap Tiến Trình</h3>
+<p><code>src/main.rs</code> là điểm bắt đầu tốt nhất để hiểu cách runtime được ghép. Nó parse CLI options như bootstrap URI, peer URI, snapshot recovery, config path, tắt telemetry, stacktrace, và reinit consensus. Sau đó nó load <code>Settings</code>, khởi tạo feature flags, cấu hình logging và panic hook, kiểm tra khả năng tương thích filesystem, khởi tạo GPU manager nếu bật feature <code>gpu</code>, và khôi phục hoặc khởi tạo persistent consensus state.</p>
+<p>Sau khi cấu hình resource budget, startup tạo peer <code>ChannelService</code>, mở <code>TableOfContent</code>, load collection, tạo <code>Dispatcher</code>, tùy chọn bọc operation bằng consensus, khởi tạo telemetry và request profiling, khởi động inference services, rồi start REST, metrics, và gRPC servers theo cấu hình.</p>
+<h3 id="t-ng-api">Tầng API</h3>
+<p>API surface được tách thành:</p>
+<ul>
+<li><code>src/actix</code>: REST API, static Web UI, middleware, và các quan tâm HTTP.</li>
+<li><code>src/tonic</code>: wiring cho gRPC service.</li>
+<li><code>lib/api</code>: shared API types và protobuf definitions, gồm <code>lib/api/src/grpc/proto/qdrant.proto</code>.</li>
+</ul>
+<p>Service expose cùng các khái niệm database qua nhiều interface phù hợp SDK. REST mặc định ở port <code>6333</code>; gRPC mặc định <code>6334</code>; peer-to-peer cluster mặc định <code>6335</code>.</p>
+<h3 id="t-ng-storage-v-metadata">Tầng Storage và Metadata</h3>
+<p><code>lib/storage</code> là tầng điều phối cơ sở dữ liệu trong một process. <code>TableOfContent</code> sở hữu collection instances và aliases, còn <code>Dispatcher</code> quyết định operation chạy local hay phải qua consensus. Tầng này cũng xử lý create/delete collection, alias management, snapshots, shard transfers, cluster metadata, và runtime budget.</p>
+<h3 id="t-ng-collection">Tầng Collection</h3>
+<p><code>lib/collection</code> sở hữu lifecycle của collection. Nó load collection config, version files, shard distribution, shard state, transfer tasks, optimizers, và telemetry. Các method của collection điều phối read/write qua shard holder và replica set.</p>
+<h3 id="t-ng-shard-v-replica">Tầng Shard và Replica</h3>
+<p>Code replica set mô hình hóa rõ các trạng thái replica như initializing, active, listener, dead, và partial. Nó persist replica state trong <code>replica_state.json</code>, quản lý local/remote shard references, xử lý transfer/recovery callbacks, và áp dụng write ordering rules. Đây là tầng quan trọng cho correctness trong distributed mode.</p>
+<h3 id="t-ng-segment-v-index">Tầng Segment và Index</h3>
+<p><code>lib/segment</code> là nơi có cơ chế storage và search mức point. Một segment kết hợp:</p>
+<ul>
+<li>ID tracking.</li>
+<li>Point versions.</li>
+<li>Dense, sparse, multi-vector, và quantized vector storage.</li>
+<li>Vector indexes.</li>
+<li>Payload storage và payload indexes.</li>
+<li>Segment config, persistence, và error status.</li>
+</ul>
+<p>Tầng trên route operation đến segment; nội bộ segment quyết định cách scan, index, score, filter, và persist.</p>
+<h2 id="lu-ng-runtime-u-cu-i">Luồng Runtime Đầu Cuối</h2>
+<div class="mermaid">sequenceDiagram
+    participant App as Ứng dụng RAG
+    participant API as REST/gRPC API
+    participant Disp as Dispatcher
+    participant Toc as TableOfContent
+    participant Coll as Collection
+    participant Rep as ShardReplicaSet
+    participant Local as LocalShard
+    participant Seg as Segment indexes/storage
+
+    App-&gt;&gt;API: Upsert points với vectors và payload
+    API-&gt;&gt;Disp: Validate auth và request schema
+    Disp-&gt;&gt;Toc: Route update hoặc propose metadata op
+    Toc-&gt;&gt;Coll: Resolve collection và shard placement
+    Coll-&gt;&gt;Rep: Apply write đến replicas cần thiết
+    Rep-&gt;&gt;Local: Queue local update
+    Local-&gt;&gt;Local: Append WAL và track sequence
+    Local-&gt;&gt;Seg: Apply update vào segment state
+    App-&gt;&gt;API: Search/query vector với filters
+    API-&gt;&gt;Disp: Validate và normalize query
+    Disp-&gt;&gt;Toc: Resolve collection
+    Toc-&gt;&gt;Coll: Fan out đến shards
+    Coll-&gt;&gt;Rep: Chọn local hoặc remote replica
+    Rep-&gt;&gt;Local: Execute search nếu local
+    Local-&gt;&gt;Seg: Score vectors và evaluate payload filters
+    Seg--&gt;&gt;App: Nearest points kèm payload/vector nếu được yêu cầu</div>
+<h3 id="lu-ng-ghi">Luồng Ghi</h3>
+<p>Với point upsert, API handler validate request và authorization context, sau đó gửi operation qua dispatcher và cây collection. Local shard ghi vào WAL trước khi áp dụng vào segment state. Trong replicated collection, replica set điều phối write giữa local và remote replicas theo consistency rules của collection/shard.</p>
+<h3 id="lu-ng-truy-v-n">Luồng Truy Vấn</h3>
+<p>Với vector search, tầng API parse query, filters, vector names, limits, và read consistency. Collection logic chọn target shards, replica set chọn local hoặc remote replicas, và local shard thực thi scoring trên segment indexes. Payload index giảm candidate set khi filter có tính chọn lọc; vector index tăng tốc nearest-neighbor lookup; tầng trên merge kết quả của segment.</p>
+<h3 id="lu-ng-startup-v-recovery">Luồng Startup và Recovery</h3>
+<p>Khi startup, Qdrant load settings từ layered config, chuẩn bị runtime budget, mở persistent state, recover snapshots nếu được yêu cầu, khởi tạo hoặc join cluster consensus, load tất cả collection vào <code>TableOfContent</code>, và start API servers. Local shard loading đọc segment directories, WAL state, payload schema, optimizer state, và có đường repair cho segment file không nhất quán hoặc cũ.</p>
+<h2 id="topology-tri-n-khai-v-v-n-h-nh">Topology Triển Khai và Vận Hành</h2>
+<div class="mermaid">flowchart LR
+    subgraph Clients
+        SDK[Python/JS/Go/Rust/.NET/Java SDKs]
+        RAG[RAG và agent services]
+        Ops[Admin và backup jobs]
+    end
+
+    subgraph NodeA[Qdrant node A]
+        AHttp[REST 6333]
+        AGrpc[gRPC 6334]
+        AP2P[P2P 6335]
+        AStore[(storage path)]
+        ASnap[(snapshots)]
+        AMetrics[metrics port]
+    end
+
+    subgraph NodeB[Qdrant node B]
+        BHttp[REST 6333]
+        BGrpc[gRPC 6334]
+        BP2P[P2P 6335]
+        BStore[(storage path)]
+        BSnap[(snapshots)]
+        BMetrics[metrics port]
+    end
+
+    subgraph NodeC[Qdrant node C]
+        CHttp[REST 6333]
+        CGrpc[gRPC 6334]
+        CP2P[P2P 6335]
+        CStore[(storage path)]
+        CSnap[(snapshots)]
+        CMetrics[metrics port]
+    end
+
+    SDK --&gt; AHttp
+    RAG --&gt; AGrpc
+    Ops --&gt; AHttp
+    AP2P &lt;--&gt; BP2P
+    BP2P &lt;--&gt; CP2P
+    CP2P &lt;--&gt; AP2P
+    AMetrics --&gt; Prom[Prometheus hoặc metrics collector]
+    BMetrics --&gt; Prom
+    CMetrics --&gt; Prom</div>
+<h3 id="single-node">Single Node</h3>
+<p>Quick start trong <code>README.md</code> chạy một Docker container expose port <code>6333</code>. Đây là chế độ đơn giản nhất cho local development, demo, và deployment nhỏ. Bên trong, nó vẫn dùng cùng kiến trúc collection, shard, WAL, segment, và snapshot.</p>
+<h3 id="distributed-cluster">Distributed Cluster</h3>
+<p>Distributed mode thêm peer discovery, metadata consensus bằng Raft, shard distribution, replica sets, và peer-to-peer communication. Cấu hình cluster nằm dưới <code>cluster</code> trong <code>config/config.yaml</code>; peer service mặc định ở port <code>6335</code>.</p>
+<h3 id="container-image">Container Image</h3>
+<p><code>Dockerfile</code> cho thấy multi-stage Rust build, optional GPU build variants, SBOM generation, static Web UI assets, runtime config, và REST/gRPC exposed ports. Runtime image đặt <code>RUN_MODE=production</code> và copy <code>config/production.yaml</code>.</p>
+<h3 id="qdrant-edge">Qdrant Edge</h3>
+<p><code>lib/edge</code> là mô hình triển khai embedded/local riêng. Nó expose Rust và Python APIs cho use case local shard và đồng bộ với Qdrant server. Hướng này phù hợp với edge devices, local-first applications, hoặc kiến trúc cần offline retrieval rồi sync về trung tâm.</p>
+<h2 id="s-lifecycle-v-quy-t-nh">Sơ Đồ Lifecycle và Quyết Định</h2>
+<div class="mermaid">stateDiagram-v2
+    [*] --&gt; ProcessStart
+    ProcessStart --&gt; LoadSettings
+    LoadSettings --&gt; InitTelemetryAndSecurity
+    InitTelemetryAndSecurity --&gt; RecoverConsensus
+    RecoverConsensus --&gt; LoadCollections
+    LoadCollections --&gt; StartApis
+    StartApis --&gt; Serving
+
+    Serving --&gt; LocalMetadataOp: metadata change single node
+    Serving --&gt; ConsensusProposal: metadata change distributed
+    ConsensusProposal --&gt; ApplyCommittedOp
+    LocalMetadataOp --&gt; ApplyCommittedOp
+    ApplyCommittedOp --&gt; Serving
+
+    Serving --&gt; SnapshotRecovery: snapshot requested
+    SnapshotRecovery --&gt; LoadCollections
+
+    Serving --&gt; GracefulShutdown
+    GracefulShutdown --&gt; [*]</div>
+<div class="mermaid">flowchart TD
+    Request[Incoming operation]
+    IsMeta{Collection metadata operation?}
+    Distributed{Distributed mode enabled?}
+    Consensus[Propose qua Raft consensus]
+    LocalToc[Execute qua TableOfContent]
+    IsWrite{Point write?}
+    Replica[Route qua ShardReplicaSet]
+    Wal[Append WAL]
+    Segment[Apply vào segment]
+    IsSearch{Search/query?}
+    SelectReplica[Chọn local hoặc remote replica]
+    Score[Score vector candidates và filter payload]
+
+    Request --&gt; IsMeta
+    IsMeta -- yes --&gt; Distributed
+    Distributed -- yes --&gt; Consensus --&gt; LocalToc
+    Distributed -- no --&gt; LocalToc
+    IsMeta -- no --&gt; LocalToc
+    LocalToc --&gt; IsWrite
+    IsWrite -- yes --&gt; Replica --&gt; Wal --&gt; Segment
+    IsWrite -- no --&gt; IsSearch
+    IsSearch -- yes --&gt; SelectReplica --&gt; Score</div>
+<h2 id="i-m-m-r-ng">Điểm Mở Rộng</h2>
+<p>Qdrant không phải hệ thống plugin thuần túy; các điểm mở rộng chủ yếu nằm ở API, configuration, và ranh giới crate:</p>
+<ul>
+<li>REST và gRPC APIs trong <code>src/actix</code>, <code>src/tonic</code>, <code>openapi</code>, và <code>lib/api</code>.</li>
+<li>Client SDKs được liệt kê trong <code>README.md</code>: Python, JavaScript/TypeScript, Go, Rust, .NET, Java, và PHP cộng đồng.</li>
+<li>Collection configuration cho vectors, named vectors, sparse vectors, quantization, sharding, replication, optimizers, HNSW, on-disk payload, và strict mode.</li>
+<li>Payload schema và payload indexes cho filter đặc thù của ứng dụng.</li>
+<li>Snapshot và recovery workflows để tích hợp backup/restore.</li>
+<li>Metrics và telemetry hooks cho monitoring platform.</li>
+<li>TLS, API keys, read-only API keys, JWT RBAC, và internal-auth settings cho security integration.</li>
+<li>GPU feature gates và GPU indexing settings trong <code>GpuConfig</code>.</li>
+<li><code>lib/edge</code> cho use case embedded/local.</li>
+</ul>
+<h2 id="t-ch-h-p">Tích Hợp</h2>
+<p>Các mẫu tích hợp phổ biến:</p>
+<ul>
+<li><strong>Embedding providers:</strong> Application tạo embeddings bằng OpenAI, Azure OpenAI, local models, Hugging Face, hoặc provider khác, rồi ghi vectors vào Qdrant.</li>
+<li><strong>RAG frameworks:</strong> LangChain, LlamaIndex, Haystack, Semantic Kernel, và custom orchestrators dùng Qdrant như vector store.</li>
+<li><strong>Model serving:</strong> Qdrant nằm cạnh reranker, cross-encoder, hoặc LLM gateway. Nó trả về context candidates; service khác quyết định answer composition.</li>
+<li><strong>Observability:</strong> Metrics endpoint và telemetry có thể đưa vào Prometheus-compatible hoặc monitoring tập trung.</li>
+<li><strong>Kubernetes/stateful platforms:</strong> Qdrant có thể chạy như stateful workload với persistent volumes, service discovery, TLS, và backup jobs.</li>
+<li><strong>Edge deployments:</strong> Qdrant Edge hỗ trợ local retrieval và thiết kế sync-oriented.</li>
+</ul>
+<h2 id="c-u-h-nh-tri-n-khai-v-n-h-nh">Cấu Hình, Triển Khai, Vận Hành</h2>
+<h3 id="configuration-loading">Configuration Loading</h3>
+<p><code>src/settings.rs</code> load cấu hình từ embedded defaults, <code>config/config.yaml</code>, file theo mode như <code>config/{RUN_MODE}</code>, local overrides, debian package config, <code>--config-path</code> từ CLI, và environment variables. Environment variables dùng prefix <code>QDRANT</code> và separator <code>__</code>.</p>
+<h3 id="thi-t-l-p-quan-tr-ng">Thiết Lập Quan Trọng</h3>
+<p>Từ <code>config/config.yaml</code> và <code>src/settings.rs</code>:</p>
+<ul>
+<li><code>storage.storage_path</code>, <code>snapshots_path</code>, và <code>temp_path</code> điều khiển vị trí state.</li>
+<li><code>storage.on_disk_payload</code> quyết định payload data có lưu trên disk hay không.</li>
+<li>WAL capacity và segment optimizer settings điều khiển update/compaction behavior.</li>
+<li>HNSW defaults gồm <code>m</code>, <code>ef_construct</code>, <code>full_scan_threshold_kb</code>, indexing threads, và on-disk mode.</li>
+<li>Collection defaults gồm replication factor, write consistency, vector storage defaults, quantization defaults, và strict mode.</li>
+<li><code>service.host</code>, <code>http_port</code>, <code>grpc_port</code>, và optional <code>metrics_port</code> điều khiển network listeners.</li>
+<li><code>service.api_key</code>, <code>read_only_api_key</code>, <code>jwt_rbac</code>, và <code>enforce_internal_auth</code> điều khiển authentication/authorization.</li>
+<li><code>tls</code> điều khiển service certificate, key, CA certificate, và reload TTL.</li>
+<li><code>cluster</code> điều khiển peer-to-peer port và consensus settings.</li>
+<li><code>gpu</code> điều khiển optional GPU indexing.</li>
+<li><code>audit</code> điều khiển audit logging và forwarded-header handling.</li>
+</ul>
+<h3 id="h-ng-d-n-v-n-h-nh">Hướng Dẫn Vận Hành</h3>
+<ul>
+<li>Xem <code>storage_path</code> và <code>snapshots_path</code> là stateful data, không phải filesystem tạm của container.</li>
+<li>Bật API authentication trước khi expose REST/gRPC ra ngoài trusted network. <code>README.md</code> cảnh báo lệnh Docker quick-start là insecure nếu không có authentication.</li>
+<li>Monitor disk, file descriptors, CPU, memory, vector index build pressure, WAL growth, và optimizer backlog.</li>
+<li>Dùng snapshots cho backup, migration, và disaster recovery. Cần test restore, không chỉ test tạo snapshot.</li>
+<li>Với distributed deployments, xác định shard count, replication factor, và write consistency trước khi có production load.</li>
+<li>Validate payload index design theo filter thực tế; filter không index hoặc độ chọn lọc thấp có thể tăng chi phí query.</li>
+<li>Lập capacity theo vector dimensionality, số vector trên mỗi point, payload size, quantization, on-disk settings, và replication.</li>
+</ul>
+<h2 id="observability-testing-evaluation-v-failure-modes">Observability, Testing, Evaluation, và Failure Modes</h2>
+<h3 id="observability">Observability</h3>
+<p>Qdrant có telemetry và metrics trong <code>src/main.rs</code>, <code>src/common</code>, settings, và service startup. Các control liên quan gồm metrics port, hardware reporting, slow query logging, tắt telemetry, request profiling, audit logging, và panic/stacktrace configuration.</p>
+<p>Dashboard vận hành nên theo dõi:</p>
+<ul>
+<li>Request rate, latency, error rate, và slow queries.</li>
+<li>Search latency theo collection và filter type.</li>
+<li>WAL và segment growth.</li>
+<li>Optimizer activity và pending compactions.</li>
+<li>Replica state, shard transfers, và consensus health.</li>
+<li>Disk usage, memory usage, file descriptors, CPU, và GPU nếu bật.</li>
+<li>Snapshot creation, restore, và transfer failures.</li>
+</ul>
+<h3 id="testing">Testing</h3>
+<p>Repo có nhiều test, các điểm bắt đầu hữu ích:</p>
+<ul>
+<li><code>tests/e2e_tests</code> cho end-to-end API, TLS, compatibility, và snapshot scenarios.</li>
+<li><code>lib/collection</code> tests cho collection và shard behavior.</li>
+<li><code>lib/segment</code> tests cho vector storage, payload indexing, và segment behavior.</li>
+<li><code>lib/storage</code> tests cho metadata và content-manager behavior.</li>
+<li>gRPC và OpenAPI definitions trong <code>lib/api</code> và <code>openapi</code>.</li>
+</ul>
+<p>Với workload RAG, nên bổ sung retrieval evaluation ngoài repo tests: recall@k, MRR/NDCG, filter correctness, latency percentiles, update freshness, và khả năng đúng sau restart/snapshot restore.</p>
+<h3 id="failure-modes">Failure Modes</h3>
+<p>Các failure modes cần thiết kế trước:</p>
+<ul>
+<li><strong>Bảo mật sai cấu hình:</strong> REST/gRPC public không có API keys, JWT RBAC, hoặc TLS.</li>
+<li><strong>Áp lực disk:</strong> Segment, WAL, và snapshot growth có thể làm đầy volume.</li>
+<li><strong>Payload filter drift:</strong> Application filters phụ thuộc metadata keys bị thiếu, chưa index, hoặc không nhất quán giữa ingestion jobs.</li>
+<li><strong>Replica divergence:</strong> Distributed deployments cần monitor replica state dead, partial, hoặc transferring.</li>
+<li><strong>Consensus instability:</strong> Network partition hoặc peer config sai có thể chặn metadata operations.</li>
+<li><strong>Index build dài:</strong> Import collection lớn có thể tạo optimizer pressure và ảnh hưởng latency.</li>
+<li><strong>Snapshot restore mismatch:</strong> Restore vào version/storage layout không tương thích cần compatibility testing.</li>
+<li><strong>Resource overcommit:</strong> Dense vectors, multivectors, sparse indexes, và quantization ảnh hưởng RAM, disk, CPU theo cách khác nhau.</li>
+</ul>
+<h2 id="r-i-ro-b-o-m-t-v-governance">Rủi Ro Bảo Mật và Governance</h2>
+<ul>
+<li><strong>Tenant isolation:</strong> Nếu nhiều tenant dùng chung collection, payload filter không nên là security boundary duy nhất trừ khi được enforce nhất quán trong application và được test.</li>
+<li><strong>Key management:</strong> API keys, read-only keys, TLS private keys, và JWT secrets phải nằm ngoài source control và có quy trình rotate.</li>
+<li><strong>Transport security:</strong> Bật TLS và validate trust giữa client/server khi qua untrusted network.</li>
+<li><strong>Authorization design:</strong> JWT RBAC và read-only keys cần map vào role vận hành rõ ràng, không chỉ bật/tắt chung.</li>
+<li><strong>Data retention:</strong> Vector có thể rò rỉ thông tin semantic của source document. Deletion, snapshot retention, và backup lifecycle phải khớp governance policies.</li>
+<li><strong>Audit logging:</strong> Audit settings tồn tại, nhưng logs cần được thu thập, bảo vệ, và review. Cần thận trọng với forwarded headers; <code>config/config.yaml</code> có cảnh báo về việc trust chúng.</li>
+<li><strong>Model governance:</strong> Đổi embedding model có thể làm vector space cũ không tương thích. Nên lưu embedding model/version metadata và lập kế hoạch migration.</li>
+</ul>
+<h2 id="h-ng-d-n-c-m-ngu-n">Hướng Dẫn Đọc Mã Nguồn</h2>
+<p>Thứ tự đề xuất cho senior engineer:</p>
+<ol>
+<li><code>README.md</code> để nắm capabilities và APIs.</li>
+<li><code>Cargo.toml</code> để hiểu workspace boundary và feature flags.</li>
+<li><code>config/config.yaml</code> và <code>src/settings.rs</code> để hiểu hình dạng vận hành.</li>
+<li><code>src/main.rs</code> để xem process bootstrap và service wiring.</li>
+<li><code>src/actix</code>, <code>src/tonic</code>, và <code>lib/api</code> để hiểu API boundaries.</li>
+<li><code>lib/storage/src/content_manager/toc</code> và <code>lib/storage/src/dispatcher.rs</code> để hiểu operation routing.</li>
+<li><code>lib/collection/src/collection</code>, <code>lib/collection/src/shards/replica_set</code>, và <code>lib/collection/src/shards/local_shard</code> để hiểu collection/shard behavior.</li>
+<li><code>lib/segment</code> để hiểu storage, payload, và vector index internals.</li>
+<li><code>tests/e2e_tests</code> để xem behavior hướng deployment và compatibility expectations.</li>
+<li><code>lib/edge</code> nếu kiến trúc mục tiêu cần embedded retrieval cục bộ.</li>
+</ol>
+<h2 id="l-tr-nh-h-c">Lộ Trình Học</h2>
+<ol>
+<li>Chạy single-node container trong môi trường dev riêng và tạo collection có một dense vector.</li>
+<li>Thêm payload filters và payload indexes, so sánh query có/không filter về latency.</li>
+<li>Thêm named vector thứ hai hoặc sparse vector để hiểu hybrid retrieval design.</li>
+<li>Đọc <code>LocalShard</code> loading và WAL code để hiểu durability.</li>
+<li>Đọc segment vector storage và payload index modules để hiểu performance tradeoffs.</li>
+<li>Cấu hình snapshots và test restore vào instance mới.</li>
+<li>Nghiên cứu distributed settings, replica-set state, và consensus flow trước khi thiết kế cluster.</li>
+<li>Thêm retrieval evaluation riêng cho workload bằng query set có nhãn relevant chunks.</li>
+</ol>
+<h2 id="b-ng-thu-t-ng">Bảng Thuật Ngữ</h2>
+<ul>
+<li><strong>ANN:</strong> Approximate nearest-neighbor search, dùng để lấy vectors gần query vector.</li>
+<li><strong>Collection:</strong> Container logic cho points có chung cấu hình vector và payload.</li>
+<li><strong>Consensus:</strong> Cơ chế đồng thuận cluster cho distributed metadata operations.</li>
+<li><strong>Dispatcher:</strong> Router tầng storage chọn local execution hoặc consensus-backed execution.</li>
+<li><strong>HNSW:</strong> Hierarchical Navigable Small World graph index cho vector search.</li>
+<li><strong>LocalShard:</strong> Hiện thực shard cục bộ với WAL, segments, updates, và optimizers.</li>
+<li><strong>Payload:</strong> Metadata gắn với point, dùng cho filter hoặc trả về context.</li>
+<li><strong>Point:</strong> Vector record được lưu, thường đại diện cho RAG chunk/item.</li>
+<li><strong>Quantization:</strong> Kỹ thuật nén để giảm footprint RAM hoặc disk của vector.</li>
+<li><strong>Replica Set:</strong> Nhóm local và remote replicas cho một shard.</li>
+<li><strong>Segment:</strong> Đơn vị storage và index mức thấp trong local shard.</li>
+<li><strong>Shard:</strong> Phân vùng của collection.</li>
+<li><strong>Snapshot:</strong> Artifact backup cho collection hoặc storage state.</li>
+<li><strong>Sparse Vector:</strong> Vector representation cho lexical hoặc sparse retrieval signals.</li>
+<li><strong>TableOfContent:</strong> Facade storage chính trong process, sở hữu loaded collections.</li>
+<li><strong>WAL:</strong> Write-ahead log dùng cho durable update recovery.</li>
+</ul>
+<h2 id="ph-l-c-deep-dive-m-h-nh-v-n-h-nh-b-m-theo-repository">Phụ Lục Deep-Dive: Mô Hình Vận Hành Bám Theo Repository</h2>
+<p>Phần này giúp kiến trúc sư đọc Qdrant như một storage engine có thể chạy cluster, thay vì chỉ xem nó là một vector database. Khi đọc mã nguồn, nên mở song song <code>github-repos/04-rag-vector-database/qdrant/src/main.rs</code> cho entry point, <code>src/startup.rs</code> và <code>src/settings.rs</code> cho quá trình dựng runtime, <code>src/actix/api/</code> và <code>src/tonic/api/</code> cho REST/gRPC, <code>lib/storage/src/content_manager/toc/</code> cho facade lưu trữ, <code>lib/collection/src/shards/local_shard/</code> cho hành vi local shard, <code>lib/segment/src/index/</code> cho vector/payload indexes, <code>lib/wal/src/</code> cho durability, và <code>openapi/</code> cho contract REST công khai.</p>
+<div class="mermaid">flowchart LR
+  Client[&quot;RAG app hoặc SDK client&quot;] --&gt; Rest[&quot;REST handlers src/actix/api&quot;]
+  Client --&gt; Grpc[&quot;gRPC handlers src/tonic/api&quot;]
+  Rest --&gt; Auth[&quot;auth, telemetry, validation&quot;]
+  Grpc --&gt; Auth
+  Auth --&gt; Toc[&quot;TableOfContent lib/storage/src/content_manager/toc&quot;]
+  Toc --&gt; Collection[&quot;collection orchestration lib/collection/src&quot;]
+  Collection --&gt; LocalShard[&quot;local shard lib/collection/src/shards/local_shard&quot;]
+  Collection --&gt; RemoteShard[&quot;remote shard / replica path&quot;]
+  LocalShard --&gt; Wal[&quot;WAL lib/wal/src&quot;]
+  LocalShard --&gt; Segment[&quot;segments lib/segment/src&quot;]
+  Segment --&gt; VectorIndex[&quot;HNSW, sparse, plain vector indexes&quot;]
+  Segment --&gt; PayloadIndex[&quot;payload indexes và filters&quot;]
+  Toc --&gt; Snapshots[&quot;snapshot và transfer logic&quot;]</div>
+<p>Điểm căng chính của kiến trúc không chỉ là tốc độ nearest-neighbor. Qdrant phải cân bằng durability khi ingest, áp lực optimizer, độ mới của kết quả query, consistency giữa replicas và footprint bộ nhớ. Cấu trúc thư mục thể hiện ranh giới này khá rõ: handler API không sở hữu cơ chế storage; <code>TableOfContent</code> route thao tác collection; collection sở hữu topology shard; local shard sở hữu WAL, segment mutation, snapshot và telemetry; segment sở hữu cấu trúc vector/payload cấp thấp. Nhờ vậy Qdrant có thể hỗ trợ single-node và distributed mà không buộc mọi handler phải hiểu consensus, compaction hoặc HNSW internals.</p>
+<h3 id="checkpoint-v-durability-v-consistency-khi-runtime">Checkpoint Về Durability và Consistency Khi Runtime</h3>
+<div class="mermaid">sequenceDiagram
+  participant App as Ung dung client
+  participant API as REST hoac gRPC API
+  participant TOC as TableOfContent
+  participant Shard as LocalShard
+  participant WAL as Write-ahead log
+  participant Seg as Segment storage
+  participant Opt as Optimizer workers
+  App-&gt;&gt;API: upsert/delete/update points
+  API-&gt;&gt;TOC: validate collection va route operation
+  TOC-&gt;&gt;Shard: apply update theo ordering policy
+  Shard-&gt;&gt;WAL: append durable operation
+  WAL--&gt;&gt;Shard: operation da persist
+  Shard-&gt;&gt;Seg: apply vao mutable segment state
+  Shard--&gt;&gt;TOC: acknowledge theo wait/ordering mode
+  TOC--&gt;&gt;API: response
+  Opt-&gt;&gt;Seg: compact, index, quantize hoac flush sau do</div>
+<p>Khi review production, cần kiểm tra semantics ghi của ứng dụng có khớp với lựa chọn wait và ordering của Qdrant hay không. Một pipeline ingest RAG acknowledge chunk trước khi WAL persist hoặc trước khi replica transfer sẽ có rủi ro khác với pipeline chặn đến khi update visible. Các đường code cần đọc nằm ở <code>local_shard/wal_ops.rs</code>, <code>local_shard/updaters.rs</code>, <code>local_shard/query.rs</code> và dispatcher storage trong <code>lib/storage/src/dispatcher.rs</code>. Cách đọc đúng là trace một mutation, rồi một query, rồi một đường snapshot recovery; nếu không rất dễ nhầm API shape với durability semantics.</p>
+<h3 id="b-n-failure-mode">Bản Đồ Failure Mode</h3>
+<div class="mermaid">flowchart TD
+  Risk[&quot;Rui ro production&quot;] --&gt; Disk[&quot;Ap luc disk&quot;]
+  Risk --&gt; Memory[&quot;Ap luc memory hoac mmap&quot;]
+  Risk --&gt; Cluster[&quot;Replica hoac consensus drift&quot;]
+  Risk --&gt; Payload[&quot;Do selectivity cua payload filter&quot;]
+  Risk --&gt; Model[&quot;Thay doi embedding model&quot;]
+  Risk --&gt; Snapshot[&quot;Khoang trong snapshot va restore&quot;]
+  Disk --&gt; D1[&quot;WAL khong the tang an toan&quot;]
+  Disk --&gt; D2[&quot;optimizer khong the materialize segment&quot;]
+  Memory --&gt; M1[&quot;HNSW va payload indexes canh tranh voi query cache&quot;]
+  Cluster --&gt; C1[&quot;remote shard transfer bi tre&quot;]
+  Cluster --&gt; C2[&quot;metadata operation cho consensus&quot;]
+  Payload --&gt; P1[&quot;filter-first query cham neu thieu index&quot;]
+  Model --&gt; E1[&quot;dimension hoac distance assumption khong con khop&quot;]
+  Snapshot --&gt; S1[&quot;restore point cu hon ingestion da acknowledge&quot;]</div>
+<p>Rủi ro governance quan trọng nhất là semantic drift im lặng. Qdrant có thể lưu vector, sparse vector và payload, nhưng nó không tự biết khi embedding model, chunker, metadata schema hoặc ranking policy của ứng dụng upstream thay đổi. Vì vậy collection configuration, vector size, distance metric, named vector, sparse-vector policy và payload index phải được quản trị như schema có kiểm soát, không phải setting phụ.</p>
+<h3 id="checklist-s-n-s-ng-production">Checklist Sẵn Sàng Production</h3>
+<ul>
+<li>Xác nhận schema collection trong application code khớp payload tạo collection của Qdrant, đặc biệt vector dimension, distance metric, named vectors, sparse vectors và quantization.</li>
+<li>Định nghĩa payload indexing policy trước khi có traffic. Field dùng cho filter, access control, tenant isolation hoặc reranking không nên phụ thuộc vào full scan lúc peak.</li>
+<li>Diễn tập WAL recovery bằng cách kill node trong lúc ingestion rồi kiểm tra points khôi phục, không chỉ chạy happy-path API test.</li>
+<li>Test snapshot creation, transfer và restore với ít nhất một collection lớn; bao gồm tình huống disk đầy và transfer bị ngắt.</li>
+<li>Nếu dùng clustering, ghi rõ shard count, replica count, kỳ vọng write ordering và quy trình thay node.</li>
+<li>Export và alert trên request latency, update latency, collection telemetry, optimizer backlog, disk usage và memory pressure theo collection từ <code>src/common/telemetry_ops/</code>.</li>
+<li>Quyết định đường local inference trong <code>src/common/inference/</code> có được dùng ở production không, hay embedding bắt buộc tạo ngoài Qdrant để governance model chặt hơn.</li>
+<li>Đưa <code>config/production.yaml</code>, <code>config/config.yaml</code> và deployment manifests vào release control; tránh đổi optimizer, storage hoặc cluster settings như phản ứng sự cố tùy hứng.</li>
+</ul>
+<h3 id="h-ng-d-n-c-cho-senior-architect">Hướng Dẫn Đọc Cho Senior Architect</h3>
+<p>Nên đọc repository theo bốn lượt. Lượt đầu map ingress từ <code>src/main.rs</code>, <code>src/startup.rs</code>, <code>src/actix/api/</code> và <code>src/tonic/api/</code>. Lượt hai theo storage routing qua <code>lib/storage/src/content_manager/toc/</code> và <code>lib/storage/src/dispatcher.rs</code>. Lượt ba đọc local shard mechanics trong <code>lib/collection/src/shards/local_shard/</code>, nhất là WAL, snapshot, query và update modules. Lượt bốn đi xuống <code>lib/segment/src/index/</code> để tách vector scoring khỏi payload filtering. Thứ tự này giữ API, topology, durability và search quality thành các mối quan tâm riêng.</p>
+<h3 id="b-sung-thu-t-ng">Bổ Sung Thuật Ngữ</h3>
+<ul>
+<li><strong>Optimizer backlog:</strong> Công việc compact hoặc index segment còn tồn sau write; ảnh hưởng latency query và tăng trưởng disk.</li>
+<li><strong>Payload selectivity:</strong> Mức độ metadata filter thu hẹp tập candidate trước khi vector scoring.</li>
+<li><strong>Semantic drift:</strong> Sự lệch giữa vectors/payloads đã lưu và policy embedding hoặc chunking hiện tại của ứng dụng.</li>
+<li><strong>Shard transfer:</strong> Di chuyển hoặc replicate dữ liệu shard trong lúc scale cluster, recovery hoặc rebalancing.</li>
+</ul>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

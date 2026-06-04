@@ -4,13 +4,13 @@
 
 **Most AI systems fail at the architecture boundaries, not at the model call. This bilingual English/Vietnamese repository teaches those boundaries with course material, templates, assessments, and repository-grounded deep dives.**
 
-[![English](https://img.shields.io/badge/English-0A66C2?style=for-the-badge)](./learn-ai-solution-architecture/docs/en/README.md)
-[![Tiếng Việt](https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-C1121F?style=for-the-badge)](./learn-ai-solution-architecture/docs/vi/README.md)
+[![English](https://img.shields.io/badge/English-0A66C2?style=for-the-badge)](https://anhtnt90dev.github.io/ai-solution-architecture/site/learn/en/)
+[![Tiếng Việt](https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-C1121F?style=for-the-badge)](https://anhtnt90dev.github.io/ai-solution-architecture/site/learn/vi/)
 [![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-2EA44F?style=for-the-badge)](https://anhtnt90dev.github.io/ai-solution-architecture/)
-[![17 Repositories](https://img.shields.io/badge/17_Repositories-111827?style=for-the-badge)](./repo-architecture-docs/README.md)
+[![17 Repositories](https://img.shields.io/badge/17_Repositories-111827?style=for-the-badge)](https://anhtnt90dev.github.io/ai-solution-architecture/site/deep-dives/)
 [![6 Domains](https://img.shields.io/badge/6_AI_Domains-7C3AED?style=for-the-badge)](#architecture-map)
-[![12 Lessons](https://img.shields.io/badge/12_Lessons-047857?style=for-the-badge)](./learn-ai-solution-architecture/docs/en/curriculum.md)
-[![Toolkit](https://img.shields.io/badge/Templates-Ready_To_Copy-B45309?style=for-the-badge)](./templates/README.md)
+[![12 Lessons](https://img.shields.io/badge/12_Lessons-047857?style=for-the-badge)](https://anhtnt90dev.github.io/ai-solution-architecture/site/learn/en/curriculum.html)
+[![Toolkit](https://img.shields.io/badge/Templates-Ready_To_Copy-B45309?style=for-the-badge)](https://anhtnt90dev.github.io/ai-solution-architecture/site/templates/)
 [![Validate Documentation](https://github.com/anhtnt90dev/ai-solution-architecture/actions/workflows/validate.yml/badge.svg)](https://github.com/anhtnt90dev/ai-solution-architecture/actions/workflows/validate.yml)
 
 </div>
@@ -28,6 +28,7 @@ This repository is a structured knowledge system for learning how to design mode
 The focus is not "how to call an LLM API." The focus is the full system: agent orchestration, model serving, training and adaptation, RAG data architecture, observability, evaluation, tool governance, security, and production operations.
 
 **Live site:** https://anhtnt90dev.github.io/ai-solution-architecture/
+**Documentation pages:** https://anhtnt90dev.github.io/ai-solution-architecture/site/learn/en/
 
 ---
 
@@ -44,15 +45,15 @@ The focus is not "how to call an LLM API." The focus is the full system: agent o
 
 | Goal | Start Here |
 | --- | --- |
-| Read the course landing page | [Learn AI Solution Architecture](./learn-ai-solution-architecture/README.md) |
-| Study in English | [English course homepage](./learn-ai-solution-architecture/docs/en/README.md) |
-| Học bằng tiếng Việt | [Trang khóa học tiếng Việt](./learn-ai-solution-architecture/docs/vi/README.md) |
-| Compare all repositories | [Repository atlas](./learn-ai-solution-architecture/docs/en/reference-atlas.md) |
-| Copy practical templates | [AI architecture toolkit](./templates/README.md) |
-| Run the capstone | [Enterprise Knowledge Copilot](./capstone/README.md) |
-| Test your architecture skill | [Assessment pack](./assessments/README.md) |
+| Read the course landing page | [Learn AI Solution Architecture](https://anhtnt90dev.github.io/ai-solution-architecture/site/learn/) |
+| Study in English | [English course homepage](https://anhtnt90dev.github.io/ai-solution-architecture/site/learn/en/) |
+| Học bằng tiếng Việt | [Trang khóa học tiếng Việt](https://anhtnt90dev.github.io/ai-solution-architecture/site/learn/vi/) |
+| Compare all repositories | [Repository atlas](https://anhtnt90dev.github.io/ai-solution-architecture/site/learn/en/reference-atlas.html) |
+| Copy practical templates | [AI architecture toolkit](https://anhtnt90dev.github.io/ai-solution-architecture/site/templates/) |
+| Run the capstone | [Enterprise Knowledge Copilot](https://anhtnt90dev.github.io/ai-solution-architecture/site/capstone/) |
+| Test your architecture skill | [Assessment pack](https://anhtnt90dev.github.io/ai-solution-architecture/site/assessments/) |
 | Share the repo | [Share kit](./SHARE.md) |
-| Open detailed repo notes | [Repository architecture docs](./repo-architecture-docs/README.md) |
+| Open detailed repo notes | [Repository architecture docs](https://anhtnt90dev.github.io/ai-solution-architecture/site/deep-dives/) |
 | Validate the docs | [Validation scripts](#validation) |
 
 ---
@@ -148,25 +149,25 @@ The upstream source checkouts used for analysis are intentionally not published 
 
 ### English
 
-- [Course homepage](./learn-ai-solution-architecture/docs/en/README.md)
-- [Curriculum](./learn-ai-solution-architecture/docs/en/curriculum.md)
-- [Projects](./learn-ai-solution-architecture/docs/en/projects.md)
-- [Repository atlas](./learn-ai-solution-architecture/docs/en/reference-atlas.md)
-- [Glossary](./learn-ai-solution-architecture/docs/en/glossary.md)
-- [Templates](./templates/README.md)
-- [Capstone](./capstone/README.md)
-- [Assessments](./assessments/README.md)
+- [Course homepage](https://anhtnt90dev.github.io/ai-solution-architecture/site/learn/en/)
+- [Curriculum](https://anhtnt90dev.github.io/ai-solution-architecture/site/learn/en/curriculum.html)
+- [Projects](https://anhtnt90dev.github.io/ai-solution-architecture/site/learn/en/projects.html)
+- [Repository atlas](https://anhtnt90dev.github.io/ai-solution-architecture/site/learn/en/reference-atlas.html)
+- [Glossary](https://anhtnt90dev.github.io/ai-solution-architecture/site/learn/en/glossary.html)
+- [Templates](https://anhtnt90dev.github.io/ai-solution-architecture/site/templates/)
+- [Capstone](https://anhtnt90dev.github.io/ai-solution-architecture/site/capstone/)
+- [Assessments](https://anhtnt90dev.github.io/ai-solution-architecture/site/assessments/)
 
 ### Tiếng Việt
 
-- [Trang khóa học](./learn-ai-solution-architecture/docs/vi/README.md)
-- [Chương trình học](./learn-ai-solution-architecture/docs/vi/curriculum.md)
-- [Dự án thực hành](./learn-ai-solution-architecture/docs/vi/projects.md)
-- [Bản đồ repository](./learn-ai-solution-architecture/docs/vi/reference-atlas.md)
-- [Bảng thuật ngữ](./learn-ai-solution-architecture/docs/vi/glossary.md)
-- [Bộ template kiến trúc](./templates/README.md)
-- [Capstone](./capstone/README.md)
-- [Bài kiểm tra](./assessments/README.md)
+- [Trang khóa học](https://anhtnt90dev.github.io/ai-solution-architecture/site/learn/vi/)
+- [Chương trình học](https://anhtnt90dev.github.io/ai-solution-architecture/site/learn/vi/curriculum.html)
+- [Dự án thực hành](https://anhtnt90dev.github.io/ai-solution-architecture/site/learn/vi/projects.html)
+- [Bản đồ repository](https://anhtnt90dev.github.io/ai-solution-architecture/site/learn/vi/reference-atlas.html)
+- [Bảng thuật ngữ](https://anhtnt90dev.github.io/ai-solution-architecture/site/learn/vi/glossary.html)
+- [Bộ template kiến trúc](https://anhtnt90dev.github.io/ai-solution-architecture/site/templates/)
+- [Capstone](https://anhtnt90dev.github.io/ai-solution-architecture/site/capstone/)
+- [Bài kiểm tra](https://anhtnt90dev.github.io/ai-solution-architecture/site/assessments/)
 
 ---
 
@@ -174,14 +175,14 @@ The upstream source checkouts used for analysis are intentionally not published 
 
 | Artifact | Purpose |
 | --- | --- |
-| [Architecture Decision Record](./templates/architecture-decision-record.md) | Record decisions, evidence, trade-offs, and failure modes. |
-| [Runtime Decision Matrix](./templates/runtime-decision-matrix.md) | Choose between hosted APIs, Transformers, vLLM, llama.cpp, or hybrid serving. |
-| [RAG Data Contract](./templates/rag-data-contract.md) | Define document, chunk, metadata, embedding, query, and access policy. |
-| [LLMOps Evaluation Scorecard](./templates/llmops-evaluation-scorecard.md) | Gate prompt, model, adapter, retrieval, tool, and workflow changes. |
-| [Security And Governance Review](./templates/security-governance-review.md) | Review tools, secrets, model artifacts, trace data, and access control. |
-| [Production Readiness Checklist](./templates/production-readiness-checklist.md) | Decide whether a production AI system is ready to launch. |
-| [Enterprise Knowledge Copilot Capstone](./capstone/README.md) | Apply the whole architecture map to one concrete enterprise scenario. |
-| [Assessment Pack](./assessments/README.md) | Test whether you can reason like an AI solution architect. |
+| [Architecture Decision Record](https://anhtnt90dev.github.io/ai-solution-architecture/site/templates/architecture-decision-record.html) | Record decisions, evidence, trade-offs, and failure modes. |
+| [Runtime Decision Matrix](https://anhtnt90dev.github.io/ai-solution-architecture/site/templates/runtime-decision-matrix.html) | Choose between hosted APIs, Transformers, vLLM, llama.cpp, or hybrid serving. |
+| [RAG Data Contract](https://anhtnt90dev.github.io/ai-solution-architecture/site/templates/rag-data-contract.html) | Define document, chunk, metadata, embedding, query, and access policy. |
+| [LLMOps Evaluation Scorecard](https://anhtnt90dev.github.io/ai-solution-architecture/site/templates/llmops-evaluation-scorecard.html) | Gate prompt, model, adapter, retrieval, tool, and workflow changes. |
+| [Security And Governance Review](https://anhtnt90dev.github.io/ai-solution-architecture/site/templates/security-governance-review.html) | Review tools, secrets, model artifacts, trace data, and access control. |
+| [Production Readiness Checklist](https://anhtnt90dev.github.io/ai-solution-architecture/site/templates/production-readiness-checklist.html) | Decide whether a production AI system is ready to launch. |
+| [Enterprise Knowledge Copilot Capstone](https://anhtnt90dev.github.io/ai-solution-architecture/site/capstone/) | Apply the whole architecture map to one concrete enterprise scenario. |
+| [Assessment Pack](https://anhtnt90dev.github.io/ai-solution-architecture/site/assessments/) | Test whether you can reason like an AI solution architect. |
 
 ---
 
@@ -191,12 +192,12 @@ Each repository has two detailed architecture documents: `README.en.md` and `REA
 
 | Group | Docs |
 | --- | --- |
-| AI App / Agent Architecture | [Group 01](./repo-architecture-docs/01-ai-app-agent-architecture/) |
-| Model Serving / Inference | [Group 02](./repo-architecture-docs/02-model-serving-inference/) |
-| Fine-tuning / Training | [Group 03](./repo-architecture-docs/03-fine-tuning-training/) |
-| RAG / Vector Database | [Group 04](./repo-architecture-docs/04-rag-vector-database/) |
-| Observability / Evaluation / LLMOps | [Group 05](./repo-architecture-docs/05-observability-evaluation-llmops/) |
-| Tooling / MCP / AI Platform | [Group 06](./repo-architecture-docs/06-tooling-mcp-ai-platform/) |
+| AI App / Agent Architecture | [Group 01](https://anhtnt90dev.github.io/ai-solution-architecture/site/deep-dives/01-ai-app-agent-architecture/) |
+| Model Serving / Inference | [Group 02](https://anhtnt90dev.github.io/ai-solution-architecture/site/deep-dives/02-model-serving-inference/) |
+| Fine-tuning / Training | [Group 03](https://anhtnt90dev.github.io/ai-solution-architecture/site/deep-dives/03-fine-tuning-training/) |
+| RAG / Vector Database | [Group 04](https://anhtnt90dev.github.io/ai-solution-architecture/site/deep-dives/04-rag-vector-database/) |
+| Observability / Evaluation / LLMOps | [Group 05](https://anhtnt90dev.github.io/ai-solution-architecture/site/deep-dives/05-observability-evaluation-llmops/) |
+| Tooling / MCP / AI Platform | [Group 06](https://anhtnt90dev.github.io/ai-solution-architecture/site/deep-dives/06-tooling-mcp-ai-platform/) |
 
 ---
 

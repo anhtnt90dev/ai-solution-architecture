@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chroma Architecture Notes | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/04-rag-vector-database/chroma/README.en.md">View source</a>
+      <h1 id="chroma-architecture-notes">Chroma Architecture Notes</h1>
+<h2 id="source-basis">Source Basis</h2>
+<p>This document is based on static inspection of the local repository at <code>github-repos/04-rag-vector-database/chroma</code>. The main files and directories used were <code>README.md</code>, <code>DEVELOP.md</code>, <code>pyproject.toml</code>, <code>Cargo.toml</code>, <code>Dockerfile</code>, <code>docker-compose.yml</code>, <code>chromadb/__init__.py</code>, <code>chromadb/config.py</code>, <code>chromadb/api/client.py</code>, <code>chromadb/api/fastapi.py</code>, <code>chromadb/api/rust.py</code>, <code>chromadb/test</code>, <code>rust/python_bindings</code>, <code>rust/frontend</code>, <code>rust/log</code>, <code>rust/sysdb</code>, <code>rust/segment</code>, <code>rust/index</code>, <code>rust/worker</code>, <code>rust/chroma</code>, <code>clients</code>, <code>go</code>, <code>schemas</code>, <code>examples</code>, <code>deployments</code>, and <code>k8s</code>.</p>
+<h2 id="executive-summary">Executive Summary</h2>
+<p>Chroma is open-source data infrastructure for AI applications. In a RAG system, it acts as the vector and retrieval data layer for documents, metadata, embeddings, filters, and search. The repository contains both a Python package (<code>chromadb</code>) and a large Rust workspace. The Python package provides the developer-facing client API, local clients, HTTP clients, cloud client helpers, configuration, auth adapters, embedding functions, and tests. The Rust workspace implements the modern storage/query core, Python native bindings, HTTP frontend, local and distributed executors, system database, log, segment management, sparse/full-text indexes, workers, and deployment-oriented services.</p>
+<p>Architecturally, Chroma supports several operating modes:</p>
+<ul>
+<li>In-process local mode through <code>PersistentClient</code>, <code>EphemeralClient</code>, and <code>RustClient</code>, backed by Rust Python bindings, SQLite, local HNSW indexes, and local segment management.</li>
+<li>Client/server mode through <code>HttpClient</code>, <code>AsyncHttpClient</code>, and the Rust/Axum frontend API.</li>
+<li>Cloud mode through <code>CloudClient</code> and token-authenticated hosted endpoints.</li>
+<li>Distributed development and production-oriented modes through Kubernetes/Helm assets under <code>k8s</code>, Rust services such as frontend, worker/query, compaction, sysdb, log, and supporting infrastructure.</li>
+</ul>
+<p>The codebase is especially relevant to solution architects because it is not only a vector index wrapper. It includes tenancy, database/collection metadata, embedding ingestion, log-based mutation flow, local and distributed query execution, OpenTelemetry hooks, auth configuration, deployment assets, and multiple SDK surfaces.</p>
+<h2 id="problem-solved">Problem Solved</h2>
+<p>AI applications need a retrieval substrate that can keep vectors, source text, metadata, filters, and search behavior close to application code without forcing every team to build storage and ANN plumbing. Chroma solves that problem by providing:</p>
+<ul>
+<li>A simple Python-first API for creating collections, adding documents, and querying by text or embeddings.</li>
+<li>Persistent local storage for notebooks, local services, and prototypes.</li>
+<li>HTTP clients and server mode for application/service separation.</li>
+<li>Multi-tenant concepts through tenant and database objects.</li>
+<li>Collection-level document, metadata, embedding, and ID management.</li>
+<li>Dense embedding retrieval, metadata filtering, document filtering, and newer hybrid/full-text/sparse capabilities in the Rust workspace.</li>
+<li>Deployment artifacts for local Docker, Kubernetes, and cloud platforms.</li>
+</ul>
+<p>For RAG, the main value is reducing the distance between application code and reliable retrieval. Developers can start locally with a few lines of Python and later move toward server or distributed modes when scale, governance, or operational boundaries require it.</p>
+<h2 id="role-in-an-ai-stack">Role in an AI Stack</h2>
+<p>Chroma usually fits into the AI stack as follows:</p>
+<ul>
+<li><strong>Ingestion:</strong> Loaders and chunkers create documents and metadata; embedding functions or external embedding services create vectors; Chroma stores IDs, documents, metadata, and embeddings in collections.</li>
+<li><strong>Retrieval:</strong> Query services embed user questions, call <code>query</code>, <code>get</code>, or <code>search</code>, and retrieve context chunks.</li>
+<li><strong>Application memory:</strong> Agents can store durable memories, tool outputs, or conversation artifacts as collection records.</li>
+<li><strong>Hybrid search:</strong> The Rust workspace includes sparse and full-text index work that can complement dense vector retrieval.</li>
+<li><strong>Local-first development:</strong> Notebooks and developer tools can use <code>PersistentClient</code> without a separate server.</li>
+<li><strong>Production service boundary:</strong> HTTP and distributed modes allow teams to move retrieval behind a managed service endpoint.</li>
+</ul>
+<p>Chroma does not own the whole RAG workflow. Chunking, prompt assembly, model calls, reranking, user authorization, and business governance remain application responsibilities unless explicitly integrated around Chroma.</p>
+<h2 id="source-tree-map">Source Tree Map</h2>
+<p>Important repository areas:</p>
+<pre><code class="language-text">chroma/
+  README.md                         Product quick start and high-level API examples.
+  DEVELOP.md                        Development setup, tests, distributed dev, Tilt, Kubernetes notes.
+  pyproject.toml                    Python package metadata, dependencies, CLI entry point, maturin build.
+  Cargo.toml                        Rust workspace and shared crate dependencies.
+  Dockerfile, docker-compose.yml    Container/server runtime and local compose example.
+  chromadb/
+    __init__.py                     Client constructors: Ephemeral, Persistent, Rust, HTTP, Cloud.
+    config.py                       Settings, component system, environment-driven implementation selection.
+    api/
+      client.py                     Python Client and AdminClient facade.
+      fastapi.py                    HTTP client adapter for `/api/v2`.
+      rust.py                       RustBindingsAPI adapter for local native storage.
+    utils/embedding_functions/      Built-in embedding provider integrations.
+    test/                           Python, API, auth, config, distributed, property, persistence tests.
+  rust/
+    python_bindings/                PyO3 bindings exposing Rust core to Python.
+    frontend/                       Axum HTTP server, API routes, frontend service implementation.
+    log/                            SQLite-backed mutation log implementation.
+    sysdb/                          SQLite system database for tenants, DBs, collections, segments.
+    segment/                        Local segment manager, metadata reader/writer, HNSW integration.
+    index/                          Sparse and full-text index implementations.
+    worker/                         Worker/query/compaction-related crate.
+    chroma/                         Rust client crate.
+    cli/                            Rust CLI entrypoint.
+  k8s/                              Helm chart and test infrastructure for distributed Chroma.
+  deployments/                      Cloud deployment examples for AWS, Azure, GCP, and others.
+  clients/, go/, schemas/, examples/ SDKs, schemas, sample apps, integration examples.</code></pre>
+<h2 id="core-concepts">Core Concepts</h2>
+<h3 id="client">Client</h3>
+<p>The Python package exposes multiple client constructors in <code>chromadb/__init__.py</code>: <code>EphemeralClient</code>, <code>PersistentClient</code>, <code>RustClient</code>, <code>HttpClient</code>, <code>AsyncHttpClient</code>, <code>CloudClient</code>, <code>Client</code>, and <code>AdminClient</code>. These constructors primarily select settings and API implementation.</p>
+<h3 id="tenant-and-database">Tenant and Database</h3>
+<p>Chroma models tenants and databases as first-class resources. The Python <code>Client</code> stores tenant and database values, validates them through <code>AdminClient</code>, and scopes collection operations accordingly.</p>
+<h3 id="collection">Collection</h3>
+<p>A collection is the user-facing container for records. It owns names, metadata, optional schema/configuration, dimension, and associated segments. Application code uses collections to add, upsert, update, delete, count, get, query, and search records.</p>
+<h3 id="record">Record</h3>
+<p>A record can include an ID, document, metadata, embedding, and other fields depending on the operation. RAG systems commonly use one record per chunk or memory item.</p>
+<h3 id="embedding-function">Embedding Function</h3>
+<p>Embedding functions transform text, images, or other inputs into embeddings. The repository includes provider integrations under <code>chromadb/utils/embedding_functions</code>, with support for many external and local providers.</p>
+<h3 id="system-and-component">System and Component</h3>
+<p><code>chromadb/config.py</code> defines a component system. <code>System</code> maps abstract component types to configured implementations, starts dependencies in order, stops them in reverse order, and stores shared settings. This is how Python-side configuration chooses local Rust bindings, HTTP clients, auth components, telemetry, and other implementation pieces.</p>
+<h3 id="rust-bindings-api">Rust Bindings API</h3>
+<p><code>chromadb/api/rust.py</code> adapts <code>chromadb_rust_bindings.Bindings</code> into the Python <code>ServerAPI</code> shape. It is the local in-process path for persistent or ephemeral Chroma backed by Rust, SQLite, and local HNSW/segment state.</p>
+<h3 id="system-database">System Database</h3>
+<p><code>rust/sysdb</code> stores metadata about tenants, databases, collections, segments, dimensions, schemas, and collection configuration. The local implementation is SQLite-backed.</p>
+<h3 id="log">Log</h3>
+<p><code>rust/log</code> records mutation events. The inspected <code>sqlite_log.rs</code> stores records in SQLite <code>embeddings_queue</code>, supports pulling records by topic/offset, and coordinates backfill/purge messages for compaction.</p>
+<h3 id="segment">Segment</h3>
+<p><code>rust/segment</code> manages local indexes and metadata storage. <code>LocalSegmentManager</code> caches HNSW indexes and closes file descriptors on eviction. <code>sqlite_metadata.rs</code> applies logs to metadata tables and supports filters, full-text metadata, and schema evolution.</p>
+<h3 id="executor">Executor</h3>
+<p>The frontend delegates reads and searches to an executor. <code>LocalExecutor</code> serves local SQLite/HNSW use cases. <code>DistributedExecutor</code> routes query plans to query services through memberlist and gRPC clients.</p>
+<h2 id="component-and-system-diagram">Component and System Diagram</h2>
+<div class="mermaid">flowchart TB
+    App[AI application / notebook / service]
+    PyClient[chromadb Python Client&lt;br/&gt;chromadb/api/client.py]
+    HttpClient[HTTP/Async HTTP Client&lt;br/&gt;chromadb/api/fastapi.py]
+    RustApi[RustBindingsAPI&lt;br/&gt;chromadb/api/rust.py]
+    Bindings[PyO3 Bindings&lt;br/&gt;rust/python_bindings]
+    Server[Axum Frontend Server&lt;br/&gt;rust/frontend]
+    Frontend[ServiceBasedFrontend]
+    SysDb[SysDb&lt;br/&gt;rust/sysdb]
+    Log[Mutation Log&lt;br/&gt;rust/log]
+    Executor[Executor]
+    LocalExec[LocalExecutor&lt;br/&gt;SQLite + HNSW]
+    DistExec[DistributedExecutor&lt;br/&gt;gRPC query services]
+    Segment[LocalSegmentManager&lt;br/&gt;rust/segment]
+    Index[Index crates&lt;br/&gt;HNSW, sparse, full-text]
+    Storage[(SQLite, local files, object/block storage)]
+
+    App --&gt; PyClient
+    PyClient --&gt; HttpClient
+    PyClient --&gt; RustApi
+    HttpClient --&gt; Server
+    RustApi --&gt; Bindings
+    Bindings --&gt; Frontend
+    Server --&gt; Frontend
+    Frontend --&gt; SysDb
+    Frontend --&gt; Log
+    Frontend --&gt; Executor
+    Executor --&gt; LocalExec
+    Executor --&gt; DistExec
+    LocalExec --&gt; Segment
+    DistExec --&gt; Query[Query workers/services]
+    Segment --&gt; Index
+    SysDb --&gt; Storage
+    Log --&gt; Storage
+    Segment --&gt; Storage</div>
+<h2 id="internal-architecture">Internal Architecture</h2>
+<h3 id="python-api-layer">Python API Layer</h3>
+<p>The Python layer gives Chroma its simple developer experience. <code>chromadb/__init__.py</code> builds settings for each client type:</p>
+<ul>
+<li><code>EphemeralClient</code> uses non-persistent local state.</li>
+<li><code>PersistentClient</code> sets <code>persist_directory</code> and enables persistence.</li>
+<li><code>RustClient</code> explicitly selects <code>chromadb.api.rust.RustBindingsAPI</code>.</li>
+<li><code>HttpClient</code> and <code>AsyncHttpClient</code> select FastAPI HTTP adapters and configure host, port, SSL, and headers.</li>
+<li><code>CloudClient</code> configures the hosted API endpoint, SSL, tenant/database defaults, and token authentication through <code>X_CHROMA_TOKEN</code>.</li>
+</ul>
+<p><code>chromadb/api/client.py</code> wraps a <code>ServerAPI</code> and exposes collection and admin operations. It also validates tenant and database existence during client initialization.</p>
+<h3 id="configuration-and-component-system">Configuration and Component System</h3>
+<p><code>chromadb/config.py</code> is the central Python configuration model. <code>Settings</code> includes API implementation selection, server host/port/SSL, persistence path, reset behavior, auth providers, telemetry controls, migration behavior, distributed service implementation choices, gRPC timeouts, and legacy-configuration validation.</p>
+<p>The <code>System</code> class is a lightweight dependency container. Components declare dependencies, are started in topological order, and are stopped in reverse dependency order. This matters because the same Python API can point at local Rust bindings, HTTP services, or configured auth/telemetry implementations.</p>
+<h3 id="local-rust-path">Local Rust Path</h3>
+<p>The local path runs through <code>RustBindingsAPI</code> and <code>rust/python_bindings</code>. The binding constructor builds a Tokio runtime, registry, SQLite system database, SQLite log, local segment manager, local executor, compaction manager, and a <code>Frontend</code>. Persistent clients use <code>persist_directory/chroma.sqlite3</code> plus local index files. The code also sizes HNSW cache capacity against file-handle limits because each HNSW index opens multiple files.</p>
+<p>This path is the default modern local storage route and is critical for notebooks, unit tests, desktop tools, and single-process applications.</p>
+<h3 id="http-frontend">HTTP Frontend</h3>
+<p><code>rust/frontend/src/server.rs</code> implements the Axum server. It registers <code>/api/v2</code> routes for health, heartbeat, preflight, version, identity, reset, tenants, databases, collections, records, query, search, and attached functions. It also exposes <code>/docs</code> and <code>/openapi.json</code>, supports CORS, body limits, JSON error conversion, tracing layers, auth, quota, metrics, and graceful shutdown on signals.</p>
+<p><code>rust/frontend/src/lib.rs</code> loads configuration, applies persist paths to SQLite/local segment settings, creates the frontend, builds scorecard/circuit breaker rules, and starts the server.</p>
+<h3 id="service-based-frontend">Service-Based Frontend</h3>
+<p><code>rust/frontend/src/impls/service_based_frontend.rs</code> is the main service implementation. It coordinates collection metadata through <code>SysDb</code>, appends mutations to <code>Log</code>, invalidates collection caches, emits metering events, applies retries, and delegates read/query/search execution to an executor.</p>
+<h3 id="local-executor">Local Executor</h3>
+<p><code>rust/frontend/src/executor/local.rs</code> implements local count, get, and KNN query flow. It can backfill a collection by sending compaction messages, read metadata through SQLite, load embeddings through HNSW readers, and hydrate documents/metadata. Local <code>search</code> is explicitly not implemented in the inspected code, which is an important capability distinction.</p>
+<h3 id="distributed-executor">Distributed Executor</h3>
+<p><code>rust/frontend/src/executor/distributed.rs</code> routes count, get, KNN, and search plans to distributed query services. It uses memberlist-based assignment, gRPC clients, retry policies, weighted or uniform selection, replication factor, and cache invalidation/replanning when query services return certain errors.</p>
+<h3 id="storage-and-index-layer">Storage and Index Layer</h3>
+<p>The storage/index layer includes:</p>
+<ul>
+<li><code>rust/sysdb</code>: tenants, databases, collections, segments, collection configuration, dimensions, schemas.</li>
+<li><code>rust/log</code>: mutation log records and pull/purge/backfill behavior.</li>
+<li><code>rust/segment</code>: local segment manager, HNSW cache, SQLite metadata reader/writer, compaction integration.</li>
+<li><code>rust/index/src/sparse</code>: sparse retrieval using Block-Max WAND over blockfile storage.</li>
+<li><code>rust/index/src/fulltext</code>: bitmap-oriented full-text candidate index.</li>
+</ul>
+<p>These crates show Chroma moving toward a broad retrieval system: dense vector search, metadata filtering, sparse lexical retrieval, and full-text candidate generation.</p>
+<h2 id="end-to-end-runtime-flow">End-to-End Runtime Flow</h2>
+<div class="mermaid">sequenceDiagram
+    participant App as Application
+    participant Client as chromadb Client
+    participant API as RustBindingsAPI or HTTP API
+    participant FE as ServiceBasedFrontend
+    participant Sys as SysDb
+    participant Log as Mutation Log
+    participant Exec as Executor
+    participant Seg as Segment/Index
+
+    App-&gt;&gt;Client: create_collection / get_collection
+    Client-&gt;&gt;API: scoped by tenant and database
+    API-&gt;&gt;FE: create or fetch collection
+    FE-&gt;&gt;Sys: persist collection metadata and segments
+    App-&gt;&gt;Client: add or upsert IDs, docs, metadata, embeddings
+    Client-&gt;&gt;API: validate and submit records
+    API-&gt;&gt;FE: add/update/upsert
+    FE-&gt;&gt;Log: append mutation records
+    FE-&gt;&gt;Sys: update collection metadata when needed
+    Log--&gt;&gt;Seg: compaction/backfill applies log to local indexes
+    App-&gt;&gt;Client: query by text or embedding with filters
+    Client-&gt;&gt;API: query request
+    API-&gt;&gt;FE: plan query
+    FE-&gt;&gt;Exec: execute local or distributed query
+    Exec-&gt;&gt;Seg: metadata filter + vector search + hydration
+    Seg--&gt;&gt;App: IDs, distances, documents, metadata, embeddings as requested</div>
+<h3 id="add-and-upsert-flow">Add and Upsert Flow</h3>
+<p>Application code calls collection methods through the Python client. Depending on settings, requests go to local Rust bindings or to the HTTP API. The frontend validates collection state, appends records to the log, updates system metadata if required, and eventually materializes records into local or distributed segment/index state through compaction and execution paths.</p>
+<h3 id="query-flow">Query Flow</h3>
+<p>For local query, the executor reads metadata filters from SQLite, optionally reduces candidates, uses HNSW readers for vector search, then hydrates requested fields. For distributed query, the frontend creates a plan and the distributed executor selects query services by collection and shard assignment.</p>
+<h3 id="client-mode-decision-flow">Client Mode Decision Flow</h3>
+<div class="mermaid">flowchart TD
+    Need[Application needs Chroma]
+    LocalOnly{Same process local store?}
+    Persist{Need data after restart?}
+    ServiceBoundary{Need separate service boundary?}
+    Hosted{Use Chroma Cloud?}
+    Ephemeral[EphemeralClient]
+    Persistent[PersistentClient / RustClient&lt;br/&gt;persist_directory + SQLite]
+    Http[HttpClient or AsyncHttpClient&lt;br/&gt;server at /api/v2]
+    Cloud[CloudClient&lt;br/&gt;token auth + hosted endpoint]
+
+    Need --&gt; Hosted
+    Hosted -- yes --&gt; Cloud
+    Hosted -- no --&gt; LocalOnly
+    LocalOnly -- yes --&gt; Persist
+    Persist -- yes --&gt; Persistent
+    Persist -- no --&gt; Ephemeral
+    LocalOnly -- no --&gt; ServiceBoundary
+    ServiceBoundary -- yes --&gt; Http</div>
+<h2 id="deployment-and-operations-topology">Deployment and Operations Topology</h2>
+<div class="mermaid">flowchart LR
+    subgraph ClientTier[Client tier]
+        Py[Python SDK]
+        JS[JS/TS SDK]
+        Go[Go client]
+        Rust[Rust client crate]
+        Apps[RAG services and agents]
+    end
+
+    subgraph SingleNode[Single-node/server mode]
+        Server[Chroma frontend API&lt;br/&gt;port 8000]
+        LocalSql[(SQLite sysdb/log)]
+        LocalIndex[(Local HNSW and metadata files)]
+    end
+
+    subgraph Distributed[Kubernetes distributed mode]
+        FE[Rust frontend service]
+        SysSvc[SysDB service/migration]
+        LogSvc[Log service]
+        Query[Query service / workers]
+        Compact[Compaction service]
+        GC[Garbage collector]
+        Member[Memberlist]
+        Queue[Work queue]
+    end
+
+    subgraph Infra[Backing infrastructure]
+        Pg[(Postgres or SQLite depending config)]
+        Obj[(Object/block storage, MinIO/S3-like)]
+        Obs[OTEL, Prometheus, Grafana, Jaeger]
+    end
+
+    Apps --&gt; Py
+    Apps --&gt; JS
+    Apps --&gt; Go
+    Apps --&gt; Rust
+    Py --&gt; Server
+    JS --&gt; Server
+    Go --&gt; Server
+    Rust --&gt; Server
+    Server --&gt; LocalSql
+    Server --&gt; LocalIndex
+    Py --&gt; FE
+    FE --&gt; SysSvc
+    FE --&gt; LogSvc
+    FE --&gt; Query
+    Query --&gt; Obj
+    Compact --&gt; Obj
+    SysSvc --&gt; Pg
+    LogSvc --&gt; Pg
+    FE --&gt; Obs
+    Query --&gt; Obs
+    Compact --&gt; Obs
+    Member &lt;--&gt; Query</div>
+<h3 id="local-python">Local Python</h3>
+<p><code>README.md</code> shows a minimal Python flow: install <code>chromadb</code>, create a client, create a collection, add documents/metadata/IDs, and query. <code>PersistentClient</code> and <code>RustClient</code> are the core local persistent modes.</p>
+<h3 id="server-mode">Server Mode</h3>
+<p>The README shows <code>chroma run --path /chroma_db_path</code>. The local <code>docker-compose.yml</code> builds the Rust Docker target, persists <code>/data</code>, exposes port <code>8000</code>, and health-checks <code>/api/v2/heartbeat</code>.</p>
+<h3 id="distributed-and-kubernetes">Distributed and Kubernetes</h3>
+<p><code>DEVELOP.md</code> and <code>k8s/</code> show a distributed development story using Docker, Kubernetes, Tilt, Helm, and support services. The Helm chart under <code>k8s/distributed-chroma</code> contains templates for frontend, query, compaction, sysdb, log, work queue, garbage collector, memberlist resources, and migrations. <code>k8s/test</code> includes Prometheus, Grafana, Jaeger, MinIO, Postgres, Spanner, and OTEL collector assets for integration testing.</p>
+<h3 id="cloud-and-managed-endpoints">Cloud and Managed Endpoints</h3>
+<p><code>CloudClient</code> configures hosted API access, default host <code>api.trychroma.com</code>, SSL, tenant/database defaults, and token authentication. This code path is useful when the vector data plane is managed outside the application runtime.</p>
+<h2 id="module-dependency-and-lifecycle-diagram">Module Dependency and Lifecycle Diagram</h2>
+<div class="mermaid">stateDiagram-v2
+    [*] --&gt; ConfigureClient
+    ConfigureClient --&gt; SelectApiImpl
+    SelectApiImpl --&gt; LocalBindings: RustBindingsAPI
+    SelectApiImpl --&gt; HttpApi: FastAPI/AsyncFastAPI
+    SelectApiImpl --&gt; CloudApi: CloudClient
+
+    LocalBindings --&gt; StartSystem
+    HttpApi --&gt; ConnectServer
+    CloudApi --&gt; ConnectHosted
+
+    StartSystem --&gt; OpenSqlite
+    OpenSqlite --&gt; BuildFrontend
+    BuildFrontend --&gt; Ready
+    ConnectServer --&gt; Ready
+    ConnectHosted --&gt; Ready
+
+    Ready --&gt; CollectionCrud
+    Ready --&gt; AddOrUpsert
+    Ready --&gt; QueryOrSearch
+    AddOrUpsert --&gt; AppendLog
+    AppendLog --&gt; BackfillOrCompact
+    BackfillOrCompact --&gt; QueryOrSearch
+    QueryOrSearch --&gt; Ready
+    Ready --&gt; Shutdown
+    Shutdown --&gt; [*]</div>
+<div class="mermaid">flowchart TD
+    Frontend[ServiceBasedFrontend]
+    Auth[Auth and quota layers]
+    Sys[SysDb]
+    Log[Log]
+    Cache[Collection cache]
+    Exec{Executor implementation}
+    Local[LocalExecutor]
+    Dist[DistributedExecutor]
+    Metadata[SQLite metadata reader/writer]
+    Hnsw[Local HNSW index cache]
+    QuerySvc[gRPC query services]
+    Member[Memberlist assignment]
+
+    Auth --&gt; Frontend
+    Frontend --&gt; Sys
+    Frontend --&gt; Log
+    Frontend --&gt; Cache
+    Frontend --&gt; Exec
+    Exec --&gt; Local
+    Exec --&gt; Dist
+    Local --&gt; Metadata
+    Local --&gt; Hnsw
+    Dist --&gt; Member
+    Dist --&gt; QuerySvc</div>
+<h2 id="extension-points">Extension Points</h2>
+<p>Chroma extension points are primarily API, configuration, embedding, and service-implementation choices:</p>
+<ul>
+<li>Python, JavaScript/TypeScript, Go, and Rust client surfaces.</li>
+<li><code>chromadb/utils/embedding_functions</code> for provider-specific embedding functions.</li>
+<li><code>Settings</code> in <code>chromadb/config.py</code> for API implementation, persistence, auth, telemetry, migrations, and distributed components.</li>
+<li>HTTP API routes under <code>/api/v2</code> for service integrations.</li>
+<li>PyO3 bindings for local native storage in Python applications.</li>
+<li>Rust service crates for frontend, log, sysdb, segment, worker, index, and distributed query execution.</li>
+<li>Sparse and full-text index crates for hybrid retrieval features.</li>
+<li>Kubernetes Helm templates and cloud deployment examples under <code>k8s</code> and <code>deployments</code>.</li>
+<li>OpenTelemetry and auth hooks for platform integration.</li>
+</ul>
+<h2 id="integrations">Integrations</h2>
+<p>The repository shows or supports several integration categories:</p>
+<ul>
+<li><strong>Embedding providers:</strong> OpenAI, Cohere, VoyageAI, Ollama, Google/Gemini, Hugging Face, Jina, Mistral, Nomic, Together AI, Bedrock, Cloudflare Workers AI, OpenCLIP, and others through embedding-function modules.</li>
+<li><strong>Application frameworks:</strong> RAG applications can call Chroma directly through Python or through HTTP from any language.</li>
+<li><strong>SDK ecosystem:</strong> <code>clients</code>, <code>go</code>, and <code>rust/chroma</code> provide non-Python client paths.</li>
+<li><strong>Cloud infrastructure:</strong> <code>deployments/aws</code>, <code>deployments/azure</code>, <code>deployments/gcp</code>, and Kubernetes manifests support cloud deployment experiments or reference setups.</li>
+<li><strong>Observability:</strong> OpenTelemetry settings, tracing crates, Docker health checks, and test observability infrastructure support production monitoring designs.</li>
+<li><strong>Auth:</strong> Client and server auth provider settings in <code>chromadb/config.py</code> allow authentication and authorization integration.</li>
+</ul>
+<h2 id="configuration-deployment-and-operations">Configuration, Deployment, and Operations</h2>
+<h3 id="python-package-and-build">Python Package and Build</h3>
+<p><code>pyproject.toml</code> defines the <code>chromadb</code> package, Python <code>&gt;=3.9</code>, runtime dependencies such as <code>pydantic</code>, <code>uvicorn</code>, <code>opentelemetry</code>, <code>grpcio</code>, <code>bcrypt</code>, <code>kubernetes</code>, <code>httpx</code>, and the <code>chroma</code> CLI entry point. The build backend is <code>maturin</code>, pointing at <code>rust/python_bindings/Cargo.toml</code>, which explains why local Python operation depends heavily on Rust native code.</p>
+<h3 id="rust-workspace">Rust Workspace</h3>
+<p><code>Cargo.toml</code> defines a broad workspace containing API types, frontend, worker, sysdb, log, storage, segment, index, Python bindings, JavaScript bindings, CLI, and supporting crates. This is where most newer service and retrieval internals live.</p>
+<h3 id="runtime-settings">Runtime Settings</h3>
+<p>Operational settings include:</p>
+<ul>
+<li>Client API implementation selection (<code>chroma_api_impl</code>).</li>
+<li>Server host, port, SSL, headers, CORS, keepalive, and max body size.</li>
+<li>Persistence path and SQLite filename.</li>
+<li>Reset permissions.</li>
+<li>Authn/authz providers and credentials.</li>
+<li>Product telemetry and OpenTelemetry endpoint/headers/service name.</li>
+<li>Migration mode and migration hash validation.</li>
+<li>Distributed service implementation choices for sysdb, producer/consumer, segment manager, executor, memberlist, log service, quota, and rate limits.</li>
+<li>gRPC timeout controls.</li>
+</ul>
+<h3 id="deployment-practices">Deployment Practices</h3>
+<ul>
+<li>For local development, use <code>PersistentClient</code> or <code>chroma run --path</code> with a real persistence directory.</li>
+<li>For Docker server mode, persist <code>/data</code> or the configured storage path outside the container lifecycle.</li>
+<li>For Kubernetes, treat frontend, sysdb/log, query, compaction, and worker services as separate failure domains.</li>
+<li>Include migrations in rollout planning; the repo contains sysdb migration templates and migration settings.</li>
+<li>Set OpenTelemetry values consistently across services to preserve trace correlation.</li>
+<li>Decide early whether tenant/database separation is operational, security-related, or just organizational.</li>
+<li>Validate max batch size and file-handle limits for high-ingest workloads.</li>
+</ul>
+<h2 id="observability-testing-evaluation-and-failure-modes">Observability, Testing, Evaluation, and Failure Modes</h2>
+<h3 id="observability">Observability</h3>
+<p>Chroma includes OpenTelemetry dependencies and settings, tracing in Rust services, HTTP health/heartbeat/preflight routes, Docker health checks, and Kubernetes test infrastructure for Prometheus, Grafana, Jaeger, and OTEL collector. The Rust frontend also includes metrics counters, tracing middleware, scorecard/circuit-breaker concepts, and graceful shutdown.</p>
+<p>Useful production signals:</p>
+<ul>
+<li>API request count, latency, and error rate by route.</li>
+<li>Add/upsert/query/search throughput and latency.</li>
+<li>Log queue depth, compaction/backfill delay, and purge behavior.</li>
+<li>SQLite or external database latency and lock contention.</li>
+<li>HNSW cache pressure, file descriptor use, and index load times.</li>
+<li>Distributed query service retries and error categories.</li>
+<li>Tenant/database/collection growth and dimension distribution.</li>
+<li>OpenTelemetry trace completeness across frontend, query, log, and compaction services.</li>
+</ul>
+<h3 id="testing">Testing</h3>
+<p>The repository has several test layers:</p>
+<ul>
+<li><code>chromadb/test</code> for API, auth, config, persistence, property, stress, cross-version, and distributed tests.</li>
+<li><code>chromadb/test/distributed/README.md</code> for distributed sanity checks.</li>
+<li>Rust crate tests in <code>rust/frontend</code>, <code>rust/log</code>, <code>rust/sysdb</code>, <code>rust/segment</code>, and index crates.</li>
+<li><code>DEVELOP.md</code> documents pytest, Tilt, Kubernetes, distributed tests, and Rust debugging workflows.</li>
+</ul>
+<p>For RAG evaluation, add workload-specific tests outside the repository defaults: retrieval recall@k, MRR/NDCG, metadata filter correctness, query latency percentiles, stale-read behavior after ingestion, and answer-quality impact after reranking.</p>
+<h3 id="failure-modes">Failure Modes</h3>
+<p>Important failure modes:</p>
+<ul>
+<li><strong>Local persistence assumptions:</strong> Ephemeral clients lose state; persistent clients need stable paths and backup policies.</li>
+<li><strong>SQLite contention:</strong> Local mode and server mode can hit lock or latency issues under high write concurrency.</li>
+<li><strong>File descriptor pressure:</strong> HNSW indexes use multiple files; cache sizing and OS limits matter.</li>
+<li><strong>Compaction lag:</strong> Mutations appended to the log may not be immediately reflected in optimized segment/index state.</li>
+<li><strong>Filter/schema drift:</strong> Metadata type changes and missing keys can affect query behavior; <code>sqlite_metadata.rs</code> includes logic for type changes and cleanup.</li>
+<li><strong>Distributed routing errors:</strong> Query service retries, memberlist assignment, and cache invalidation are critical during scaling or node churn.</li>
+<li><strong>Feature mismatch:</strong> Local executor support and distributed support are not identical; local <code>search</code> is not implemented in the inspected local executor.</li>
+<li><strong>Auth gaps:</strong> Misconfigured auth providers or headers can expose collections.</li>
+<li><strong>Migration risk:</strong> System database migrations must be planned and tested before rolling upgrades.</li>
+</ul>
+<h2 id="security-and-governance-risks">Security and Governance Risks</h2>
+<ul>
+<li><strong>API keys and tokens:</strong> <code>CloudClient</code> and auth settings rely on tokens/headers. Keep credentials out of source control and logs.</li>
+<li><strong>Tenant isolation:</strong> Chroma has tenant/database concepts, but application authorization must still verify that users can access requested collections and records.</li>
+<li><strong>Metadata leakage:</strong> Documents and metadata may contain sensitive source text. Filtering and retrieval responses must respect user permissions.</li>
+<li><strong>Embedding leakage:</strong> Embeddings can reveal semantic information. Treat vector stores as sensitive data stores.</li>
+<li><strong>Telemetry:</strong> Product telemetry and OpenTelemetry settings must align with privacy and data residency policies.</li>
+<li><strong>Reset endpoint:</strong> <code>allow_reset</code> and reset APIs should be disabled or tightly restricted outside test environments.</li>
+<li><strong>Cloud boundary:</strong> When using hosted endpoints, understand where vectors, metadata, documents, and logs are stored.</li>
+<li><strong>Model/version governance:</strong> Store embedding model names, dimensions, and versions in collection metadata or external catalogs to avoid mixing incompatible vector spaces.</li>
+</ul>
+<h2 id="reading-guide">Reading Guide</h2>
+<p>Recommended reading order:</p>
+<ol>
+<li><code>README.md</code> for the user-facing API and product positioning.</li>
+<li><code>pyproject.toml</code> and <code>chromadb/__init__.py</code> for packaging and client modes.</li>
+<li><code>chromadb/config.py</code> for settings, component wiring, auth, telemetry, and distributed knobs.</li>
+<li><code>chromadb/api/client.py</code>, <code>chromadb/api/fastapi.py</code>, and <code>chromadb/api/rust.py</code> for Python API boundaries.</li>
+<li><code>rust/python_bindings/src/bindings.rs</code> for local persistent runtime composition.</li>
+<li><code>rust/frontend/src/server.rs</code> and <code>rust/frontend/src/impls/service_based_frontend.rs</code> for HTTP/server behavior.</li>
+<li><code>rust/sysdb</code>, <code>rust/log</code>, and <code>rust/segment</code> for metadata, mutation, and local index storage.</li>
+<li><code>rust/frontend/src/executor/local.rs</code> and <code>rust/frontend/src/executor/distributed.rs</code> for query execution behavior.</li>
+<li><code>rust/index/src/sparse/README.md</code> and <code>rust/index/src/fulltext/README.md</code> for hybrid retrieval internals.</li>
+<li><code>k8s</code>, <code>deployments</code>, and <code>DEVELOP.md</code> for distributed development and operations.</li>
+</ol>
+<h2 id="learning-path">Learning Path</h2>
+<ol>
+<li>Start with the README Python example and create one local collection.</li>
+<li>Switch from ephemeral to persistent mode and inspect the generated SQLite/index files.</li>
+<li>Use <code>HttpClient</code> against a local server to understand client/server boundaries.</li>
+<li>Add metadata filters and document filters; test expected and unexpected metadata types.</li>
+<li>Read <code>RustBindingsAPI</code> and <code>python_bindings</code> to understand local runtime composition.</li>
+<li>Follow a record from add/upsert through frontend, log, compaction/backfill, segment, and query.</li>
+<li>Study <code>LocalExecutor</code> and <code>DistributedExecutor</code> side by side to understand scale-out behavior.</li>
+<li>Explore sparse and full-text index READMEs to understand hybrid retrieval direction.</li>
+<li>Add a RAG evaluation harness with fixed queries, labeled relevant chunks, and latency budgets.</li>
+<li>Review Kubernetes templates only after the local and server-mode internals are clear.</li>
+</ol>
+<h2 id="glossary">Glossary</h2>
+<ul>
+<li><strong>AdminClient:</strong> Python facade for tenant and database administration.</li>
+<li><strong>Collection:</strong> User-facing container for records, embeddings, documents, metadata, and config.</li>
+<li><strong>Compaction:</strong> Process that materializes log records into optimized segment/index state.</li>
+<li><strong>Embedding Function:</strong> Function or provider adapter that converts inputs into embeddings.</li>
+<li><strong>Executor:</strong> Frontend dependency that runs count, get, KNN, or search operations locally or remotely.</li>
+<li><strong>Frontend:</strong> Rust service layer that coordinates API requests, sysdb, log, executor, auth, quota, and metrics.</li>
+<li><strong>HNSW:</strong> Approximate nearest-neighbor index used for vector search.</li>
+<li><strong>Log:</strong> Mutation record stream used by ingestion and compaction paths.</li>
+<li><strong>PersistentClient:</strong> Python local client that stores state under a configured path.</li>
+<li><strong>PyO3:</strong> Rust/Python interop technology used by Chroma&#x27;s native Python bindings.</li>
+<li><strong>Record:</strong> Stored item with ID, document, metadata, and embedding fields.</li>
+<li><strong>Segment:</strong> Storage/index unit for local or distributed retrieval.</li>
+<li><strong>SysDb:</strong> System database for tenants, databases, collections, and segments.</li>
+<li><strong>Tenant:</strong> Top-level namespace for isolating databases and collections.</li>
+<li><strong>Vector Store:</strong> Retrieval data layer that stores embeddings and returns similar records.</li>
+</ul>
+<h2 id="deep-dive-addendum-local-service-and-distributed-boundaries">Deep-Dive Addendum: Local, Service, and Distributed Boundaries</h2>
+<p>Chroma&#x27;s repository is especially useful for architects because it exposes more than one operating shape. The Python surface under <code>github-repos/04-rag-vector-database/chroma/chromadb/api/</code> supports local clients, HTTP clients, async clients, and collection models. The local index path is visible under <code>chromadb/segment/impl/vector/</code> and <code>chromadb/segment/impl/metadata/sqlite.py</code>. The Rust side separates <code>rust/frontend/</code>, <code>rust/worker/</code>, <code>rust/log/</code>, <code>rust/sysdb/</code>, <code>rust/blockstore/</code>, <code>rust/storage/</code>, and <code>rust/types/</code>. That split is the clearest source-grounded way to understand Chroma as both an embedded developer database and a service architecture.</p>
+<div class="mermaid">flowchart LR
+  User[&quot;Application code&quot;] --&gt; PyApi[&quot;Python API chromadb/api&quot;]
+  PyApi --&gt; LocalClient[&quot;PersistentClient or local segment API&quot;]
+  PyApi --&gt; HttpClient[&quot;HTTP/async FastAPI client&quot;]
+  LocalClient --&gt; LocalHnsw[&quot;local_hnsw and local_persistent_hnsw&quot;]
+  LocalClient --&gt; SqliteMeta[&quot;metadata SQLite segment&quot;]
+  HttpClient --&gt; Frontend[&quot;rust/frontend service&quot;]
+  Frontend --&gt; SysDb[&quot;rust/sysdb metadata&quot;]
+  Frontend --&gt; Log[&quot;rust/log mutation stream&quot;]
+  Frontend --&gt; Executor[&quot;local or distributed executor&quot;]
+  Executor --&gt; Worker[&quot;rust/worker query and compaction services&quot;]
+  Worker --&gt; Storage[&quot;rust/storage and blockstore&quot;]</div>
+<p>The key design question is where responsibility for durability, indexing, and query execution sits. In local mode, the application process is close to persistence and HNSW state, which is good for simple development and small deployments but makes resource governance part of the application host. In service mode, the frontend, log, sysdb, worker, and storage layers can be reasoned about separately. The repository makes this visible through <code>rust/frontend/src/impls/in_memory_frontend.rs</code>, <code>rust/frontend/src/impls/service_based_frontend.rs</code>, <code>rust/frontend/src/executor/local.rs</code>, <code>rust/frontend/src/executor/distributed.rs</code>, and worker binaries such as <code>rust/worker/src/bin/query_service.rs</code> and <code>rust/worker/src/bin/compaction_service.rs</code>.</p>
+<h3 id="ingestion-query-and-compaction-lifecycle">Ingestion, Query, and Compaction Lifecycle</h3>
+<div class="mermaid">sequenceDiagram
+  participant App as App or SDK
+  participant API as Python or HTTP API
+  participant FE as Frontend
+  participant Log as Mutation log
+  participant WQ as Work queue
+  participant Worker as Query or compaction worker
+  participant Store as Segment and block storage
+  App-&gt;&gt;API: add/upsert/query collection records
+  API-&gt;&gt;FE: normalized collection operation
+  FE-&gt;&gt;Log: append mutation when write path is used
+  FE-&gt;&gt;WQ: enqueue compaction or execution work
+  WQ-&gt;&gt;Worker: dispatch work item
+  Worker-&gt;&gt;Store: read or materialize segment state
+  Store--&gt;&gt;Worker: vectors, metadata, or compacted block data
+  Worker--&gt;&gt;FE: result set or compaction status
+  FE--&gt;&gt;API: response
+  API--&gt;&gt;App: records, distances, documents, metadata</div>
+<p>For RAG systems, the important production issue is not only whether <code>query()</code> returns similar documents. It is whether the ingestion path, metadata migrations, compaction cadence, and embedding-function configuration are all stable enough to give repeatable retrieval. Files like <code>chromadb/utils/embedding_functions/</code>, <code>chromadb/api/collection_configuration.py</code>, <code>chromadb/migrations/</code>, <code>rust/sqlite/migrations/</code>, and <code>rust/spanner-migrations/</code> show that model configuration and metadata storage are part of the architecture, not convenience details.</p>
+<h3 id="operating-mode-decision-tree">Operating-Mode Decision Tree</h3>
+<div class="mermaid">flowchart TD
+  Start[&quot;Choose Chroma operating mode&quot;] --&gt; Dev{&quot;Single developer or notebook?&quot;}
+  Dev --&gt;|yes| Local[&quot;PersistentClient with local HNSW and SQLite&quot;]
+  Dev --&gt;|no| Multi{&quot;Multiple app instances or users?&quot;}
+  Multi --&gt;|yes| Server[&quot;HTTP/service deployment&quot;]
+  Multi --&gt;|no| Local
+  Server --&gt; Scale{&quot;Need independent compaction/query workers?&quot;}
+  Scale --&gt;|yes| Distributed[&quot;Frontend + log + sysdb + worker + storage&quot;]
+  Scale --&gt;|no| SingleNode[&quot;Single-node server configuration&quot;]
+  Distributed --&gt; Govern[&quot;Govern embedding functions, schema, auth, quotas&quot;]
+  SingleNode --&gt; Govern
+  Local --&gt; Govern</div>
+<h3 id="production-readiness-checklist">Production Readiness Checklist</h3>
+<ul>
+<li>Decide the operating mode explicitly: local Python persistence, single-node server, or distributed service. Do not let a prototype <code>PersistentClient</code> pattern become the accidental production topology.</li>
+<li>Version embedding-function configuration from <code>chromadb/utils/embedding_functions/</code> and collection configuration from <code>chromadb/api/collection_configuration.py</code>; a changed provider, dimension, or sparse/dense policy changes retrieval semantics.</li>
+<li>Review migrations in <code>chromadb/migrations/</code>, <code>rust/sqlite/migrations/</code>, and <code>rust/spanner-migrations/</code> before upgrading a persisted deployment.</li>
+<li>Test query behavior with realistic metadata filters, not just vector-only similarity. The vector segment and SQLite metadata paths have different scaling risks.</li>
+<li>For service mode, monitor log lag, worker backlog, compaction time, sysdb latency, object-store latency, and frontend request latency.</li>
+<li>Keep auth, rate-limit, quota, and telemetry modules in scope during security review: <code>chromadb/auth/</code>, <code>chromadb/rate_limit/</code>, <code>chromadb/quota/</code>, and <code>chromadb/telemetry/</code>.</li>
+<li>Validate backup and restore by replaying a small corpus and comparing count, metadata predicates, and top-k retrieval results against a fixed evaluation set.</li>
+</ul>
+<h3 id="senior-architect-reading-guide">Senior Architect Reading Guide</h3>
+<p>Start with <code>chromadb/api/client.py</code>, <code>chromadb/api/fastapi.py</code>, and <code>chromadb/api/rust.py</code> to see the API shapes. Then read the local storage pieces under <code>chromadb/segment/impl/vector/</code> and <code>chromadb/segment/impl/metadata/sqlite.py</code>. After that, move to <code>rust/frontend/src/</code>, then <code>rust/worker/src/</code>, then <code>rust/log/src/</code> and <code>rust/sysdb/src/</code>. This order makes the difference between embedded Chroma and service Chroma visible before diving into lower-level block storage or deployment manifests.</p>
+<h3 id="additional-glossary">Additional Glossary</h3>
+<ul>
+<li><strong>Compaction lag:</strong> Delay between appended mutations and materialized optimized segment state.</li>
+<li><strong>Operating mode:</strong> The deployment shape: embedded local client, single-node service, or distributed service components.</li>
+<li><strong>SysDB migration:</strong> Schema evolution for tenant, database, collection, and segment metadata.</li>
+<li><strong>Worker backlog:</strong> Queued work for query execution, compaction, or maintenance that can affect freshness and latency.</li>
+</ul>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Glossary | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="index.html">English</a>
+        <a href="../vi/index.html">Tiếng Việt</a>
+        <a href="curriculum.html">Curriculum</a>
+        <a href="../../templates/index.html">Toolkit</a>
+        <a href="../../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="index.html">English course</a>
+      <a href="../vi/index.html">Trang tiếng Việt</a>
+      <a href="curriculum.html">Curriculum</a>
+      <a href="projects.html">Projects</a>
+      <a href="../../templates/index.html">Architecture toolkit</a>
+      <a href="../../capstone/index.html">Capstone</a>
+      <a href="../../assessments/index.html">Assessments</a>
+      <a href="../../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/glossary.md">View source</a>
+      <h1 id="glossary">Glossary</h1>
+<p>This glossary normalizes vocabulary across agent frameworks, serving runtimes, vector databases, training libraries, and LLMOps tools.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>Agent</td><td>A runtime entity that chooses actions, calls tools, manages context, and produces outputs.</td></tr>
+<tr><td>Agent loop</td><td>A repeated cycle of observe, plan, act, inspect result, and continue or stop.</td></tr>
+<tr><td>Workflow graph</td><td>A structured flow of nodes and edges, often more deterministic than an agent loop.</td></tr>
+<tr><td>Tool</td><td>A callable capability exposed to a model or agent, usually with a schema and side effects.</td></tr>
+<tr><td>Handoff</td><td>Transfer of control from one agent or role to another.</td></tr>
+<tr><td>Guardrail</td><td>A policy or validation layer that blocks, routes, or modifies unsafe or invalid behavior.</td></tr>
+<tr><td>Memory</td><td>Persistent or session-level state used by an agent or application.</td></tr>
+<tr><td>RAG</td><td>Retrieval-augmented generation: retrieve external context before or during generation.</td></tr>
+<tr><td>Embedding</td><td>A vector representation of text, image, or other data used for similarity search.</td></tr>
+<tr><td>Chunk</td><td>A document segment indexed for retrieval.</td></tr>
+<tr><td>Vector database</td><td>Storage and query system for embeddings plus metadata.</td></tr>
+<tr><td>Hybrid search</td><td>Retrieval that combines vector similarity with lexical or structured filtering.</td></tr>
+<tr><td>Payload / metadata</td><td>Non-vector fields used for filtering, tenancy, access control, or ranking.</td></tr>
+<tr><td>Inference runtime</td><td>Software that loads a model and executes generation or prediction.</td></tr>
+<tr><td>Token streaming</td><td>Incremental delivery of generated tokens to the caller.</td></tr>
+<tr><td>KV cache</td><td>Cached attention keys and values used to speed autoregressive decoding.</td></tr>
+<tr><td>Quantization</td><td>Reducing model numeric precision to save memory or improve speed.</td></tr>
+<tr><td>Adapter</td><td>A small trainable module attached to a base model for task/domain adaptation.</td></tr>
+<tr><td>PEFT</td><td>Parameter-efficient fine-tuning, including LoRA-style adapter methods.</td></tr>
+<tr><td>ZeRO</td><td>DeepSpeed optimization family that partitions optimizer, gradients, and parameters.</td></tr>
+<tr><td>Checkpoint</td><td>Saved model/training state used for recovery or deployment.</td></tr>
+<tr><td>Trace</td><td>Structured record of an AI interaction, including spans for model calls, tools, retrieval, and scores.</td></tr>
+<tr><td>Span</td><td>One timed operation inside a trace.</td></tr>
+<tr><td>Evaluation dataset</td><td>A set of examples used to measure quality or regressions.</td></tr>
+<tr><td>Feedback function</td><td>A scoring function that measures properties such as groundedness or relevance.</td></tr>
+<tr><td>Lineage</td><td>Provenance chain connecting dataset, prompt, model, adapter, retrieval config, run, and deployment.</td></tr>
+<tr><td>MCP</td><td>Model Context Protocol, a standard interface for connecting models/agents to tools and resources.</td></tr>
+<tr><td>Gateway</td><td>A layer that routes requests to providers, tools, models, or policies.</td></tr>
+<tr><td>Production readiness</td><td>Evidence that a system is safe, observable, governable, scalable, and recoverable enough to operate.</td></tr>
+</tbody></table></div>
+<h2 id="vocabulary-by-layer">Vocabulary By Layer</h2>
+<div class="mermaid">mindmap
+  root((Vocabulary))
+    Agent layer
+      Agent loop
+      Tool
+      Handoff
+      Guardrail
+      Memory
+    Serving layer
+      Runtime
+      Tokenizer
+      Streaming
+      KV cache
+      Quantization
+    Data layer
+      RAG
+      Embedding
+      Chunk
+      Metadata
+      Hybrid search
+    Training layer
+      Adapter
+      PEFT
+      ZeRO
+      Checkpoint
+    LLMOps layer
+      Trace
+      Span
+      Score
+      Dataset
+      Lineage
+    Platform layer
+      MCP
+      Gateway
+      Policy
+      Audit log</div>
+<h2 id="terms-that-are-often-confused">Terms That Are Often Confused</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Pair</th><th>Distinction</th></tr></thead>
+<tbody>
+<tr><td>Agent vs workflow</td><td>Agents choose actions dynamically; workflows encode more explicit control flow.</td></tr>
+<tr><td>RAG vs fine-tuning</td><td>RAG changes context at runtime; fine-tuning changes model behavior through training.</td></tr>
+<tr><td>Trace vs log</td><td>A trace preserves structured causality across spans; a log is usually an event stream.</td></tr>
+<tr><td>Evaluation vs monitoring</td><td>Evaluation measures quality against examples or criteria; monitoring watches runtime health and drift.</td></tr>
+<tr><td>Adapter vs checkpoint</td><td>An adapter is a small learned module; a checkpoint may contain full model/training state.</td></tr>
+<tr><td>Vector search vs hybrid search</td><td>Vector search uses embedding similarity; hybrid search mixes vector, lexical, and structured signals.</td></tr>
+<tr><td>Tool server vs gateway</td><td>A tool server exposes actions/resources; a gateway routes and governs access to models/tools/providers.</td></tr>
+</tbody></table></div>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

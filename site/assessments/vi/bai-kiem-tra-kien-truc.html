@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bài Kiểm Tra Kiến Trúc | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../learn/en/index.html">English</a>
+        <a href="../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../templates/index.html">Toolkit</a>
+        <a href="../../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../learn/en/index.html">English course</a>
+      <a href="../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../learn/en/projects.html">Projects</a>
+      <a href="../../templates/index.html">Architecture toolkit</a>
+      <a href="../../capstone/index.html">Capstone</a>
+      <a href="../index.html">Assessments</a>
+      <a href="../../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/assessments/vi/bai-kiem-tra-kien-truc.md">View source</a>
+      <h1 id="b-i-ki-m-tra-ki-n-tr-c">Bài Kiểm Tra Kiến Trúc</h1>
+<p>Thời lượng: 90 phút</p>
+<p>Bối cảnh: Bạn đang thiết kế một Enterprise Knowledge Copilot hỗ trợ review kiến trúc. Hệ thống phải trả lời có citation từ tài liệu nội bộ, hỗ trợ tool call đã được phê duyệt, trace toàn bộ interaction và tạo production readiness summary.</p>
+<h2 id="ph-n-1-layering">Phần 1: Layering</h2>
+<ol>
+<li>Vẽ sáu lớp chính của hệ thống và nêu trách nhiệm của từng lớp.</li>
+<li>Giải thích vì sao model runtime không nên sở hữu retrieval policy.</li>
+<li>Giải thích vì sao agent/workflow layer không nên sở hữu long-term experiment lineage.</li>
+</ol>
+<h2 id="ph-n-2-quy-t-nh-runtime">Phần 2: Quyết Định Runtime</h2>
+<p>Bạn có ba lựa chọn serving: hosted API, vLLM và llama.cpp.</p>
+<ol>
+<li>Tạo decision matrix với ít nhất sáu tiêu chí.</li>
+<li>Chọn một runtime cho bản production đầu tiên và giải thích.</li>
+<li>Định nghĩa metric nào sẽ buộc team đổi runtime.</li>
+</ol>
+<h2 id="ph-n-3-rag-data-contract">Phần 3: RAG Data Contract</h2>
+<ol>
+<li>Định nghĩa các field bắt buộc cho document, chunk, metadata và query.</li>
+<li>Giải thích access control nên được enforce ở đâu.</li>
+<li>Định nghĩa retrieval evaluation plan.</li>
+</ol>
+<h2 id="ph-n-4-llmops-v-evaluation">Phần 4: LLMOps Và Evaluation</h2>
+<ol>
+<li>Định nghĩa trace schema.</li>
+<li>Định nghĩa promotion gate cho prompt, retrieval và model change.</li>
+<li>Giải thích lineage kiểu MLflow khác gì observability trace của LLM.</li>
+</ol>
+<h2 id="ph-n-5-security-v-governance">Phần 5: Security Và Governance</h2>
+<ol>
+<li>Chỉ ra năm rủi ro bảo mật riêng của copilot này.</li>
+<li>Định nghĩa tool governance policy.</li>
+<li>Định nghĩa những gì phải log để audit được.</li>
+</ol>
+<h2 id="ph-n-6-production-readiness">Phần 6: Production Readiness</h2>
+<ol>
+<li>Tạo release checklist.</li>
+<li>Định nghĩa rollback behavior.</li>
+<li>Định nghĩa ba kịch bản failure rehearsal.</li>
+</ol>
+<h2 id="rubric">Rubric</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Khu vực</th><th>Điểm</th></tr></thead>
+<tbody>
+<tr><td>Layering và boundary</td><td>15</td></tr>
+<tr><td>Chất lượng quyết định runtime</td><td>15</td></tr>
+<tr><td>RAG data contract</td><td>15</td></tr>
+<tr><td>Evaluation và LLMOps</td><td>20</td></tr>
+<tr><td>Security và governance</td><td>20</td></tr>
+<tr><td>Production readiness</td><td>15</td></tr>
+</tbody></table></div>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

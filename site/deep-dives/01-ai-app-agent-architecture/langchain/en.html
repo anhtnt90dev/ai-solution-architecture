@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LangChain Architecture | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/01-ai-app-agent-architecture/langchain/README.en.md">View source</a>
+      <h1 id="langchain-architecture">LangChain Architecture</h1>
+<h2 id="executive-summary">Executive Summary</h2>
+<p>This LangChain checkout is a Python monorepo for agent and LLM application development. The root <code>README.md</code> calls LangChain &quot;the agent engineering platform&quot; and frames it as a framework for building agents and LLM-powered applications with interoperable components and third-party integrations. The local <code>libs/</code> tree is the real architecture boundary: <code>core</code> contains the foundational interfaces, <code>langchain_v1</code> contains the current <code>langchain</code> package and agent API, <code>langchain</code> contains <code>langchain-classic</code>, <code>text-splitters</code> isolates document chunking, <code>partners</code> contains provider packages, and <code>standard-tests</code> defines conformance tests for integrations.</p>
+<p>Package metadata confirms the split. <code>libs/langchain_v1/pyproject.toml</code> publishes <code>langchain</code> version <code>1.3.2</code> with dependencies on <code>langchain-core&gt;=1.4.0,&lt;2.0.0</code>, <code>langgraph&gt;=1.2.4,&lt;1.3.0</code>, and <code>pydantic</code>. <code>libs/core/pyproject.toml</code> publishes <code>langchain-core</code> version <code>1.4.0</code> and depends on <code>langsmith</code>, <code>tenacity</code>, <code>jsonpatch</code>, <code>PyYAML</code>, <code>pydantic</code>, and <code>langchain-protocol</code>. <code>libs/langchain/pyproject.toml</code> publishes <code>langchain-classic</code> version <code>1.0.7</code>.</p>
+<h2 id="problem-solved">Problem Solved</h2>
+<p>LangChain solves the integration and composition problem for LLM applications. It gives developers stable interfaces for chat models, messages, prompts, tools, embeddings, retrievers, vector stores, output parsers, callbacks, and runnable workflows. In the v1 package, <code>create_agent</code> builds a LangGraph-backed agent loop so users can combine a model, tools, middleware, structured output, checkpointers, stores, interrupts, caching, and stream transformers without hand-writing graph plumbing.</p>
+<h2 id="ai-stack-role">AI Stack Role</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Layer</th><th>Repository role</th><th>Grounding in repo</th></tr></thead>
+<tbody>
+<tr><td>Agent orchestration</td><td><code>create_agent</code> builds a compiled <code>StateGraph</code> with model and tools loop</td><td><code>libs/langchain_v1/langchain/agents/factory.py</code></td></tr>
+<tr><td>Core contracts</td><td>Runnable, BaseChatModel, BaseTool, BaseRetriever, callbacks, messages</td><td><code>libs/core/langchain_core/</code></td></tr>
+<tr><td>Provider abstraction</td><td>Optional partner packages and <code>init_chat_model</code> provider inference</td><td><code>libs/partners/</code>, <code>libs/langchain_v1/langchain/chat_models/base.py</code></td></tr>
+<tr><td>Classic app patterns</td><td>Chains, legacy agents, memory, vectorstores, retrievers, evaluation</td><td><code>libs/langchain/langchain_classic/</code></td></tr>
+<tr><td>Testing standard</td><td>Integration conformance tests for chat models, tools, retrievers, stores</td><td><code>libs/standard-tests/</code></td></tr>
+</tbody></table></div>
+<h2 id="source-tree-map">Source Tree Map</h2>
+<pre><code class="language-text">langchain/
+  README.md                         # root overview and ecosystem positioning
+  libs/
+    README.md                       # monorepo package guide
+    core/
+      langchain_core/               # Runnable, messages, models, tools, retrievers
+      pyproject.toml                # langchain-core package metadata
+    langchain_v1/
+      langchain/
+        agents/                     # create_agent, middleware, structured output
+        chat_models/                # init_chat_model provider factory
+        embeddings/                 # embedding init helpers
+        tools/                      # ToolNode bridge for agent execution
+      pyproject.toml                # langchain package metadata
+    langchain/
+      langchain_classic/            # classic chains, agents, vectorstores, memory
+      pyproject.toml                # langchain-classic package metadata
+    partners/
+      openai, anthropic, groq, xai, qdrant, chroma, ...
+    text-splitters/
+      langchain_text_splitters/     # character, markdown, html, json, python splitters
+    standard-tests/
+      langchain_tests/              # standard tests for integrations</code></pre>
+<h2 id="component-diagram">Component Diagram</h2>
+<div class="mermaid">flowchart TB
+  App[Application] --&gt; LC[langchain package&lt;br/&gt;libs/langchain_v1]
+  LC --&gt; AgentFactory[create_agent&lt;br/&gt;agents/factory.py]
+  AgentFactory --&gt; LangGraph[LangGraph StateGraph]
+  AgentFactory --&gt; Middleware[AgentMiddleware&lt;br/&gt;middleware/types.py]
+  AgentFactory --&gt; ToolNode[ToolNode&lt;br/&gt;tools/tool_node.py]
+  LC --&gt; InitModel[init_chat_model&lt;br/&gt;chat_models/base.py]
+  InitModel --&gt; Partners[Provider packages&lt;br/&gt;libs/partners]
+  ToolNode --&gt; CoreTools[BaseTool&lt;br/&gt;langchain_core.tools]
+  LC --&gt; Core[langchain-core&lt;br/&gt;Runnable, messages, callbacks]
+  Core --&gt; LangSmith[LangSmith tracing/evals]
+  Classic[langchain-classic] --&gt; Core
+  TextSplitters[text-splitters] --&gt; Core
+  StandardTests[standard-tests] --&gt; Partners</div>
+<h2 id="core-concepts">Core Concepts</h2>
+<ul>
+<li><code>Runnable</code>: the central unit of composition in <code>libs/core/langchain_core/runnables/base.py</code>. It supports <code>invoke</code>, <code>ainvoke</code>, <code>batch</code>, <code>stream</code>, graph composition with <code>RunnableSequence</code> and <code>RunnableParallel</code>, retries, listeners, config, and schemas.</li>
+<li><code>BaseChatModel</code>: the chat model contract in <code>libs/core/langchain_core/language_models/chat_models.py</code>. Provider packages implement or adapt to this interface.</li>
+<li>Messages: <code>langchain_core.messages</code> defines AI, human, system, tool, function, and content-block message types, plus provider block translators.</li>
+<li>Tools: <code>langchain_core.tools</code> defines tool conversion, rendering, structured tools, retriever tools, and base tool contracts.</li>
+<li><code>create_agent</code>: the v1 agent factory in <code>libs/langchain_v1/langchain/agents/factory.py</code>. It returns a compiled <code>StateGraph</code> and describes a loop where the model produces tool calls, a tools node executes them, and the model is called again until no tool calls remain.</li>
+<li>Middleware: <code>AgentMiddleware</code> in <code>libs/langchain_v1/langchain/agents/middleware/types.py</code> provides <code>before_agent</code>, <code>before_model</code>, <code>after_model</code>, <code>wrap_model_call</code>, <code>wrap_tool_call</code>, dynamic prompts, state schemas, tools, and stream transformers.</li>
+<li>Structured output: <code>ToolStrategy</code>, <code>ProviderStrategy</code>, and <code>AutoStrategy</code> live in <code>libs/langchain_v1/langchain/agents/structured_output.py</code>.</li>
+<li>Classic APIs: <code>libs/langchain/langchain_classic/</code> keeps older chain, agent, memory, retriever, vectorstore, graph, evaluation, utility, and prompt modules.</li>
+</ul>
+<h2 id="internal-architecture">Internal Architecture</h2>
+<p>LangChain separates stable contracts from orchestration. <code>langchain-core</code> owns low-level interfaces that integrations implement. The v1 <code>langchain</code> package uses those interfaces and imports <code>langgraph</code> to compile agents into executable state graphs. The classic package keeps broader legacy application patterns but depends on core and text splitters.</p>
+<p>The agent factory builds several layers: it initializes a chat model if a string model identifier is provided; normalizes tools and built-in provider tools; constructs structured-output tools when a schema is supplied; chains middleware wrappers; builds graph nodes for model execution, tools, and middleware hooks; and compiles the graph with optional checkpointer, store, interrupts, cache, debug flag, name, and stream transformers.</p>
+<h2 id="runtime-and-data-flow">Runtime and Data Flow</h2>
+<div class="mermaid">sequenceDiagram
+  participant U as User/App
+  participant G as CompiledStateGraph
+  participant M as Middleware
+  participant L as ChatModel
+  participant T as ToolNode
+  participant S as Checkpointer/Store
+  participant LS as LangSmith/Callbacks
+
+  U-&gt;&gt;G: invoke/stream with messages
+  G-&gt;&gt;S: load thread state if configured
+  G-&gt;&gt;M: before_agent / before_model
+  M-&gt;&gt;L: model request with messages, tools, response format
+  L--&gt;&gt;M: AIMessage and optional tool_calls
+  M-&gt;&gt;G: after_model state updates
+  alt tool_calls present
+    G-&gt;&gt;T: execute tool calls
+    T--&gt;&gt;G: ToolMessage results
+    G-&gt;&gt;L: next model turn with tool results
+  else no tool calls
+    G--&gt;&gt;U: final messages and optional structured_response
+  end
+  G-&gt;&gt;S: persist checkpoint/store data
+  G-&gt;&gt;LS: callbacks, traces, stream events</div>
+<h2 id="extension-points">Extension Points</h2>
+<ul>
+<li>Implement <code>BaseChatModel</code>, <code>BaseTool</code>, <code>Embeddings</code>, <code>BaseRetriever</code>, or vector store interfaces in <code>langchain-core</code>.</li>
+<li>Publish provider-specific packages under <code>libs/partners/</code>, following the test contract in <code>libs/standard-tests/</code>.</li>
+<li>Add agent middleware by subclassing <code>AgentMiddleware</code> or using decorators such as <code>before_model</code>, <code>after_model</code>, <code>wrap_model_call</code>, <code>wrap_tool_call</code>, and <code>dynamic_prompt</code>.</li>
+<li>Add structured output through Pydantic schemas, <code>ToolStrategy</code>, <code>ProviderStrategy</code>, or <code>AutoStrategy</code>.</li>
+<li>Compose chains and data flows with <code>RunnableSequence</code>, <code>RunnableParallel</code>, <code>RunnableLambda</code>, and <code>RunnableBinding</code>.</li>
+<li>Use <code>checkpointer</code> for per-thread state and <code>store</code> for cross-thread persistence in <code>create_agent</code>.</li>
+</ul>
+<h2 id="integrations">Integrations</h2>
+<p><code>libs/partners/</code> includes provider packages such as <code>anthropic</code>, <code>chroma</code>, <code>deepseek</code>, <code>exa</code>, <code>fireworks</code>, <code>groq</code>, <code>huggingface</code>, <code>mistralai</code>, <code>nomic</code>, <code>ollama</code>, <code>openai</code>, <code>openrouter</code>, <code>perplexity</code>, <code>qdrant</code>, and <code>xai</code>. <code>libs/langchain_v1/pyproject.toml</code> exposes optional extras for many of those providers. <code>libs/langchain_classic/vectorstores/</code> also contains a large set of legacy vector store adapters, while <code>langchain_core.messages.block_translators/</code> contains provider-specific content block translation.</p>
+<h2 id="deployment-and-operations-topology">Deployment and Operations Topology</h2>
+<div class="mermaid">flowchart LR
+  subgraph AppRuntime[&quot;Application runtime&quot;]
+    API[API / worker / notebook]
+    Agent[Compiled agent graph]
+    Tools[Local tools and retrievers]
+  end
+  subgraph LangChainPackages[&quot;LangChain packages&quot;]
+    Core[langchain-core]
+    V1[langchain]
+    Classic[langchain-classic]
+    Tests[langchain-tests]
+  end
+  subgraph External[&quot;External services&quot;]
+    Models[Model providers]
+    VDB[(Vector stores)]
+    State[(Checkpointer / Store)]
+    Smith[LangSmith observability]
+  end
+  API --&gt; Agent
+  Agent --&gt; V1
+  V1 --&gt; Core
+  Classic --&gt; Core
+  Tools --&gt; Core
+  Agent --&gt; Models
+  Tools --&gt; VDB
+  Agent --&gt; State
+  Core --&gt; Smith
+  Tests -. CI conformance .-&gt; Core</div>
+<p>LangChain is deployed inside the host application. Production systems should isolate tool side effects, make model-provider packages explicit, configure checkpointers/stores for long-running or stateful agents, and send callbacks/traces to LangSmith or another callback/tracing sink. Because v1 agents compile to LangGraph graphs, deployment decisions often mirror LangGraph decisions: durable execution, interruption, human review, and state management are explicit topology choices.</p>
+<h2 id="observability-testing-evaluation-and-failure-modes">Observability, Testing, Evaluation, and Failure Modes</h2>
+<p>Observability enters through <code>langchain_core.callbacks</code>, <code>langchain_core.tracers</code>, and the <code>langsmith</code> dependency in <code>langchain-core</code>. <code>Runnable</code> config supports tags and metadata for tracing. The root README points developers to LangSmith for debugging, observability, evaluation, and deployment workflows.</p>
+<p>Testing is not only normal unit tests. <code>libs/standard-tests/README.md</code> describes <code>langchain-tests</code>, a package of standard test base classes for integrations. For example, a chat model integration should provide unit and integration test classes derived from <code>ChatModelUnitTests</code> and <code>ChatModelIntegrationTests</code>. The monorepo also uses <code>ruff</code>, <code>mypy</code>, <code>pytest</code>, <code>pytest-asyncio</code>, <code>pytest-socket</code>, <code>pytest-xdist</code>, <code>syrupy</code>, and benchmark tooling according to package metadata.</p>
+<p>Failure modes to account for:</p>
+<ul>
+<li>provider package missing for a model identifier passed to <code>init_chat_model</code>;</li>
+<li>provider capability mismatch for tool calling or structured output;</li>
+<li>middleware sync/async mismatch, explicitly mentioned in <code>AgentMiddleware</code> error text;</li>
+<li>tool schema drift or duplicate tool names;</li>
+<li>vector store, retriever, or embedding provider latency and rate limits;</li>
+<li>checkpoint/store mismatch across graph versions;</li>
+<li>callback or tracing leakage of sensitive messages;</li>
+<li>classic API deprecation and migration risk.</li>
+</ul>
+<h2 id="security-and-governance-risks">Security and Governance Risks</h2>
+<p>LangChain makes tool integration easy, so governance must be externalized into application policy. Risks include prompt injection through retrieved content, tool misuse, data exfiltration via model providers, untrusted document loading, SSRF or unsafe HTTP utility use, and accidental persistence of secrets in traces. The <code>langchain_core/_security/</code> directory indicates security-specific transport and SSRF policy code exists in core. Production use should combine input validation, tool allowlists, scoped credentials, retrieval filtering, trace redaction, network egress controls, and integration conformance tests.</p>
+<h2 id="lifecycle-and-module-dependency-diagram">Lifecycle and Module Dependency Diagram</h2>
+<div class="mermaid">stateDiagram-v2
+  [*] --&gt; SelectPackage
+  SelectPackage --&gt; CoreContract: implement interface
+  SelectPackage --&gt; V1Agent: build agent
+  SelectPackage --&gt; ClassicFlow: legacy chain/retriever
+  CoreContract --&gt; PartnerIntegration
+  PartnerIntegration --&gt; StandardTests
+  StandardTests --&gt; PublishProvider: pass
+  V1Agent --&gt; CompileGraph
+  CompileGraph --&gt; InvokeOrStream
+  InvokeOrStream --&gt; ToolLoop: tool calls
+  ToolLoop --&gt; InvokeOrStream
+  InvokeOrStream --&gt; FinalState: no tool calls
+  ClassicFlow --&gt; CoreContract
+  FinalState --&gt; [*]</div>
+<h2 id="configuration-deployment-and-ops-notes">Configuration, Deployment, and Ops Notes</h2>
+<ul>
+<li>Install <code>langchain</code> for the v1 API and add provider packages explicitly, for example OpenAI, Anthropic, Ollama, Groq, or Qdrant packages.</li>
+<li>Use <code>langchain-core</code> when implementing reusable integrations or custom contracts.</li>
+<li>Use <code>langchain-tests</code> in CI when publishing a provider or vector store package.</li>
+<li>Keep <code>langchain-classic</code> isolated when maintaining legacy chains or migrations.</li>
+<li>Use checkpointers/stores for durable agent state, especially when interrupts or human-in-the-loop workflows are enabled.</li>
+<li>Treat <code>debug=True</code> and callback traces as sensitive in regulated environments.</li>
+</ul>
+<h2 id="reading-guide">Reading Guide</h2>
+<ol>
+<li>Read root <code>README.md</code>, then <code>libs/README.md</code>.</li>
+<li>Read <code>libs/core/langchain_core/runnables/base.py</code> and <code>language_models/chat_models.py</code>.</li>
+<li>Read <code>libs/langchain_v1/langchain/chat_models/base.py</code> for model initialization.</li>
+<li>Read <code>libs/langchain_v1/langchain/agents/factory.py</code> and <code>agents/middleware/types.py</code>.</li>
+<li>Read <code>libs/langchain_v1/langchain/agents/structured_output.py</code>.</li>
+<li>For integrations, read the matching package under <code>libs/partners/</code> plus <code>libs/standard-tests/README.md</code>.</li>
+<li>For migration or older apps, inspect <code>libs/langchain/langchain_classic/</code>.</li>
+</ol>
+<h2 id="learning-path">Learning Path</h2>
+<ol>
+<li>Create a model with <code>init_chat_model</code>.</li>
+<li>Compose a small <code>RunnableSequence</code>.</li>
+<li>Convert a Python callable into a tool and call it from <code>create_agent</code>.</li>
+<li>Add middleware for prompt shaping, retry, fallback, or PII handling.</li>
+<li>Add structured output with a Pydantic schema.</li>
+<li>Add a checkpointer/store and stream the compiled graph.</li>
+<li>Validate a custom integration with <code>langchain-tests</code>.</li>
+</ol>
+<h2 id="production-readiness-checklist">Production Readiness Checklist</h2>
+<p>LangChain production readiness is mostly about controlling the boundaries between <code>libs/core</code>, the v1 agent package in <code>libs/langchain_v1</code>, provider packages in <code>libs/partners</code>, and legacy code under <code>libs/langchain/langchain_classic</code>.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Area</th><th>Repository anchor</th><th>Architecture check</th></tr></thead>
+<tbody>
+<tr><td>Package selection</td><td><code>libs/langchain_v1/pyproject.toml</code>, <code>libs/core/pyproject.toml</code>, <code>libs/langchain/pyproject.toml</code></td><td>Decide whether the service imports v1 <code>langchain</code>, reusable <code>langchain-core</code>, or <code>langchain-classic</code>; do not mix legacy chains into a new agent graph without a migration plan.</td></tr>
+<tr><td>Provider dependencies</td><td><code>libs/partners/</code>, <code>libs/langchain_v1/langchain/chat_models/base.py</code></td><td>Install and pin only the provider packages actually used; validate model capability for tools, JSON mode, streaming, and structured output.</td></tr>
+<tr><td>Agent state</td><td><code>libs/langchain_v1/langchain/agents/factory.py</code></td><td>Choose checkpointer and store behavior before shipping long-running agents, interrupts, or human review workflows.</td></tr>
+<tr><td>Tool safety</td><td><code>libs/core/langchain_core/tools/</code>, <code>libs/langchain_v1/langchain/tools/tool_node.py</code></td><td>Enforce tool allowlists, schema validation, credential scoping, and safe error propagation from <code>ToolNode</code>.</td></tr>
+<tr><td>Middleware governance</td><td><code>libs/langchain_v1/langchain/agents/middleware/</code></td><td>Use middleware for PII scrubbing, prompt shaping, retries, and policy decisions; test sync and async variants.</td></tr>
+<tr><td>Integration quality</td><td><code>libs/standard-tests/</code></td><td>Use <code>langchain-tests</code> for provider, retriever, tool, or vector store integrations before relying on them in CI.</td></tr>
+</tbody></table></div>
+<div class="mermaid">flowchart LR
+  Core[libs/core/langchain_core] --&gt; Contracts[Runnable, BaseChatModel, BaseTool, Retriever]
+  Contracts --&gt; V1[libs/langchain_v1/langchain]
+  V1 --&gt; AgentFactory[agents/factory.py create_agent]
+  AgentFactory --&gt; LangGraph[Compiled StateGraph]
+  AgentFactory --&gt; Middleware[agents/middleware]
+  AgentFactory --&gt; ToolNode[tools/tool_node.py]
+  Contracts --&gt; Partners[libs/partners provider packages]
+  Contracts --&gt; TextSplit[libs/text-splitters]
+  Contracts --&gt; Classic[libs/langchain/langchain_classic]
+  Partners --&gt; StdTests[libs/standard-tests/langchain_tests]
+  Classic --&gt; Migration[Legacy migration boundary]</div>
+<h2 id="operational-runbook-and-failure-triage">Operational Runbook And Failure Triage</h2>
+<p>When an agent run fails, first determine whether the failure came from the graph contract, the model provider, a tool execution, or persistence. <code>create_agent</code> hides graph construction for ease of use, so production debugging should include traces from <code>langchain_core.callbacks</code>, <code>langchain_core.tracers</code>, LangSmith, or an equivalent callback sink.</p>
+<div class="mermaid">flowchart TD
+  Incident[Agent or Runnable incident] --&gt; Boundary{Boundary}
+  Boundary --&gt; Package[Wrong package or version]
+  Boundary --&gt; Provider[Provider capability or dependency]
+  Boundary --&gt; Tool[Tool schema or side effect]
+  Boundary --&gt; State[Checkpointer/store mismatch]
+  Boundary --&gt; Middleware[Middleware sync/async or policy]
+  Boundary --&gt; Trace[Callback or trace leakage]
+  Package --&gt; InspectPkg[pyproject files and libs layout]
+  Provider --&gt; InspectProvider[partners package and init_chat_model]
+  Tool --&gt; InspectTool[langchain_core.tools and ToolNode]
+  State --&gt; InspectState[create_agent checkpointer/store args]
+  Middleware --&gt; InspectMW[agents/middleware/types.py]
+  Trace --&gt; InspectTrace[callbacks, tracers, LangSmith config]
+  InspectPkg --&gt; Remediate[Pin, migrate, test, or isolate]
+  InspectProvider --&gt; Remediate
+  InspectTool --&gt; Remediate
+  InspectState --&gt; Remediate
+  InspectMW --&gt; Remediate
+  InspectTrace --&gt; Remediate</div>
+<p>A senior architect should read LangChain as a contract library first and as an agent framework second. Stable application boundaries should depend on <code>langchain-core</code> interfaces and on provider packages that pass standard tests. The v1 <code>create_agent</code> path is appropriate when LangGraph durability, middleware, tools, and structured output are needed; <code>langchain-classic</code> should be treated as an older compatibility surface, especially for chains, memory, vector stores, and evaluation modules.</p>
+<div class="mermaid">sequenceDiagram
+  participant App as Application
+  participant Core as langchain-core contracts
+  participant Agent as create_agent StateGraph
+  participant Provider as Partner chat model
+  participant Tool as ToolNode and tools
+  participant Store as Checkpointer/store
+  participant Obs as Callbacks/tracers
+
+  App-&gt;&gt;Core: define messages, tools, Runnable config
+  App-&gt;&gt;Agent: compile model, tools, middleware, store
+  Agent-&gt;&gt;Store: load thread state
+  Agent-&gt;&gt;Provider: invoke model with tool schemas
+  Provider--&gt;&gt;Agent: AIMessage with tool calls or final text
+  Agent-&gt;&gt;Tool: execute validated tool calls
+  Tool--&gt;&gt;Agent: ToolMessage results
+  Agent-&gt;&gt;Store: persist state
+  Agent-&gt;&gt;Obs: emit run, tags, metadata, events
+  Agent--&gt;&gt;App: final state or structured_response</div>
+<h2 id="senior-architect-review-notes">Senior Architect Review Notes</h2>
+<p>Read this repository as a layered contract system. <code>libs/core/langchain_core</code> should be the stable mental model: messages, runnables, tools, retrievers, callbacks, tracers, and model interfaces. The v1 package in <code>libs/langchain_v1/langchain</code> composes those contracts into agent graphs, while <code>libs/partners</code> implements provider-specific edges. A production application should keep custom business code depending on the smallest stable contract it needs, rather than importing broad legacy modules by habit.</p>
+<p>The highest-risk design choice is not whether to use an agent; it is where state and authority live. <code>libs/langchain_v1/langchain/agents/factory.py</code> can accept checkpointers, stores, middleware, tools, caches, interrupts, and stream transformers. Each of those is an operational boundary. A checkpointer controls replay and resumability, a store controls cross-thread memory, middleware controls policy and prompt shape, and tools control external side effects. Treat these as separate architecture decisions, not as optional keyword arguments.</p>
+<p>Provider integrations should be judged by conformance, not popularity. The <code>libs/standard-tests/</code> package exists because chat models, retrievers, vector stores, and tools can all claim compatibility while diverging on streaming, tool calls, async behavior, error semantics, or structured output. Before a custom provider package or partner module becomes part of a platform standard, require standard tests, provider capability documentation, and an incident plan for API drift.</p>
+<p>Finally, isolate <code>libs/langchain/langchain_classic</code> in modernization work. It is valuable for existing chains, memory, vector stores, and evaluation utilities, but new agent workloads should have a deliberate reason to cross from v1 graph orchestration into classic abstractions. That boundary should appear explicitly in code ownership and dependency review.</p>
+<p>For platform teams, define ownership by package boundary. The team that owns reusable integrations should maintain code against <code>libs/core/langchain_core</code> contracts and <code>libs/standard-tests</code>; the team that owns user workflows should own <code>libs/langchain_v1</code> agent configuration, middleware, checkpointers, and stores; the team that owns legacy migration should own <code>libs/langchain/langchain_classic</code> usage and removal plans. This separation prevents one application feature from silently changing provider compatibility, graph state behavior, and legacy chain behavior at the same time.</p>
+<p>During design reviews, ask for a capability matrix per model provider. A provider package under <code>libs/partners</code> may support ordinary chat but not reliable tool calling, JSON schema responses, token streaming, multimodal content blocks, or consistent error typing. If the agent factory receives a string model identifier and infers a provider through <code>init_chat_model</code>, that inference should be covered by tests and deployment configuration, not left as an implicit runtime surprise.</p>
+<h2 id="glossary">Glossary</h2>
+<ul>
+<li>Runnable: composable unit that can invoke, batch, stream, and expose schemas.</li>
+<li>BaseChatModel: core chat-model interface implemented by provider packages.</li>
+<li>ToolNode: graph node that executes tool calls emitted by the model.</li>
+<li>AgentMiddleware: hook and wrapper system around agent, model, and tool execution.</li>
+<li>StateGraph: LangGraph graph compiled by <code>create_agent</code>.</li>
+<li>Checkpointer: per-thread persistence for graph state.</li>
+<li>Store: cross-thread persistence for application or agent data.</li>
+<li>Structured output: schema-backed model response using provider-native or tool-call strategy.</li>
+<li>LangSmith: observability, debugging, and evaluation platform integrated through callbacks/tracers.</li>
+</ul>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

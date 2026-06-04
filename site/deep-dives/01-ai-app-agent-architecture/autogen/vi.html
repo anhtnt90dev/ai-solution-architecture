@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kiến trúc AutoGen | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/01-ai-app-agent-architecture/autogen/README.vi.md">View source</a>
+      <h1 id="ki-n-tr-c-autogen">Kiến trúc AutoGen</h1>
+<h2 id="t-m-t-t-i-u-h-nh">Tóm tắt điều hành</h2>
+<p>AutoGen là framework cho ứng dụng AI multi-agent có thể hoạt động tự động hoặc phối hợp với con người. Trong checkout này, <code>README.md</code> ở root nói rõ AutoGen đang ở trạng thái maintenance mode và người dùng mới được hướng sang Microsoft Agent Framework. Với người dùng AutoGen hiện hữu, repository vẫn có giá trị vì chứa kiến trúc phân lớp của AutoGen: Core API event-driven cấp thấp, AgentChat API cấp cao hơn, Extensions cho model client/tool/runtime/memory/code execution, công cụ developer như Studio và Bench, mã .NET, hợp đồng protobuf, design docs và nhiều sample.</p>
+<p>Workspace Python trong <code>python/pyproject.toml</code> gồm các package dưới <code>python/packages/*</code>. <code>autogen-core</code>, <code>autogen-agentchat</code> và <code>autogen-ext</code> đều ở phiên bản <code>0.7.5</code>. <code>autogen-core</code> cung cấp interface nền tảng và runtime; <code>autogen-agentchat</code> xây API agent/team chat trên core; <code>autogen-ext</code> đóng gói integration như OpenAI, Azure, Anthropic, Ollama, llama.cpp, Semantic Kernel, MCP, Docker/Jupyter/local code execution, Redis/disk cache, Chroma/mem0 memory, web/file/video surfer và gRPC runtime.</p>
+<h2 id="v-n-c-gi-i-quy-t">Vấn đề được giải quyết</h2>
+<p>AutoGen giải quyết bài toán điều phối hệ thống có nhiều agent hội thoại. Repository hỗ trợ hai mức thiết kế: runtime pub-sub/RPC nơi agent nhận event trên topic, và facade AgentChat nơi developer xây assistant, user proxy, code executor agent, group chat, selector, swarm, handoff và team. Nó cũng xử lý các mối quan tâm tích hợp thực tế: model client, tool schema, workbench, code execution, distributed worker, memory có tính persistence, UI sample, benchmark tooling và hướng dẫn responsible AI.</p>
+<h2 id="vai-tr-trong-ai-stack">Vai trò trong AI Stack</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Lớp</th><th>Vai trò của repository</th><th>Căn cứ trong repo</th></tr></thead>
+<tbody>
+<tr><td>Event runtime</td><td>Agent ID, topic, subscription, routed agent, single-threaded runtime</td><td><code>python/packages/autogen-core/src/autogen_core/</code></td></tr>
+<tr><td>Chat abstraction</td><td>AssistantAgent, BaseChatAgent, teams, termination conditions, UI console</td><td><code>python/packages/autogen-agentchat/src/autogen_agentchat/</code></td></tr>
+<tr><td>Tích hợp</td><td>Model client, tool, code executor, MCP, memory, gRPC runtime</td><td><code>python/packages/autogen-ext/src/autogen_ext/</code></td></tr>
+<tr><td>Hợp đồng phân tán</td><td>Worker protocol và CloudEvent/protobuf contract</td><td><code>docs/design/</code>, <code>protos/</code>, <code>autogen-ext/runtimes/grpc/</code></td></tr>
+<tr><td>Vận hành có trách nhiệm</td><td>Security policy, transparency FAQ, tests, benchmark package</td><td><code>SECURITY.md</code>, <code>TRANSPARENCY_FAQS.md</code>, <code>agbench</code>, package tests</td></tr>
+</tbody></table></div>
+<h2 id="b-n-c-y-ngu-n">Bản đồ cây nguồn</h2>
+<pre><code class="language-text">autogen/
+  README.md                         # tổng quan, maintenance mode, quickstart
+  TRANSPARENCY_FAQS.md              # rủi ro Responsible AI và hướng dẫn vận hành
+  SECURITY.md                       # báo cáo lỗ hổng
+  docs/design/                      # programming model, topics, worker protocol, services
+  protos/                           # cloudevent.proto và agent_worker.proto
+  dotnet/                           # triển khai .NET và tài liệu
+  python/
+    pyproject.toml                  # uv workspace, poe tasks, lint/type/test config
+    samples/                        # FastAPI, Chainlit, Streamlit, gRPC, group chat
+    packages/
+      autogen-core/                 # event runtime, tools, model client interface, telemetry
+      autogen-agentchat/            # chat agents, teams, conditions, UI
+      autogen-ext/                  # providers, code execution, MCP, memory, runtimes
+      autogen-studio/               # công cụ UI/no-code cho prototype
+      agbench/                      # benchmark/evaluation tooling
+      pyautogen/                    # package tương thích
+      autogen-test-utils/           # test helpers
+      component-schema-gen/         # tiện ích sinh schema
+      magentic-one-cli/             # package CLI Magentic-One</code></pre>
+<h2 id="s-th-nh-ph-n">Sơ đồ thành phần</h2>
+<div class="mermaid">flowchart TB
+  App[Ung dung] --&gt; AgentChat[AgentChat API&lt;br/&gt;autogen-agentchat]
+  AgentChat --&gt; Core[Core runtime&lt;br/&gt;autogen-core]
+  AgentChat --&gt; Teams[Teams / group chat&lt;br/&gt;teams/_group_chat]
+  AgentChat --&gt; Conditions[Termination conditions]
+  AgentChat --&gt; ChatTools[AgentTool / TeamTool]
+  Core --&gt; Runtime[AgentRuntime / RoutedAgent / Topics]
+  Core --&gt; ModelContract[ChatCompletionClient interface]
+  Core --&gt; ToolContract[BaseTool / Workbench]
+  Core --&gt; Telemetry[OpenTelemetry helpers]
+  Ext[autogen-ext] --&gt; ModelContract
+  Ext --&gt; ToolContract
+  Ext --&gt; CodeExec[Code executors]
+  Ext --&gt; MCP[MCP workbench]
+  Ext --&gt; GRPC[gRPC worker runtime]
+  Runtime --&gt; Protos[protos/agent_worker.proto]
+  Studio[AutoGen Studio] --&gt; AgentChat
+  Bench[AutoGen Bench] --&gt; AgentChat</div>
+<h2 id="kh-i-ni-m-l-i">Khái niệm lõi</h2>
+<ul>
+<li>Programming model event-driven: <code>docs/design/01 - Programming Model.md</code> mô tả agent publish-subscribe nhận CloudEvents, publish event, gọi model/tool/memory và dùng orchestrator agent khi workflow cần control logic.</li>
+<li>Topic và subscription: <code>docs/design/02 - Topics.md</code> định nghĩa identifier, subscription, tạo agent instance, message type và well-known topic type.</li>
+<li>Worker protocol: <code>docs/design/03 - Agent Worker Protocol.md</code> mô tả service và worker process, worker registration, placement agent, activation khi có event hoặc RPC request, routing response, timeout và termination.</li>
+<li><code>AgentRuntime</code>: protocol trong <code>autogen_core/_agent_runtime.py</code>; <code>SingleThreadedAgentRuntime</code> trong <code>_single_threaded_agent_runtime.py</code> cung cấp runtime local.</li>
+<li><code>RoutedAgent</code>: class và decorator trong <code>_routed_agent.py</code> ánh xạ message handler, event handler và RPC handler tới typed messages.</li>
+<li><code>ChatCompletionClient</code>: interface model-client trong <code>autogen_core/models/_model_client.py</code>, được implement bởi extension client như <code>OpenAIChatCompletionClient</code>.</li>
+<li><code>AssistantAgent</code>: chat agent cấp cao trong <code>autogen_agentchat/agents/_assistant_agent.py</code>.</li>
+<li>Teams: <code>autogen_agentchat/teams/_group_chat/</code> triển khai base group chat, round-robin, selector, swarm, sequential routed agent và biến thể Magentic-One.</li>
+<li>Workbench và tools: <code>autogen_core/tools/</code> và <code>autogen_ext/tools/</code> cung cấp schema, function tool, static workbench, MCP, HTTP, Azure AI Search, GraphRAG, LangChain và code execution tools.</li>
+</ul>
+<h2 id="ki-n-tr-c-n-i-b">Kiến trúc nội bộ</h2>
+<p>AutoGen được thiết kế phân lớp. Core không phụ thuộc AgentChat; nó định nghĩa runtime, routing, identity, subscription, queue, serialization, component configuration, tool contract, model context, memory interface, model client và telemetry. AgentChat dùng Core để cung cấp abstraction dễ dùng hơn như <code>AssistantAgent</code>, <code>UserProxyAgent</code>, <code>CodeExecutorAgent</code>, <code>SocietyOfMindAgent</code> và teams. Extensions triển khai hạ tầng cụ thể quanh các abstraction này.</p>
+<p><code>autogen-ext</code> là lớp integration. Cây <code>models/</code> gồm adapter OpenAI, Azure AI, Anthropic, Ollama, llama.cpp, replay, cache và Semantic Kernel. Cây <code>tools/</code> gồm MCP transports, HTTP tools, Azure AI Search, GraphRAG, LangChain, code execution và adapter Semantic Kernel. Cây <code>code_executors/</code> gồm local, Docker, Docker Jupyter, Jupyter và Azure container execution. Cây <code>runtimes/grpc/</code> triển khai hỗ trợ distributed worker runtime dựa trên protobuf sinh mã.</p>
+<h2 id="lu-ng-runtime-v-d-li-u">Luồng runtime và dữ liệu</h2>
+<div class="mermaid">sequenceDiagram
+  participant U as User/App
+  participant A as AssistantAgent
+  participant C as ChatCompletionClient
+  participant W as Workbench/Tools
+  participant R as Core Runtime
+  participant T as Topic/Team
+  participant O as Observability
+
+  U-&gt;&gt;A: task hoac chat message
+  A-&gt;&gt;R: publish/send message qua runtime
+  R-&gt;&gt;T: route theo agent id, topic, hoac team policy
+  T-&gt;&gt;A: deliver message/event
+  A-&gt;&gt;C: tao model completion voi context va tools
+  C--&gt;&gt;A: model response hoac function/tool calls
+  alt tool call
+    A-&gt;&gt;W: thuc thi tool qua workbench
+    W--&gt;&gt;A: tool result
+    A-&gt;&gt;C: tiep tuc voi tool result
+  else team handoff/next speaker
+    A-&gt;&gt;T: emit team event
+  else final response
+    A--&gt;&gt;U: TaskResult / streamed messages
+  end
+  R-&gt;&gt;O: logs, traces, telemetry spans</div>
+<h2 id="i-m-m-r-ng">Điểm mở rộng</h2>
+<ul>
+<li>Tạo event agent mới bằng cách subclass <code>RoutedAgent</code> và đăng ký message handler với decorator trong <code>_routed_agent.py</code>.</li>
+<li>Implement model client theo <code>ChatCompletionClient</code> trong <code>autogen_core/models/_model_client.py</code>.</li>
+<li>Implement tool bằng cách mở rộng <code>BaseTool</code>, <code>BaseStreamTool</code>, <code>Workbench</code> hoặc adapter pattern trong <code>autogen_core/tools/</code>.</li>
+<li>Thêm AgentChat agent bằng cách implement <code>BaseChatAgent</code> hoặc compose <code>AssistantAgent</code>, <code>UserProxyAgent</code> và <code>CodeExecutorAgent</code> có sẵn.</li>
+<li>Thêm policy group-chat dưới <code>autogen_agentchat/teams/_group_chat/</code>.</li>
+<li>Thêm integration dưới <code>autogen_ext</code> cho model, tool, memory, code executor, runtime, UI và agent.</li>
+<li>Thêm distributed transport theo <code>protos/agent_worker.proto</code> và <code>autogen_ext/runtimes/grpc/</code>.</li>
+</ul>
+<h2 id="t-ch-h-p">Tích hợp</h2>
+<p>Optional dependencies của <code>autogen-ext</code> thể hiện bề mặt tích hợp chính: OpenAI, Azure AI, Anthropic, Ollama, llama.cpp, Gemini, Semantic Kernel providers, Docker, Jupyter, Docker Jupyter, Azure code execution, gRPC, MCP, HTTP tools, GraphRAG, ChromaDB, mem0, Redis, diskcache, web/file/video surfers, Magentic-One và LangChain tools. Samples minh họa FastAPI, Chainlit, Streamlit, gRPC worker runtime, distributed group chat, semantic router, graph RAG, chess games, async human-in-the-loop và task-centric memory.</p>
+<h2 id="s-tri-n-khai-v-v-n-h-nh">Sơ đồ triển khai và vận hành</h2>
+<div class="mermaid">flowchart LR
+  subgraph LocalApp[&quot;Local hoac service app&quot;]
+    UI[FastAPI/Chainlit/Streamlit/CLI]
+    AgentChat[AgentChat teams]
+    CoreRuntime[SingleThreadedAgentRuntime]
+  end
+  subgraph Distributed[&quot;Lua chon runtime phan tan&quot;]
+    Host[gRPC WorkerRuntimeHost]
+    Worker1[Worker process A]
+    Worker2[Worker process B]
+    Proto[agent_worker.proto]
+  end
+  subgraph External[&quot;He thong ben ngoai&quot;]
+    Models[OpenAI/Azure/Anthropic/Ollama/etc.]
+    Tools[MCP/HTTP/Azure Search/GraphRAG]
+    Exec[Docker/Jupyter/Azure code execution]
+    Memory[(Redis/Chroma/mem0/canvas)]
+    Telemetry[OpenTelemetry backend]
+  end
+  UI --&gt; AgentChat --&gt; CoreRuntime
+  CoreRuntime --&gt; Models
+  AgentChat --&gt; Tools
+  AgentChat --&gt; Exec
+  AgentChat --&gt; Memory
+  CoreRuntime --&gt; Telemetry
+  CoreRuntime -. optional .-&gt; Host
+  Host --&gt; Proto
+  Host --&gt; Worker1
+  Host --&gt; Worker2</div>
+<p>Runtime local đủ cho nhiều ứng dụng và sample. Triển khai phân tán dùng các phần gRPC worker runtime và thiết kế worker protocol, trong đó service process điều phối placement và communication, còn worker process host agent code. Code execution cần được cô lập bằng Docker hoặc môi trường managed, đặc biệt khi agent có thể sinh code hoặc shell command.</p>
+<h2 id="observability-testing-evaluation-v-failure-modes">Observability, testing, evaluation và failure modes</h2>
+<p><code>autogen-core</code> phụ thuộc <code>opentelemetry-api</code> và có module <code>_telemetry/</code> cho tracing configuration và propagation. <code>python/pyproject.toml</code> cùng <code>pyproject.toml</code> ở từng package cấu hình <code>pytest</code>, <code>pytest-asyncio</code>, <code>pytest-cov</code>, <code>pytest-xdist</code>, <code>mypy</code>, <code>pyright</code> và <code>ruff</code>. Test của <code>autogen-ext</code> bao phủ models, tools, MCP, code executors, cache stores, memory, teams, web/file surfers và worker runtime. <code>agbench</code> tồn tại như package benchmark, còn samples có script task-centric memory hướng evaluation.</p>
+<p>Các failure mode cần thiết kế:</p>
+<ul>
+<li>lỗi worker registration, placement hoặc timeout trong distributed runtime;</li>
+<li>model-client không khớp capability hoặc provider API thay đổi;</li>
+<li>lỗi chuyển schema tool và thực thi tool không an toàn;</li>
+<li>môi trường code executor bị rò rỉ hoặc chạy code sinh bởi model không tin cậy;</li>
+<li>termination condition của group chat không kích hoạt;</li>
+<li>memory store không nhất quán hoặc task-centric memory stale;</li>
+<li>lỗi lifecycle sync/async trong framework UI;</li>
+<li>rủi ro migration vì root README đánh dấu dự án là maintenance mode.</li>
+</ul>
+<h2 id="r-i-ro-b-o-m-t-v-governance">Rủi ro bảo mật và governance</h2>
+<p><code>TRANSPARENCY_FAQS.md</code> nói rõ AutoGen được định hướng cho nghiên cứu và thử nghiệm, không nên dùng downstream nếu chưa đánh giá kỹ robustness, safety, harm và bias. Tài liệu nêu các rủi ro LLM như bias, thiếu hiểu biết thực tế, thiếu minh bạch, content harms, hallucination, misuse, privacy, accountability, trust và unintended consequences. Tài liệu cũng khuyến nghị thực hành code execution an toàn hơn như Docker containers, human involvement, modular agents, quyền truy cập có scope và moderation hoặc safety prompts.</p>
+<p>Governance production nên có human approval cho code execution và hành động có tác động cao, Docker hoặc managed isolation cho generated code, chỉ dùng MCP server tin cậy, credential theo role cho từng agent, audit log cho quyết định của team, rà soát policy model/provider và kế hoạch migration sang framework successor được hỗ trợ khi phù hợp.</p>
+<h2 id="s-lifecycle-v-quy-t-nh">Sơ đồ lifecycle và quyết định</h2>
+<div class="mermaid">stateDiagram-v2
+  [*] --&gt; ChooseLayer
+  ChooseLayer --&gt; CoreRuntime: event/RPC system
+  ChooseLayer --&gt; AgentChat: chat/team API
+  ChooseLayer --&gt; Studio: prototype UI
+  CoreRuntime --&gt; DefineAgentTypes
+  DefineAgentTypes --&gt; RegisterRuntime
+  RegisterRuntime --&gt; PublishOrSend
+  PublishOrSend --&gt; RouteMessage
+  RouteMessage --&gt; ActivateAgent: chua active
+  RouteMessage --&gt; DispatchHandler: da active
+  ActivateAgent --&gt; DispatchHandler
+  DispatchHandler --&gt; ModelOrTool
+  ModelOrTool --&gt; PublishOrSend: emit event/RPC
+  ModelOrTool --&gt; CompleteTask
+  AgentChat --&gt; ConfigureAgent
+  ConfigureAgent --&gt; ConfigureTeam
+  ConfigureTeam --&gt; RunTask
+  RunTask --&gt; CompleteTask
+  CompleteTask --&gt; [*]</div>
+<h2 id="c-u-h-nh-tri-n-khai-v-ghi-ch-ops">Cấu hình, triển khai và ghi chú ops</h2>
+<ul>
+<li>Dùng <code>autogen-agentchat</code> cộng với extras <code>autogen-ext[...]</code> cần thiết cho đa số ứng dụng Python.</li>
+<li>Dùng trực tiếp <code>autogen-core</code> khi cần topic routing, typed event handler, distributed runtime hoặc orchestration semantics tùy biến.</li>
+<li>Đặt model configuration bên ngoài code; nhiều sample dùng <code>model_config_template.yaml</code> và environment key.</li>
+<li>Dùng <code>DockerCommandLineCodeExecutor</code>, Docker Jupyter hoặc Azure container execution cho code, không chạy local không kiểm soát.</li>
+<li>Với gRPC worker, đồng bộ mã protobuf Python được sinh với <code>protos/agent_worker.proto</code> và <code>cloudevent.proto</code>.</li>
+<li>Xem AutoGen Studio là công cụ prototype; root README cảnh báo nó không phải app production-ready.</li>
+<li>Lập kế hoạch migration cho feature development mới vì root README nói repo không nhận feature mới.</li>
+</ul>
+<h2 id="h-ng-d-n-c-m-ngu-n">Hướng dẫn đọc mã nguồn</h2>
+<ol>
+<li>Đọc root <code>README.md</code> để hiểu maintenance mode, các layer package và quickstart.</li>
+<li>Đọc <code>docs/design/01 - Programming Model.md</code>, <code>02 - Topics.md</code> và <code>03 - Agent Worker Protocol.md</code>.</li>
+<li>Đọc <code>python/packages/autogen-core/src/autogen_core/_agent_runtime.py</code>, <code>_routed_agent.py</code> và <code>_single_threaded_agent_runtime.py</code>.</li>
+<li>Đọc <code>python/packages/autogen-agentchat/src/autogen_agentchat/agents/_assistant_agent.py</code>.</li>
+<li>Đọc <code>python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/</code>.</li>
+<li>Đọc module <code>autogen-ext</code> liên quan cho model provider, MCP, code execution, memory hoặc gRPC.</li>
+<li>Đọc <code>TRANSPARENCY_FAQS.md</code> trước khi triển khai production hoặc ảnh hưởng tới người dùng.</li>
+</ol>
+<h2 id="l-tr-nh-h-c">Lộ trình học</h2>
+<ol>
+<li>Chạy pattern hello-world trong root README với <code>AssistantAgent</code>.</li>
+<li>Thêm function hoặc workbench tool.</li>
+<li>Chuyển specialist agent thành <code>AgentTool</code>.</li>
+<li>Xây team với round-robin hoặc selector group chat.</li>
+<li>Thêm termination condition và human-in-the-loop.</li>
+<li>Thêm code executor có isolation.</li>
+<li>Khám phá routed agents và topics trong <code>autogen-core</code>.</li>
+<li>Chỉ thử gRPC worker runtime sau khi hiểu rõ hành vi local runtime.</li>
+</ol>
+<h2 id="checklist-s-n-s-ng-production">Checklist sẵn sàng production</h2>
+<p>AutoGen cần một cổng readiness riêng vì <code>README.md</code> ở root nói rõ dự án đang ở chế độ maintenance. Với hệ thống đang dùng AutoGen, tư thế production an toàn nhất là xác định lớp nào vẫn còn business-critical và lớp nào chỉ là cầu nối migration.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Khu vực</th><th>Neo theo repository</th><th>Kiểm tra kiến trúc</th></tr></thead>
+<tbody>
+<tr><td>Tư thế maintenance</td><td><code>README.md</code>, <code>TRANSPARENCY_FAQS.md</code></td><td>Ghi lại vì sao AutoGen vẫn phù hợp với workload và định nghĩa đường migration sang framework được hỗ trợ cho feature mới.</td></tr>
+<tr><td>Chọn lớp</td><td><code>python/packages/autogen-core/</code>, <code>autogen-agentchat/</code>, <code>autogen-ext/</code></td><td>Dùng Core cho event/RPC, AgentChat cho team chat và Extensions chỉ cho integration đã pin, đã test.</td></tr>
+<tr><td>Cô lập code execution</td><td><code>python/packages/autogen-ext/src/autogen_ext/code_executors/</code></td><td>Ưu tiên Docker, Docker Jupyter, Jupyter hoặc Azure container thay cho local execution không kiểm soát; scope mount và credential.</td></tr>
+<tr><td>Distributed runtime</td><td><code>docs/design/03 - Agent Worker Protocol.md</code>, <code>protos/agent_worker.proto</code></td><td>Test worker registration, placement, timeout, restart và protocol compatibility trước khi triển khai multi-process.</td></tr>
+<tr><td>Điều kiện dừng của team</td><td><code>python/packages/autogen-agentchat/src/autogen_agentchat/teams/</code></td><td>Kiểm tra termination conditions, max rounds, speaker selection, handoffs và human-in-the-loop.</td></tr>
+<tr><td>Observability</td><td><code>autogen_core/_telemetry/</code>, package tests, <code>agbench</code></td><td>Export OpenTelemetry spans, thu thập outcome của task và benchmark hành vi team thay vì chỉ tin transcript.</td></tr>
+</tbody></table></div>
+<div class="mermaid">flowchart LR
+  Core[autogen-core] --&gt; Runtime[AgentRuntime, RoutedAgent, topics]
+  Core --&gt; Contracts[ChatCompletionClient, tools, memory, serialization]
+  AgentChat[autogen-agentchat] --&gt; Core
+  AgentChat --&gt; Agents[AssistantAgent, UserProxyAgent, CodeExecutorAgent]
+  AgentChat --&gt; Teams[RoundRobin, Selector, Swarm, Magentic-One]
+  Ext[autogen-ext] --&gt; Contracts
+  Ext --&gt; Models[OpenAI, Azure, Anthropic, Ollama, llama.cpp]
+  Ext --&gt; Tools[MCP, HTTP, Azure Search, LangChain, GraphRAG]
+  Ext --&gt; Executors[Docker, Jupyter, local, Azure containers]
+  Ext --&gt; GRPC[gRPC worker runtime]
+  Protos[protos/agent_worker.proto] --&gt; GRPC</div>
+<h2 id="runbook-v-n-h-nh-v-ph-n-lo-i-l-i">Runbook vận hành và phân loại lỗi</h2>
+<p>Khi có incident production, cần tách lỗi AgentChat local khỏi lỗi routing Core runtime và lỗi extension. Chỉ đọc transcript là chưa đủ; incident phải được đối chiếu với topic routing, model-client calls, tool/workbench execution, log của code executor và telemetry spans.</p>
+<div class="mermaid">flowchart TD
+  Incident[Incident AutoGen] --&gt; Type{Loai loi}
+  Type --&gt; Runtime[Core runtime route hoac topic]
+  Type --&gt; Team[AgentChat team policy]
+  Type --&gt; Model[Hanh vi model client]
+  Type --&gt; Tool[Tool hoac workbench execution]
+  Type --&gt; Code[Co lap code executor]
+  Type --&gt; Worker[gRPC worker runtime]
+  Type --&gt; Governance[Responsible AI hoac maintenance risk]
+  Runtime --&gt; CoreFiles[autogen_core runtime va routed_agent files]
+  Team --&gt; TeamFiles[autogen_agentchat teams/_group_chat]
+  Model --&gt; ModelFiles[autogen_ext/models providers]
+  Tool --&gt; ToolFiles[autogen_core/tools va autogen_ext/tools]
+  Code --&gt; ExecFiles[autogen_ext/code_executors]
+  Worker --&gt; ProtoFiles[docs/design worker protocol va protos]
+  Governance --&gt; Review[TRANSPARENCY_FAQS.md va migration plan]
+  CoreFiles --&gt; Fix[Khac phuc va regression test]
+  TeamFiles --&gt; Fix
+  ModelFiles --&gt; Fix
+  ToolFiles --&gt; Fix
+  ExecFiles --&gt; Fix
+  ProtoFiles --&gt; Fix
+  Review --&gt; Fix</div>
+<p>Đường đọc cho kiến trúc sư cấp cao không nên dừng ở <code>AssistantAgent</code>. Hãy đọc <code>docs/design/</code>, sau đó Core runtime, rồi AgentChat teams, cuối cùng mới đến đúng module <code>autogen-ext</code> mà deployment dùng. Cách này giúp đội ứng dụng không xem mọi extension là có cùng mức trưởng thành hoặc an toàn.</p>
+<div class="mermaid">sequenceDiagram
+  participant UI as App hoac UI
+  participant Team as AgentChat team
+  participant Core as Core runtime
+  participant Model as autogen-ext model client
+  participant Workbench as Tools hoac workbench
+  participant Exec as Code executor
+  participant Telemetry as OpenTelemetry
+
+  UI-&gt;&gt;Team: task, messages, cancellation token
+  Team-&gt;&gt;Core: publish hoac send routed messages
+  Core-&gt;&gt;Model: model completion request
+  Model--&gt;&gt;Core: content, tool call hoac error
+  Core-&gt;&gt;Workbench: execute requested tool
+  Workbench-&gt;&gt;Exec: optional code execution
+  Exec--&gt;&gt;Workbench: isolated result
+  Workbench--&gt;&gt;Core: tool result
+  Core-&gt;&gt;Telemetry: spans va events
+  Core--&gt;&gt;Team: next speaker, handoff hoac final event
+  Team--&gt;&gt;UI: TaskResult hoac streamed messages</div>
+<h2 id="ghi-ch-review-cho-ki-n-tr-c-s-c-p-cao">Ghi chú review cho kiến trúc sư cấp cao</h2>
+<p>Sự thật kiến trúc quan trọng nhất của clone này không chỉ là thiết kế multi-agent, mà còn là tín hiệu maintenance trong <code>README.md</code> ở root. Deployment hiện hữu vẫn có thể học và vận hành từ repository này, nhưng cam kết platform mới nên tách rõ &quot;đủ ổn định cho workload hiện tại&quot; khỏi &quot;nền tảng chiến lược cho feature tương lai&quot;. Hãy ghi quyết định đó trước khi xây thêm capability mới trên <code>autogen-agentchat</code> hoặc <code>autogen-ext</code>.</p>
+<p>Khi review code, hãy bắt đầu từ Core thay vì chat facade. <code>python/packages/autogen-core/src/autogen_core/_agent_runtime.py</code>, <code>_routed_agent.py</code>, <code>_single_threaded_agent_runtime.py</code> và design docs dưới <code>docs/design/</code> giải thích identity, topic, subscription, handler, serialization và lifecycle runtime. AgentChat dễ dùng hơn, nhưng incident production thường quy về Core routing, cancellation, timeout hoặc handler semantics.</p>
+<p>Các extension module cần được import có chủ đích. <code>autogen-ext</code> chứa model clients, tools, memory providers, code executors, MCP integration, web/file/video surfers và gRPC runtime. Những capability này không có cùng một risk profile. Docker code executor, MCP workbench, Redis cache và model client cần credential, network access, logs và failure playbook khác nhau. Hãy xem package boundary như một catalog, không phải một blanket approval.</p>
+<p>Với teams và group chats, cần test termination. Selector, round-robin, swarm, sequential routed agents và team kiểu Magentic-One đều có thể loop, stall hoặc tạo thảo luận nghe hợp lý nhưng giá trị thấp nếu max rounds, termination conditions và human handoff yếu. Source dưới <code>autogen_agentchat/teams/_group_chat/</code> nên được đọc cùng integration tests và samples trước khi tái sử dụng một team topology trong production.</p>
+<h2 id="thu-t-ng">Thuật ngữ</h2>
+<ul>
+<li>AgentRuntime: protocol lõi để register agent, send message, publish event và điều khiển lifecycle.</li>
+<li>RoutedAgent: base agent dispatch typed message tới handler được decorator.</li>
+<li>Topic: địa chỉ routing event dùng bởi pub-sub.</li>
+<li>Agent ID: định danh dạng tuple theo namespace và name trong design docs.</li>
+<li>AssistantAgent: chat agent cấp cao gọi model và tool.</li>
+<li>Team: construct orchestration của AgentChat cho cộng tác multi-agent.</li>
+<li>Workbench: abstraction expose một tập tool.</li>
+<li>ChatCompletionClient: interface model-client được agent sử dụng.</li>
+<li>Worker runtime: runtime phân tán nơi worker host agent code và service điều phối routing.</li>
+<li>Magentic-One: sample/extension multi-agent team dùng AgentChat và Extensions.</li>
+</ul>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

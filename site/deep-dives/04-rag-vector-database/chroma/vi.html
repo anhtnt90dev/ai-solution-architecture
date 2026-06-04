@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ghi Chú Kiến Trúc Chroma | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/04-rag-vector-database/chroma/README.vi.md">View source</a>
+      <h1 id="ghi-ch-ki-n-tr-c-chroma">Ghi Chú Kiến Trúc Chroma</h1>
+<h2 id="c-s-ngu-n">Cơ Sở Nguồn</h2>
+<p>Tài liệu này dựa trên việc đọc tĩnh kho mã nguồn tại <code>github-repos/04-rag-vector-database/chroma</code>. Các tệp và thư mục chính đã được đối chiếu gồm <code>README.md</code>, <code>DEVELOP.md</code>, <code>pyproject.toml</code>, <code>Cargo.toml</code>, <code>Dockerfile</code>, <code>docker-compose.yml</code>, <code>chromadb/__init__.py</code>, <code>chromadb/config.py</code>, <code>chromadb/api/client.py</code>, <code>chromadb/api/fastapi.py</code>, <code>chromadb/api/rust.py</code>, <code>chromadb/test</code>, <code>rust/python_bindings</code>, <code>rust/frontend</code>, <code>rust/log</code>, <code>rust/sysdb</code>, <code>rust/segment</code>, <code>rust/index</code>, <code>rust/worker</code>, <code>rust/chroma</code>, <code>clients</code>, <code>go</code>, <code>schemas</code>, <code>examples</code>, <code>deployments</code>, và <code>k8s</code>.</p>
+<h2 id="t-m-t-t-i-u-h-nh">Tóm Tắt Điều Hành</h2>
+<p>Chroma là hạ tầng dữ liệu mã nguồn mở cho ứng dụng AI. Trong hệ thống RAG, Chroma đóng vai trò tầng dữ liệu vector và retrieval cho tài liệu, metadata, embeddings, bộ lọc và tìm kiếm. Repository chứa cả package Python (<code>chromadb</code>) và một Rust workspace lớn. Package Python cung cấp API hướng lập trình viên, local client, HTTP client, cloud client, cấu hình, auth adapter, embedding functions và test. Rust workspace hiện thực lõi storage/query mới hơn, Python native bindings, HTTP frontend, local/distributed executor, system database, log, segment manager, sparse/full-text index, worker và các service phục vụ triển khai.</p>
+<p>Về kiến trúc, Chroma hỗ trợ nhiều chế độ vận hành:</p>
+<ul>
+<li>Local in-process qua <code>PersistentClient</code>, <code>EphemeralClient</code>, và <code>RustClient</code>, dựa trên Rust Python bindings, SQLite, local HNSW index và local segment management.</li>
+<li>Client/server qua <code>HttpClient</code>, <code>AsyncHttpClient</code> và Rust/Axum frontend API.</li>
+<li>Cloud mode qua <code>CloudClient</code> và hosted endpoint có token authentication.</li>
+<li>Distributed development và production-oriented mode qua Kubernetes/Helm assets trong <code>k8s</code>, các Rust service như frontend, worker/query, compaction, sysdb, log và hạ tầng hỗ trợ.</li>
+</ul>
+<p>Điểm quan trọng với solution architect là Chroma không chỉ bọc một vector index. Codebase có tenancy, database/collection metadata, embedding ingestion, mutation flow dựa trên log, local và distributed query execution, OpenTelemetry hooks, auth configuration, deployment assets và nhiều SDK surface.</p>
+<h2 id="b-i-to-n-c-gi-i-quy-t">Bài Toán Được Giải Quyết</h2>
+<p>Ứng dụng AI cần một retrieval substrate có thể giữ vector, source text, metadata, filter và hành vi tìm kiếm gần với application code, nhưng không buộc mỗi nhóm tự xây storage và ANN plumbing. Chroma giải quyết bằng cách cung cấp:</p>
+<ul>
+<li>API Python đơn giản để tạo collection, thêm document và query theo text hoặc embedding.</li>
+<li>Persistent local storage cho notebook, local service và prototype.</li>
+<li>HTTP client và server mode để tách boundary giữa ứng dụng và service.</li>
+<li>Khái niệm multi-tenant thông qua tenant và database.</li>
+<li>Quản lý document, metadata, embedding và ID ở cấp collection.</li>
+<li>Dense embedding retrieval, metadata filtering, document filtering, và các năng lực hybrid/full-text/sparse mới hơn trong Rust workspace.</li>
+<li>Deployment artifacts cho local Docker, Kubernetes và các nền tảng cloud.</li>
+</ul>
+<p>Trong RAG, giá trị chính là rút ngắn khoảng cách giữa application code và retrieval đáng tin cậy. Developer có thể bắt đầu local bằng vài dòng Python, rồi chuyển dần sang server hoặc distributed mode khi cần scale, governance hoặc boundary vận hành rõ hơn.</p>
+<h2 id="vai-tr-trong-ai-stack">Vai Trò Trong AI Stack</h2>
+<p>Chroma thường nằm trong AI stack như sau:</p>
+<ul>
+<li><strong>Ingestion:</strong> Loader và chunker tạo documents và metadata; embedding function hoặc embedding service bên ngoài tạo vectors; Chroma lưu IDs, documents, metadata và embeddings vào collection.</li>
+<li><strong>Retrieval:</strong> Query service embed câu hỏi người dùng, gọi <code>query</code>, <code>get</code> hoặc <code>search</code>, rồi lấy context chunks.</li>
+<li><strong>Application memory:</strong> Agent có thể lưu memories bền vững, tool outputs hoặc conversation artifacts như collection records.</li>
+<li><strong>Hybrid search:</strong> Rust workspace có các phần sparse và full-text index để bổ sung dense vector retrieval.</li>
+<li><strong>Local-first development:</strong> Notebook và developer tool có thể dùng <code>PersistentClient</code> mà không cần server riêng.</li>
+<li><strong>Production service boundary:</strong> HTTP và distributed mode cho phép đưa retrieval ra sau một managed service endpoint.</li>
+</ul>
+<p>Chroma không sở hữu toàn bộ RAG workflow. Chunking, prompt assembly, model call, reranking, user authorization và business governance vẫn là trách nhiệm của ứng dụng nếu không được tích hợp riêng xung quanh Chroma.</p>
+<h2 id="b-n-source-tree">Bản Đồ Source Tree</h2>
+<p>Các khu vực quan trọng trong repo:</p>
+<pre><code class="language-text">chroma/
+  README.md                         Quick start và ví dụ API cấp cao.
+  DEVELOP.md                        Setup dev, tests, distributed dev, Tilt, Kubernetes notes.
+  pyproject.toml                    Metadata package Python, dependencies, CLI, maturin build.
+  Cargo.toml                        Rust workspace và shared crate dependencies.
+  Dockerfile, docker-compose.yml    Runtime container/server và ví dụ compose local.
+  chromadb/
+    __init__.py                     Client constructors: Ephemeral, Persistent, Rust, HTTP, Cloud.
+    config.py                       Settings, component system, chọn implementation bằng environment.
+    api/
+      client.py                     Python Client và AdminClient facade.
+      fastapi.py                    HTTP client adapter cho `/api/v2`.
+      rust.py                       RustBindingsAPI adapter cho local native storage.
+    utils/embedding_functions/      Tích hợp embedding provider có sẵn.
+    test/                           Python, API, auth, config, distributed, property, persistence tests.
+  rust/
+    python_bindings/                PyO3 bindings expose Rust core cho Python.
+    frontend/                       Axum HTTP server, API routes, frontend service implementation.
+    log/                            Mutation log dựa trên SQLite.
+    sysdb/                          SQLite system database cho tenants, DBs, collections, segments.
+    segment/                        Local segment manager, metadata reader/writer, HNSW integration.
+    index/                          Sparse và full-text index implementations.
+    worker/                         Crate liên quan worker/query/compaction.
+    chroma/                         Rust client crate.
+    cli/                            Rust CLI entrypoint.
+  k8s/                              Helm chart và test infrastructure cho distributed Chroma.
+  deployments/                      Ví dụ triển khai cloud cho AWS, Azure, GCP và nền tảng khác.
+  clients/, go/, schemas/, examples/ SDKs, schemas, sample apps, integration examples.</code></pre>
+<h2 id="kh-i-ni-m-c-t-l-i">Khái Niệm Cốt Lõi</h2>
+<h3 id="client">Client</h3>
+<p>Package Python expose nhiều constructor trong <code>chromadb/__init__.py</code>: <code>EphemeralClient</code>, <code>PersistentClient</code>, <code>RustClient</code>, <code>HttpClient</code>, <code>AsyncHttpClient</code>, <code>CloudClient</code>, <code>Client</code> và <code>AdminClient</code>. Các constructor này chủ yếu chọn settings và API implementation.</p>
+<h3 id="tenant-v-database">Tenant và Database</h3>
+<p>Chroma mô hình hóa tenant và database như tài nguyên cấp một. Python <code>Client</code> giữ tenant/database, validate chúng thông qua <code>AdminClient</code>, và scope collection operations theo các giá trị này.</p>
+<h3 id="collection">Collection</h3>
+<p>Collection là container hướng người dùng cho records. Nó có name, metadata, schema/configuration tùy chọn, dimension và các segment liên quan. Application code dùng collection để add, upsert, update, delete, count, get, query và search records.</p>
+<h3 id="record">Record</h3>
+<p>Record có thể gồm ID, document, metadata, embedding và các trường khác tùy operation. Trong RAG, một record thường tương ứng với một chunk hoặc memory item.</p>
+<h3 id="embedding-function">Embedding Function</h3>
+<p>Embedding function biến text, image hoặc input khác thành embedding. Repository có nhiều provider integration trong <code>chromadb/utils/embedding_functions</code>.</p>
+<h3 id="system-v-component">System và Component</h3>
+<p><code>chromadb/config.py</code> định nghĩa component system. <code>System</code> map abstract component types sang implementation được cấu hình, start dependencies theo thứ tự topo, stop theo thứ tự ngược, và lưu shared settings. Nhờ đó cùng một Python API có thể trỏ tới local Rust bindings, HTTP service, hoặc auth/telemetry implementation đã cấu hình.</p>
+<h3 id="rust-bindings-api">Rust Bindings API</h3>
+<p><code>chromadb/api/rust.py</code> chuyển <code>chromadb_rust_bindings.Bindings</code> sang hình dạng Python <code>ServerAPI</code>. Đây là đường local in-process cho Chroma persistent hoặc ephemeral, dựa trên Rust, SQLite và local HNSW/segment state.</p>
+<h3 id="system-database">System Database</h3>
+<p><code>rust/sysdb</code> lưu metadata về tenants, databases, collections, segments, dimensions, schemas và collection configuration. Implementation local dùng SQLite.</p>
+<h3 id="log">Log</h3>
+<p><code>rust/log</code> ghi mutation events. Tệp <code>sqlite_log.rs</code> được đọc cho thấy records được lưu trong SQLite <code>embeddings_queue</code>, hỗ trợ pull theo topic/offset, và phối hợp backfill/purge message cho compaction.</p>
+<h3 id="segment">Segment</h3>
+<p><code>rust/segment</code> quản lý local indexes và metadata storage. <code>LocalSegmentManager</code> cache HNSW indexes và đóng file descriptors khi eviction. <code>sqlite_metadata.rs</code> áp dụng log vào metadata tables và hỗ trợ filter, full-text metadata, schema evolution.</p>
+<h3 id="executor">Executor</h3>
+<p>Frontend ủy quyền read/search cho executor. <code>LocalExecutor</code> phục vụ use case local SQLite/HNSW. <code>DistributedExecutor</code> route query plan tới query services qua memberlist và gRPC clients.</p>
+<h2 id="s-component-v-h-th-ng">Sơ Đồ Component và Hệ Thống</h2>
+<div class="mermaid">flowchart TB
+    App[AI application / notebook / service]
+    PyClient[chromadb Python Client&lt;br/&gt;chromadb/api/client.py]
+    HttpClient[HTTP/Async HTTP Client&lt;br/&gt;chromadb/api/fastapi.py]
+    RustApi[RustBindingsAPI&lt;br/&gt;chromadb/api/rust.py]
+    Bindings[PyO3 Bindings&lt;br/&gt;rust/python_bindings]
+    Server[Axum Frontend Server&lt;br/&gt;rust/frontend]
+    Frontend[ServiceBasedFrontend]
+    SysDb[SysDb&lt;br/&gt;rust/sysdb]
+    Log[Mutation Log&lt;br/&gt;rust/log]
+    Executor[Executor]
+    LocalExec[LocalExecutor&lt;br/&gt;SQLite + HNSW]
+    DistExec[DistributedExecutor&lt;br/&gt;gRPC query services]
+    Segment[LocalSegmentManager&lt;br/&gt;rust/segment]
+    Index[Index crates&lt;br/&gt;HNSW, sparse, full-text]
+    Storage[(SQLite, local files, object/block storage)]
+
+    App --&gt; PyClient
+    PyClient --&gt; HttpClient
+    PyClient --&gt; RustApi
+    HttpClient --&gt; Server
+    RustApi --&gt; Bindings
+    Bindings --&gt; Frontend
+    Server --&gt; Frontend
+    Frontend --&gt; SysDb
+    Frontend --&gt; Log
+    Frontend --&gt; Executor
+    Executor --&gt; LocalExec
+    Executor --&gt; DistExec
+    LocalExec --&gt; Segment
+    DistExec --&gt; Query[Query workers/services]
+    Segment --&gt; Index
+    SysDb --&gt; Storage
+    Log --&gt; Storage
+    Segment --&gt; Storage</div>
+<h2 id="ki-n-tr-c-n-i-b">Kiến Trúc Nội Bộ</h2>
+<h3 id="t-ng-python-api">Tầng Python API</h3>
+<p>Tầng Python tạo trải nghiệm developer đơn giản của Chroma. <code>chromadb/__init__.py</code> xây settings cho từng client type:</p>
+<ul>
+<li><code>EphemeralClient</code> dùng state local không persistent.</li>
+<li><code>PersistentClient</code> đặt <code>persist_directory</code> và bật persistence.</li>
+<li><code>RustClient</code> chọn rõ <code>chromadb.api.rust.RustBindingsAPI</code>.</li>
+<li><code>HttpClient</code> và <code>AsyncHttpClient</code> chọn FastAPI HTTP adapters và cấu hình host, port, SSL, headers.</li>
+<li><code>CloudClient</code> cấu hình hosted API endpoint, SSL, tenant/database mặc định, và token authentication qua <code>X_CHROMA_TOKEN</code>.</li>
+</ul>
+<p><code>chromadb/api/client.py</code> bọc một <code>ServerAPI</code> và expose collection/admin operations. Nó cũng validate tenant và database khi khởi tạo client.</p>
+<h3 id="configuration-v-component-system">Configuration và Component System</h3>
+<p><code>chromadb/config.py</code> là mô hình cấu hình trung tâm của Python. <code>Settings</code> gồm lựa chọn API implementation, server host/port/SSL, persistence path, reset behavior, auth providers, telemetry controls, migration behavior, lựa chọn distributed service implementation, gRPC timeouts và legacy-configuration validation.</p>
+<p><code>System</code> là dependency container nhẹ. Components khai báo dependencies, được start theo thứ tự topo và stop theo thứ tự ngược. Điều này quan trọng vì cùng Python API có thể chạy qua local Rust bindings, HTTP services, hoặc auth/telemetry implementation đã cấu hình.</p>
+<h3 id="ng-local-rust">Đường Local Rust</h3>
+<p>Đường local đi qua <code>RustBindingsAPI</code> và <code>rust/python_bindings</code>. Binding constructor xây Tokio runtime, registry, SQLite system database, SQLite log, local segment manager, local executor, compaction manager và <code>Frontend</code>. Persistent client dùng <code>persist_directory/chroma.sqlite3</code> cùng các file index local. Code cũng tính HNSW cache capacity theo file-handle limits vì mỗi HNSW index mở nhiều file.</p>
+<p>Đây là đường local storage hiện đại mặc định, quan trọng với notebook, unit test, desktop tool và ứng dụng single-process.</p>
+<h3 id="http-frontend">HTTP Frontend</h3>
+<p><code>rust/frontend/src/server.rs</code> hiện thực Axum server. Nó đăng ký route <code>/api/v2</code> cho health, heartbeat, preflight, version, identity, reset, tenants, databases, collections, records, query, search và attached functions. Nó cũng expose <code>/docs</code> và <code>/openapi.json</code>, hỗ trợ CORS, body limits, JSON error conversion, tracing layers, auth, quota, metrics và graceful shutdown khi có signal.</p>
+<p><code>rust/frontend/src/lib.rs</code> load cấu hình, áp dụng persist path vào SQLite/local segment settings, tạo frontend, xây scorecard/circuit breaker rules và start server.</p>
+<h3 id="service-based-frontend">Service-Based Frontend</h3>
+<p><code>rust/frontend/src/impls/service_based_frontend.rs</code> là implementation service chính. Nó điều phối collection metadata qua <code>SysDb</code>, append mutation vào <code>Log</code>, invalidate collection cache, emit metering events, áp dụng retry và ủy quyền read/query/search execution cho executor.</p>
+<h3 id="local-executor">Local Executor</h3>
+<p><code>rust/frontend/src/executor/local.rs</code> hiện thực count, get và KNN query local. Nó có thể backfill collection bằng compaction messages, đọc metadata qua SQLite, load embeddings qua HNSW readers và hydrate documents/metadata. Local <code>search</code> chưa được hiện thực trong code đã đọc, đây là điểm khác biệt năng lực cần lưu ý.</p>
+<h3 id="distributed-executor">Distributed Executor</h3>
+<p><code>rust/frontend/src/executor/distributed.rs</code> route count, get, KNN và search plans tới distributed query services. Nó dùng assignment dựa trên memberlist, gRPC clients, retry policies, weighted/uniform selection, replication factor và cache invalidation/replanning khi query service trả về một số lỗi.</p>
+<h3 id="t-ng-storage-v-index">Tầng Storage và Index</h3>
+<p>Tầng storage/index gồm:</p>
+<ul>
+<li><code>rust/sysdb</code>: tenants, databases, collections, segments, collection configuration, dimensions, schemas.</li>
+<li><code>rust/log</code>: mutation log records và pull/purge/backfill behavior.</li>
+<li><code>rust/segment</code>: local segment manager, HNSW cache, SQLite metadata reader/writer, compaction integration.</li>
+<li><code>rust/index/src/sparse</code>: sparse retrieval dùng Block-Max WAND trên blockfile storage.</li>
+<li><code>rust/index/src/fulltext</code>: bitmap-oriented full-text candidate index.</li>
+</ul>
+<p>Các crate này cho thấy Chroma đang là hệ retrieval rộng hơn: dense vector search, metadata filtering, sparse lexical retrieval và full-text candidate generation.</p>
+<h2 id="lu-ng-runtime-u-cu-i">Luồng Runtime Đầu Cuối</h2>
+<div class="mermaid">sequenceDiagram
+    participant App as Application
+    participant Client as chromadb Client
+    participant API as RustBindingsAPI hoặc HTTP API
+    participant FE as ServiceBasedFrontend
+    participant Sys as SysDb
+    participant Log as Mutation Log
+    participant Exec as Executor
+    participant Seg as Segment/Index
+
+    App-&gt;&gt;Client: create_collection / get_collection
+    Client-&gt;&gt;API: scoped by tenant and database
+    API-&gt;&gt;FE: create hoặc fetch collection
+    FE-&gt;&gt;Sys: persist collection metadata and segments
+    App-&gt;&gt;Client: add hoặc upsert IDs, docs, metadata, embeddings
+    Client-&gt;&gt;API: validate and submit records
+    API-&gt;&gt;FE: add/update/upsert
+    FE-&gt;&gt;Log: append mutation records
+    FE-&gt;&gt;Sys: update collection metadata when needed
+    Log--&gt;&gt;Seg: compaction/backfill applies log to local indexes
+    App-&gt;&gt;Client: query by text or embedding with filters
+    Client-&gt;&gt;API: query request
+    API-&gt;&gt;FE: plan query
+    FE-&gt;&gt;Exec: execute local or distributed query
+    Exec-&gt;&gt;Seg: metadata filter + vector search + hydration
+    Seg--&gt;&gt;App: IDs, distances, documents, metadata, embeddings as requested</div>
+<h3 id="lu-ng-add-v-upsert">Luồng Add và Upsert</h3>
+<p>Application code gọi collection methods qua Python client. Tùy settings, request đi tới local Rust bindings hoặc HTTP API. Frontend validate collection state, append record vào log, cập nhật system metadata khi cần và cuối cùng materialize record vào segment/index state local hoặc distributed thông qua compaction và execution paths.</p>
+<h3 id="lu-ng-query">Luồng Query</h3>
+<p>Với query local, executor đọc metadata filters từ SQLite, có thể giảm candidate set, dùng HNSW readers cho vector search, rồi hydrate các trường được yêu cầu. Với query distributed, frontend tạo plan và distributed executor chọn query services theo collection và shard assignment.</p>
+<h3 id="lu-ng-quy-t-nh-client-mode">Luồng Quyết Định Client Mode</h3>
+<div class="mermaid">flowchart TD
+    Need[Application needs Chroma]
+    LocalOnly{Same process local store?}
+    Persist{Need data after restart?}
+    ServiceBoundary{Need separate service boundary?}
+    Hosted{Use Chroma Cloud?}
+    Ephemeral[EphemeralClient]
+    Persistent[PersistentClient / RustClient&lt;br/&gt;persist_directory + SQLite]
+    Http[HttpClient or AsyncHttpClient&lt;br/&gt;server at /api/v2]
+    Cloud[CloudClient&lt;br/&gt;token auth + hosted endpoint]
+
+    Need --&gt; Hosted
+    Hosted -- yes --&gt; Cloud
+    Hosted -- no --&gt; LocalOnly
+    LocalOnly -- yes --&gt; Persist
+    Persist -- yes --&gt; Persistent
+    Persist -- no --&gt; Ephemeral
+    LocalOnly -- no --&gt; ServiceBoundary
+    ServiceBoundary -- yes --&gt; Http</div>
+<h2 id="topology-tri-n-khai-v-v-n-h-nh">Topology Triển Khai và Vận Hành</h2>
+<div class="mermaid">flowchart LR
+    subgraph ClientTier[Client tier]
+        Py[Python SDK]
+        JS[JS/TS SDK]
+        Go[Go client]
+        Rust[Rust client crate]
+        Apps[RAG services and agents]
+    end
+
+    subgraph SingleNode[Single-node/server mode]
+        Server[Chroma frontend API&lt;br/&gt;port 8000]
+        LocalSql[(SQLite sysdb/log)]
+        LocalIndex[(Local HNSW and metadata files)]
+    end
+
+    subgraph Distributed[Kubernetes distributed mode]
+        FE[Rust frontend service]
+        SysSvc[SysDB service/migration]
+        LogSvc[Log service]
+        Query[Query service / workers]
+        Compact[Compaction service]
+        GC[Garbage collector]
+        Member[Memberlist]
+        Queue[Work queue]
+    end
+
+    subgraph Infra[Backing infrastructure]
+        Pg[(Postgres or SQLite depending config)]
+        Obj[(Object/block storage, MinIO/S3-like)]
+        Obs[OTEL, Prometheus, Grafana, Jaeger]
+    end
+
+    Apps --&gt; Py
+    Apps --&gt; JS
+    Apps --&gt; Go
+    Apps --&gt; Rust
+    Py --&gt; Server
+    JS --&gt; Server
+    Go --&gt; Server
+    Rust --&gt; Server
+    Server --&gt; LocalSql
+    Server --&gt; LocalIndex
+    Py --&gt; FE
+    FE --&gt; SysSvc
+    FE --&gt; LogSvc
+    FE --&gt; Query
+    Query --&gt; Obj
+    Compact --&gt; Obj
+    SysSvc --&gt; Pg
+    LogSvc --&gt; Pg
+    FE --&gt; Obs
+    Query --&gt; Obs
+    Compact --&gt; Obs
+    Member &lt;--&gt; Query</div>
+<h3 id="local-python">Local Python</h3>
+<p><code>README.md</code> đưa ví dụ Python tối thiểu: install <code>chromadb</code>, tạo client, tạo collection, add documents/metadata/IDs và query. <code>PersistentClient</code> và <code>RustClient</code> là hai đường local persistent quan trọng.</p>
+<h3 id="server-mode">Server Mode</h3>
+<p>README cho thấy <code>chroma run --path /chroma_db_path</code>. <code>docker-compose.yml</code> local build Rust Docker target, persist <code>/data</code>, expose port <code>8000</code>, và health-check <code>/api/v2/heartbeat</code>.</p>
+<h3 id="distributed-v-kubernetes">Distributed và Kubernetes</h3>
+<p><code>DEVELOP.md</code> và <code>k8s/</code> cho thấy luồng distributed development dùng Docker, Kubernetes, Tilt, Helm và support services. Helm chart trong <code>k8s/distributed-chroma</code> có templates cho frontend, query, compaction, sysdb, log, work queue, garbage collector, memberlist resources và migrations. <code>k8s/test</code> có Prometheus, Grafana, Jaeger, MinIO, Postgres, Spanner và OTEL collector cho integration testing.</p>
+<h3 id="cloud-v-managed-endpoints">Cloud và Managed Endpoints</h3>
+<p><code>CloudClient</code> cấu hình hosted API access, default host <code>api.trychroma.com</code>, SSL, tenant/database mặc định và token authentication. Đường này phù hợp khi vector data plane được quản lý ngoài application runtime.</p>
+<h2 id="s-module-dependency-v-lifecycle">Sơ Đồ Module Dependency và Lifecycle</h2>
+<div class="mermaid">stateDiagram-v2
+    [*] --&gt; ConfigureClient
+    ConfigureClient --&gt; SelectApiImpl
+    SelectApiImpl --&gt; LocalBindings: RustBindingsAPI
+    SelectApiImpl --&gt; HttpApi: FastAPI/AsyncFastAPI
+    SelectApiImpl --&gt; CloudApi: CloudClient
+
+    LocalBindings --&gt; StartSystem
+    HttpApi --&gt; ConnectServer
+    CloudApi --&gt; ConnectHosted
+
+    StartSystem --&gt; OpenSqlite
+    OpenSqlite --&gt; BuildFrontend
+    BuildFrontend --&gt; Ready
+    ConnectServer --&gt; Ready
+    ConnectHosted --&gt; Ready
+
+    Ready --&gt; CollectionCrud
+    Ready --&gt; AddOrUpsert
+    Ready --&gt; QueryOrSearch
+    AddOrUpsert --&gt; AppendLog
+    AppendLog --&gt; BackfillOrCompact
+    BackfillOrCompact --&gt; QueryOrSearch
+    QueryOrSearch --&gt; Ready
+    Ready --&gt; Shutdown
+    Shutdown --&gt; [*]</div>
+<div class="mermaid">flowchart TD
+    Frontend[ServiceBasedFrontend]
+    Auth[Auth and quota layers]
+    Sys[SysDb]
+    Log[Log]
+    Cache[Collection cache]
+    Exec{Executor implementation}
+    Local[LocalExecutor]
+    Dist[DistributedExecutor]
+    Metadata[SQLite metadata reader/writer]
+    Hnsw[Local HNSW index cache]
+    QuerySvc[gRPC query services]
+    Member[Memberlist assignment]
+
+    Auth --&gt; Frontend
+    Frontend --&gt; Sys
+    Frontend --&gt; Log
+    Frontend --&gt; Cache
+    Frontend --&gt; Exec
+    Exec --&gt; Local
+    Exec --&gt; Dist
+    Local --&gt; Metadata
+    Local --&gt; Hnsw
+    Dist --&gt; Member
+    Dist --&gt; QuerySvc</div>
+<h2 id="i-m-m-r-ng">Điểm Mở Rộng</h2>
+<p>Các điểm mở rộng của Chroma chủ yếu nằm ở API, cấu hình, embedding và lựa chọn implementation/service:</p>
+<ul>
+<li>Python, JavaScript/TypeScript, Go và Rust client surfaces.</li>
+<li><code>chromadb/utils/embedding_functions</code> cho provider-specific embedding functions.</li>
+<li><code>Settings</code> trong <code>chromadb/config.py</code> cho API implementation, persistence, auth, telemetry, migrations và distributed components.</li>
+<li>HTTP API routes dưới <code>/api/v2</code> cho service integrations.</li>
+<li>PyO3 bindings cho local native storage trong Python applications.</li>
+<li>Rust service crates cho frontend, log, sysdb, segment, worker, index và distributed query execution.</li>
+<li>Sparse và full-text index crates cho hybrid retrieval features.</li>
+<li>Kubernetes Helm templates và cloud deployment examples trong <code>k8s</code> và <code>deployments</code>.</li>
+<li>OpenTelemetry và auth hooks cho platform integration.</li>
+</ul>
+<h2 id="t-ch-h-p">Tích Hợp</h2>
+<p>Repository cho thấy hoặc hỗ trợ nhiều nhóm tích hợp:</p>
+<ul>
+<li><strong>Embedding providers:</strong> OpenAI, Cohere, VoyageAI, Ollama, Google/Gemini, Hugging Face, Jina, Mistral, Nomic, Together AI, Bedrock, Cloudflare Workers AI, OpenCLIP và nhiều provider khác qua embedding-function modules.</li>
+<li><strong>Application frameworks:</strong> Ứng dụng RAG có thể gọi Chroma trực tiếp bằng Python hoặc qua HTTP từ bất kỳ ngôn ngữ nào.</li>
+<li><strong>SDK ecosystem:</strong> <code>clients</code>, <code>go</code> và <code>rust/chroma</code> cung cấp đường client không phải Python.</li>
+<li><strong>Cloud infrastructure:</strong> <code>deployments/aws</code>, <code>deployments/azure</code>, <code>deployments/gcp</code> và Kubernetes manifests hỗ trợ triển khai cloud thử nghiệm hoặc tham chiếu.</li>
+<li><strong>Observability:</strong> OpenTelemetry settings, tracing crates, Docker health checks và test observability infrastructure hỗ trợ thiết kế monitoring production.</li>
+<li><strong>Auth:</strong> Client/server auth provider settings trong <code>chromadb/config.py</code> cho phép tích hợp authentication và authorization.</li>
+</ul>
+<h2 id="c-u-h-nh-tri-n-khai-v-n-h-nh">Cấu Hình, Triển Khai, Vận Hành</h2>
+<h3 id="python-package-v-build">Python Package và Build</h3>
+<p><code>pyproject.toml</code> định nghĩa package <code>chromadb</code>, Python <code>&gt;=3.9</code>, runtime dependencies như <code>pydantic</code>, <code>uvicorn</code>, <code>opentelemetry</code>, <code>grpcio</code>, <code>bcrypt</code>, <code>kubernetes</code>, <code>httpx</code> và entry point CLI <code>chroma</code>. Build backend là <code>maturin</code>, trỏ tới <code>rust/python_bindings/Cargo.toml</code>, giải thích vì sao local Python operation phụ thuộc nhiều vào Rust native code.</p>
+<h3 id="rust-workspace">Rust Workspace</h3>
+<p><code>Cargo.toml</code> định nghĩa workspace rộng gồm API types, frontend, worker, sysdb, log, storage, segment, index, Python bindings, JavaScript bindings, CLI và các crate hỗ trợ. Phần lớn service và retrieval internals mới hơn nằm ở đây.</p>
+<h3 id="runtime-settings">Runtime Settings</h3>
+<p>Các thiết lập vận hành gồm:</p>
+<ul>
+<li>Chọn client API implementation (<code>chroma_api_impl</code>).</li>
+<li>Server host, port, SSL, headers, CORS, keepalive và max body size.</li>
+<li>Persistence path và SQLite filename.</li>
+<li>Quyền reset.</li>
+<li>Authn/authz providers và credentials.</li>
+<li>Product telemetry và OpenTelemetry endpoint/headers/service name.</li>
+<li>Migration mode và migration hash validation.</li>
+<li>Lựa chọn distributed service implementation cho sysdb, producer/consumer, segment manager, executor, memberlist, log service, quota và rate limits.</li>
+<li>gRPC timeout controls.</li>
+</ul>
+<h3 id="th-c-h-nh-tri-n-khai">Thực Hành Triển Khai</h3>
+<ul>
+<li>Với local development, dùng <code>PersistentClient</code> hoặc <code>chroma run --path</code> với persistence directory thật.</li>
+<li>Với Docker server mode, persist <code>/data</code> hoặc storage path đã cấu hình ngoài vòng đời container.</li>
+<li>Với Kubernetes, xem frontend, sysdb/log, query, compaction và worker services là các failure domain riêng.</li>
+<li>Đưa migrations vào kế hoạch rollout; repo có sysdb migration templates và migration settings.</li>
+<li>Đặt OpenTelemetry values nhất quán giữa services để giữ trace correlation.</li>
+<li>Quyết định sớm tenant/database separation là để vận hành, bảo mật hay chỉ tổ chức.</li>
+<li>Validate max batch size và file-handle limits cho workload ingest cao.</li>
+</ul>
+<h2 id="observability-testing-evaluation-v-failure-modes">Observability, Testing, Evaluation và Failure Modes</h2>
+<h3 id="observability">Observability</h3>
+<p>Chroma có OpenTelemetry dependencies/settings, tracing trong Rust services, HTTP health/heartbeat/preflight routes, Docker health checks và Kubernetes test infrastructure cho Prometheus, Grafana, Jaeger và OTEL collector. Rust frontend cũng có metrics counters, tracing middleware, scorecard/circuit-breaker concepts và graceful shutdown.</p>
+<p>Các tín hiệu production nên theo dõi:</p>
+<ul>
+<li>API request count, latency và error rate theo route.</li>
+<li>Add/upsert/query/search throughput và latency.</li>
+<li>Log queue depth, compaction/backfill delay và purge behavior.</li>
+<li>SQLite hoặc external database latency và lock contention.</li>
+<li>HNSW cache pressure, file descriptor use và index load times.</li>
+<li>Distributed query service retries và error categories.</li>
+<li>Tăng trưởng tenant/database/collection và phân bố dimension.</li>
+<li>Độ đầy đủ của OpenTelemetry trace giữa frontend, query, log và compaction services.</li>
+</ul>
+<h3 id="testing">Testing</h3>
+<p>Repository có nhiều tầng test:</p>
+<ul>
+<li><code>chromadb/test</code> cho API, auth, config, persistence, property, stress, cross-version và distributed tests.</li>
+<li><code>chromadb/test/distributed/README.md</code> cho distributed sanity checks.</li>
+<li>Rust crate tests trong <code>rust/frontend</code>, <code>rust/log</code>, <code>rust/sysdb</code>, <code>rust/segment</code> và index crates.</li>
+<li><code>DEVELOP.md</code> mô tả pytest, Tilt, Kubernetes, distributed tests và Rust debugging workflows.</li>
+</ul>
+<p>Với RAG evaluation, nên thêm test theo workload ngoài repository defaults: retrieval recall@k, MRR/NDCG, metadata filter correctness, query latency percentiles, stale-read behavior sau ingestion và tác động đến answer quality sau reranking.</p>
+<h3 id="failure-modes">Failure Modes</h3>
+<p>Các failure modes quan trọng:</p>
+<ul>
+<li><strong>Giả định persistence local:</strong> Ephemeral client mất state; persistent client cần path ổn định và backup policy.</li>
+<li><strong>SQLite contention:</strong> Local mode và server mode có thể gặp lock hoặc latency khi write concurrency cao.</li>
+<li><strong>Áp lực file descriptor:</strong> HNSW indexes dùng nhiều file; cache sizing và OS limits quan trọng.</li>
+<li><strong>Compaction lag:</strong> Mutation được append vào log có thể chưa xuất hiện ngay trong segment/index tối ưu.</li>
+<li><strong>Filter/schema drift:</strong> Metadata type changes và missing keys ảnh hưởng query behavior; <code>sqlite_metadata.rs</code> có logic xử lý type changes và cleanup.</li>
+<li><strong>Distributed routing errors:</strong> Query service retries, memberlist assignment và cache invalidation rất quan trọng khi scale hoặc node churn.</li>
+<li><strong>Feature mismatch:</strong> Local executor và distributed support không hoàn toàn giống nhau; local <code>search</code> chưa được hiện thực trong local executor đã đọc.</li>
+<li><strong>Auth gaps:</strong> Auth provider hoặc header sai cấu hình có thể làm lộ collection.</li>
+<li><strong>Migration risk:</strong> System database migrations cần được lập kế hoạch và test trước rolling upgrade.</li>
+</ul>
+<h2 id="r-i-ro-b-o-m-t-v-governance">Rủi Ro Bảo Mật và Governance</h2>
+<ul>
+<li><strong>API keys và tokens:</strong> <code>CloudClient</code> và auth settings dựa trên tokens/headers. Không đưa credentials vào source control hoặc logs.</li>
+<li><strong>Tenant isolation:</strong> Chroma có tenant/database concepts, nhưng application authorization vẫn phải xác minh user được quyền truy cập collection và record.</li>
+<li><strong>Metadata leakage:</strong> Documents và metadata có thể chứa source text nhạy cảm. Filter và response retrieval phải tôn trọng quyền người dùng.</li>
+<li><strong>Embedding leakage:</strong> Embeddings có thể tiết lộ thông tin semantic. Hãy xem vector store là sensitive data store.</li>
+<li><strong>Telemetry:</strong> Product telemetry và OpenTelemetry settings phải phù hợp privacy và data residency policies.</li>
+<li><strong>Reset endpoint:</strong> <code>allow_reset</code> và reset APIs nên bị tắt hoặc giới hạn chặt ngoài test environment.</li>
+<li><strong>Cloud boundary:</strong> Khi dùng hosted endpoints, cần hiểu vectors, metadata, documents và logs được lưu ở đâu.</li>
+<li><strong>Model/version governance:</strong> Lưu embedding model name, dimension và version trong collection metadata hoặc external catalog để tránh trộn vector spaces không tương thích.</li>
+</ul>
+<h2 id="h-ng-d-n-c-m-ngu-n">Hướng Dẫn Đọc Mã Nguồn</h2>
+<p>Thứ tự đọc đề xuất:</p>
+<ol>
+<li><code>README.md</code> để hiểu API hướng người dùng và định vị sản phẩm.</li>
+<li><code>pyproject.toml</code> và <code>chromadb/__init__.py</code> để hiểu packaging và client modes.</li>
+<li><code>chromadb/config.py</code> để hiểu settings, component wiring, auth, telemetry và distributed knobs.</li>
+<li><code>chromadb/api/client.py</code>, <code>chromadb/api/fastapi.py</code> và <code>chromadb/api/rust.py</code> để hiểu boundary Python API.</li>
+<li><code>rust/python_bindings/src/bindings.rs</code> để hiểu local persistent runtime composition.</li>
+<li><code>rust/frontend/src/server.rs</code> và <code>rust/frontend/src/impls/service_based_frontend.rs</code> để hiểu HTTP/server behavior.</li>
+<li><code>rust/sysdb</code>, <code>rust/log</code> và <code>rust/segment</code> để hiểu metadata, mutation và local index storage.</li>
+<li><code>rust/frontend/src/executor/local.rs</code> và <code>rust/frontend/src/executor/distributed.rs</code> để hiểu query execution behavior.</li>
+<li><code>rust/index/src/sparse/README.md</code> và <code>rust/index/src/fulltext/README.md</code> để hiểu hybrid retrieval internals.</li>
+<li><code>k8s</code>, <code>deployments</code> và <code>DEVELOP.md</code> cho distributed development và operations.</li>
+</ol>
+<h2 id="l-tr-nh-h-c">Lộ Trình Học</h2>
+<ol>
+<li>Bắt đầu với ví dụ Python trong README và tạo một local collection.</li>
+<li>Chuyển từ ephemeral sang persistent mode và xem các file SQLite/index được tạo.</li>
+<li>Dùng <code>HttpClient</code> với local server để hiểu client/server boundary.</li>
+<li>Thêm metadata filters và document filters; test các metadata type mong đợi và không mong đợi.</li>
+<li>Đọc <code>RustBindingsAPI</code> và <code>python_bindings</code> để hiểu local runtime composition.</li>
+<li>Lần theo một record từ add/upsert qua frontend, log, compaction/backfill, segment và query.</li>
+<li>So sánh <code>LocalExecutor</code> và <code>DistributedExecutor</code> để hiểu scale-out behavior.</li>
+<li>Đọc README của sparse và full-text index để hiểu hướng hybrid retrieval.</li>
+<li>Thêm RAG evaluation harness với fixed queries, labeled relevant chunks và latency budgets.</li>
+<li>Chỉ review Kubernetes templates sau khi đã rõ local và server-mode internals.</li>
+</ol>
+<h2 id="b-ng-thu-t-ng">Bảng Thuật Ngữ</h2>
+<ul>
+<li><strong>AdminClient:</strong> Facade Python cho quản trị tenant và database.</li>
+<li><strong>Collection:</strong> Container hướng người dùng cho records, embeddings, documents, metadata và config.</li>
+<li><strong>Compaction:</strong> Quá trình materialize log records vào segment/index state tối ưu.</li>
+<li><strong>Embedding Function:</strong> Hàm hoặc provider adapter biến input thành embedding.</li>
+<li><strong>Executor:</strong> Dependency của frontend chạy count, get, KNN hoặc search local/remote.</li>
+<li><strong>Frontend:</strong> Tầng service Rust điều phối API request, sysdb, log, executor, auth, quota và metrics.</li>
+<li><strong>HNSW:</strong> Approximate nearest-neighbor index dùng cho vector search.</li>
+<li><strong>Log:</strong> Luồng mutation record dùng bởi ingestion và compaction paths.</li>
+<li><strong>PersistentClient:</strong> Local Python client lưu state dưới path đã cấu hình.</li>
+<li><strong>PyO3:</strong> Công nghệ interop Rust/Python dùng cho native Python bindings của Chroma.</li>
+<li><strong>Record:</strong> Item được lưu với ID, document, metadata và embedding fields.</li>
+<li><strong>Segment:</strong> Đơn vị storage/index cho retrieval local hoặc distributed.</li>
+<li><strong>SysDb:</strong> System database cho tenants, databases, collections và segments.</li>
+<li><strong>Tenant:</strong> Namespace cấp cao để tách databases và collections.</li>
+<li><strong>Vector Store:</strong> Tầng dữ liệu retrieval lưu embeddings và trả về records tương tự.</li>
+</ul>
+<h2 id="ph-l-c-deep-dive-ranh-gi-i-local-service-v-distributed">Phụ Lục Deep-Dive: Ranh Giới Local, Service và Distributed</h2>
+<p>Repository Chroma rất hữu ích cho kiến trúc sư vì nó cho thấy nhiều hình dạng vận hành khác nhau. Bề mặt Python trong <code>github-repos/04-rag-vector-database/chroma/chromadb/api/</code> hỗ trợ local client, HTTP client, async client và collection models. Đường index local nằm ở <code>chromadb/segment/impl/vector/</code> và <code>chromadb/segment/impl/metadata/sqlite.py</code>. Phía Rust tách <code>rust/frontend/</code>, <code>rust/worker/</code>, <code>rust/log/</code>, <code>rust/sysdb/</code>, <code>rust/blockstore/</code>, <code>rust/storage/</code> và <code>rust/types/</code>. Ranh giới này là cơ sở source-grounded rõ nhất để hiểu Chroma vừa là database nhúng cho developer, vừa là service architecture.</p>
+<div class="mermaid">flowchart LR
+  User[&quot;Application code&quot;] --&gt; PyApi[&quot;Python API chromadb/api&quot;]
+  PyApi --&gt; LocalClient[&quot;PersistentClient hoac local segment API&quot;]
+  PyApi --&gt; HttpClient[&quot;HTTP/async FastAPI client&quot;]
+  LocalClient --&gt; LocalHnsw[&quot;local_hnsw va local_persistent_hnsw&quot;]
+  LocalClient --&gt; SqliteMeta[&quot;metadata SQLite segment&quot;]
+  HttpClient --&gt; Frontend[&quot;rust/frontend service&quot;]
+  Frontend --&gt; SysDb[&quot;rust/sysdb metadata&quot;]
+  Frontend --&gt; Log[&quot;rust/log mutation stream&quot;]
+  Frontend --&gt; Executor[&quot;local hoac distributed executor&quot;]
+  Executor --&gt; Worker[&quot;rust/worker query va compaction services&quot;]
+  Worker --&gt; Storage[&quot;rust/storage va blockstore&quot;]</div>
+<p>Câu hỏi thiết kế quan trọng là trách nhiệm durability, indexing và query execution nằm ở đâu. Ở local mode, process ứng dụng rất gần persistence và HNSW state; điều này tốt cho notebook, thử nghiệm và deployment nhỏ, nhưng biến quản trị tài nguyên thành trách nhiệm của host ứng dụng. Ở service mode, frontend, log, sysdb, worker và storage có thể được phân tích riêng. Repository thể hiện điều này qua <code>rust/frontend/src/impls/in_memory_frontend.rs</code>, <code>rust/frontend/src/impls/service_based_frontend.rs</code>, <code>rust/frontend/src/executor/local.rs</code>, <code>rust/frontend/src/executor/distributed.rs</code>, cùng các worker binaries như <code>rust/worker/src/bin/query_service.rs</code> và <code>rust/worker/src/bin/compaction_service.rs</code>.</p>
+<h3 id="v-ng-i-ingestion-query-v-compaction">Vòng Đời Ingestion, Query và Compaction</h3>
+<div class="mermaid">sequenceDiagram
+  participant App as App hoac SDK
+  participant API as Python hoac HTTP API
+  participant FE as Frontend
+  participant Log as Mutation log
+  participant WQ as Work queue
+  participant Worker as Query hoac compaction worker
+  participant Store as Segment va block storage
+  App-&gt;&gt;API: add/upsert/query collection records
+  API-&gt;&gt;FE: normalized collection operation
+  FE-&gt;&gt;Log: append mutation khi write path duoc dung
+  FE-&gt;&gt;WQ: enqueue compaction hoac execution work
+  WQ-&gt;&gt;Worker: dispatch work item
+  Worker-&gt;&gt;Store: read hoac materialize segment state
+  Store--&gt;&gt;Worker: vectors, metadata hoac compacted block data
+  Worker--&gt;&gt;FE: result set hoac compaction status
+  FE--&gt;&gt;API: response
+  API--&gt;&gt;App: records, distances, documents, metadata</div>
+<p>Với hệ thống RAG, vấn đề production không chỉ là <code>query()</code> trả về tài liệu tương tự. Câu hỏi lớn hơn là ingestion path, metadata migrations, nhịp compaction và cấu hình embedding function có đủ ổn định để retrieval lặp lại được hay không. Các file như <code>chromadb/utils/embedding_functions/</code>, <code>chromadb/api/collection_configuration.py</code>, <code>chromadb/migrations/</code>, <code>rust/sqlite/migrations/</code> và <code>rust/spanner-migrations/</code> cho thấy model configuration và metadata storage là một phần kiến trúc, không phải chi tiết tiện ích.</p>
+<h3 id="c-y-quy-t-nh-operating-mode">Cây Quyết Định Operating Mode</h3>
+<div class="mermaid">flowchart TD
+  Start[&quot;Chon Chroma operating mode&quot;] --&gt; Dev{&quot;Mot developer hoac notebook?&quot;}
+  Dev --&gt;|yes| Local[&quot;PersistentClient voi local HNSW va SQLite&quot;]
+  Dev --&gt;|no| Multi{&quot;Nhieu app instance hoac users?&quot;}
+  Multi --&gt;|yes| Server[&quot;HTTP/service deployment&quot;]
+  Multi --&gt;|no| Local
+  Server --&gt; Scale{&quot;Can tach compaction/query workers?&quot;}
+  Scale --&gt;|yes| Distributed[&quot;Frontend + log + sysdb + worker + storage&quot;]
+  Scale --&gt;|no| SingleNode[&quot;Single-node server configuration&quot;]
+  Distributed --&gt; Govern[&quot;Govern embedding functions, schema, auth, quotas&quot;]
+  SingleNode --&gt; Govern
+  Local --&gt; Govern</div>
+<h3 id="checklist-s-n-s-ng-production">Checklist Sẵn Sàng Production</h3>
+<ul>
+<li>Chọn operating mode rõ ràng: local Python persistence, single-node server hoặc distributed service. Đừng để pattern <code>PersistentClient</code> từ prototype trở thành topology production ngoài ý muốn.</li>
+<li>Version cấu hình embedding function từ <code>chromadb/utils/embedding_functions/</code> và collection configuration từ <code>chromadb/api/collection_configuration.py</code>; provider, dimension hoặc sparse/dense policy thay đổi sẽ đổi semantics retrieval.</li>
+<li>Review migrations trong <code>chromadb/migrations/</code>, <code>rust/sqlite/migrations/</code> và <code>rust/spanner-migrations/</code> trước khi upgrade deployment có dữ liệu persist.</li>
+<li>Test query với metadata filter thực tế, không chỉ vector-only similarity. Vector segment và SQLite metadata path có rủi ro scale khác nhau.</li>
+<li>Với service mode, monitor log lag, worker backlog, compaction time, sysdb latency, object-store latency và frontend request latency.</li>
+<li>Đưa auth, rate-limit, quota và telemetry vào security review: <code>chromadb/auth/</code>, <code>chromadb/rate_limit/</code>, <code>chromadb/quota/</code> và <code>chromadb/telemetry/</code>.</li>
+<li>Validate backup và restore bằng cách replay một corpus nhỏ rồi so count, metadata predicates và top-k retrieval results với evaluation set cố định.</li>
+</ul>
+<h3 id="h-ng-d-n-c-cho-senior-architect">Hướng Dẫn Đọc Cho Senior Architect</h3>
+<p>Bắt đầu với <code>chromadb/api/client.py</code>, <code>chromadb/api/fastapi.py</code> và <code>chromadb/api/rust.py</code> để thấy các API shape. Sau đó đọc local storage trong <code>chromadb/segment/impl/vector/</code> và <code>chromadb/segment/impl/metadata/sqlite.py</code>. Tiếp theo chuyển sang <code>rust/frontend/src/</code>, rồi <code>rust/worker/src/</code>, rồi <code>rust/log/src/</code> và <code>rust/sysdb/src/</code>. Thứ tự này làm rõ khác biệt giữa embedded Chroma và service Chroma trước khi đi sâu vào block storage hoặc deployment manifests.</p>
+<h3 id="b-sung-thu-t-ng">Bổ Sung Thuật Ngữ</h3>
+<ul>
+<li><strong>Compaction lag:</strong> Độ trễ giữa mutation đã append và segment state tối ưu đã materialize.</li>
+<li><strong>Operating mode:</strong> Hình dạng deployment: embedded local client, single-node service hoặc distributed service components.</li>
+<li><strong>SysDB migration:</strong> Tiến hóa schema cho metadata tenant, database, collection và segment.</li>
+<li><strong>Worker backlog:</strong> Work đang queue cho query execution, compaction hoặc maintenance, có thể ảnh hưởng freshness và latency.</li>
+</ul>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kiến trúc OpenAI Agents Python | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/01-ai-app-agent-architecture/openai-agents-python/README.vi.md">View source</a>
+      <h1 id="ki-n-tr-c-openai-agents-python">Kiến trúc OpenAI Agents Python</h1>
+<h2 id="t-m-t-t-i-u-h-nh">Tóm tắt điều hành</h2>
+<p><code>openai-agents-python</code> là SDK Python để xây dựng workflow agent và multi-agent. Repository này có API công khai tương đối gọn trong <code>src/agents</code>, nhưng phía dưới là nhiều phân hệ runtime cho gọi model, thực thi tool, handoff, session, guardrail, tracing, realtime/voice, MCP và sandbox cho tác vụ dài hạn. <code>README.md</code> mô tả SDK là framework nhẹ nhưng đủ mạnh, hỗ trợ OpenAI Responses API, Chat Completions API và các model ngoài OpenAI thông qua adapter tùy chọn.</p>
+<p>Theo <code>pyproject.toml</code>, package phát hành là <code>openai-agents</code> phiên bản <code>0.17.4</code>, yêu cầu Python <code>&gt;=3.10</code>. Phụ thuộc lõi gồm <code>openai</code>, <code>pydantic</code>, <code>griffelib</code>, <code>requests</code>, <code>websockets</code> và <code>mcp</code>. Các nhóm tùy chọn bổ sung voice, realtime, LiteLLM, any-llm, SQLAlchemy, mã hóa, Redis, Dapr, MongoDB, Docker và nhiều provider sandbox.</p>
+<h2 id="v-n-c-gi-i-quy-t">Vấn đề được giải quyết</h2>
+<p>SDK giải quyết bài toán biến lời gọi model thành workflow có kiểm soát. Một ứng dụng AI thực tế cần quản lý prompt, structured output, schema của tool, lựa chọn provider, retry, streaming, bộ nhớ hội thoại, kiểm tra an toàn và trace vận hành. Repository này đóng gói các mối quan tâm đó vào runtime agent: <code>Agent</code> định nghĩa instruction, tool, guardrail, handoff và kiểu output; <code>Runner</code> và <code>AgentRunner</code> điều phối vòng lặp từng lượt.</p>
+<h2 id="vai-tr-trong-ai-stack">Vai trò trong AI Stack</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Lớp</th><th>Vai trò của repository</th><th>Căn cứ trong repo</th></tr></thead>
+<tbody>
+<tr><td>Điều phối ứng dụng</td><td>Agent loop, handoff, nested agent, sandbox agent</td><td><code>src/agents/agent.py</code>, <code>src/agents/run.py</code>, <code>src/agents/sandbox/</code></td></tr>
+<tr><td>Trừu tượng model</td><td>OpenAI Responses, Chat Completions, interface multi-provider</td><td><code>src/agents/models/interface.py</code>, <code>openai_responses.py</code>, <code>openai_chatcompletions.py</code>, <code>multi_provider.py</code></td></tr>
+<tr><td>Tooling</td><td>Function tool, hosted tool, shell/apply-patch, MCP, computer use</td><td><code>src/agents/tool.py</code>, <code>src/agents/mcp/</code>, <code>docs/tools.md</code></td></tr>
+<tr><td>Governance</td><td>Guardrail input/output/tool, approval flow, kiểm soát dữ liệu nhạy cảm trong trace</td><td><code>src/agents/guardrail.py</code>, <code>src/agents/tool_guardrails.py</code>, <code>docs/guardrails.md</code></td></tr>
+<tr><td>Vận hành</td><td>Tracing, usage, retry, session, streaming, sandbox runtime</td><td><code>src/agents/tracing/</code>, <code>usage.py</code>, <code>retry.py</code>, <code>memory/</code>, <code>run_internal/</code></td></tr>
+</tbody></table></div>
+<h2 id="b-n-c-y-ngu-n">Bản đồ cây nguồn</h2>
+<pre><code class="language-text">openai-agents-python/
+  README.md                    # tổng quan và quickstart
+  pyproject.toml               # metadata package, extras, cấu hình test/lint/type
+  mkdocs.yml                   # cấu hình site tài liệu
+  docs/                        # hướng dẫn agents, running, tools, MCP, tracing
+  examples/
+    basic/                     # hello world, streaming, media, retry
+    agent_patterns/            # routing, guardrails, HITL, agents-as-tools
+    memory/                    # SQLite, SQLAlchemy, Redis, MongoDB, Dapr sessions
+    mcp/                       # ví dụ MCP stdio, SSE, streamable HTTP
+    tools/                     # hosted tools, shell, codex, apply_patch
+    voice/                     # ví dụ voice static và streamed
+  src/agents/
+    agent.py                   # Agent, AgentBase, gom tool, agent-as-tool
+    run.py                     # facade Runner và AgentRunner
+    run_internal/              # turn loop, model retry, tool execution, streaming
+    models/                    # trừu tượng model/provider và adapter OpenAI
+    tool.py                    # function tools, hosted tools, shell, MCP, approval
+    guardrail.py               # guardrail input/output và decorator tripwire
+    memory/                    # interface session và session tích hợp sẵn
+    mcp/                       # MCP server manager, transport, chuyển đổi tool
+    sandbox/                   # hỗ trợ agent làm việc trên filesystem/runtime cô lập
+    realtime/                  # realtime agents và sessions
+    voice/                     # pipeline speech, STT/TTS provider
+    tracing/                   # trace/span provider và processor
+  tests/                       # test hành vi và unit test</code></pre>
+<h2 id="s-th-nh-ph-n">Sơ đồ thành phần</h2>
+<div class="mermaid">flowchart TB
+  App[Ma ung dung] --&gt; Runner[Runner / AgentRunner&lt;br/&gt;src/agents/run.py]
+  Runner --&gt; Agent[Agent&lt;br/&gt;src/agents/agent.py]
+  Agent --&gt; Tools[Tools&lt;br/&gt;src/agents/tool.py]
+  Agent --&gt; Guardrails[Guardrails&lt;br/&gt;src/agents/guardrail.py]
+  Agent --&gt; Handoffs[Handoffs&lt;br/&gt;src/agents/handoffs/]
+  Runner --&gt; RunInternal[Run internals&lt;br/&gt;turn_preparation, run_loop, turn_resolution]
+  RunInternal --&gt; Models[Model interface/provider&lt;br/&gt;src/agents/models/]
+  RunInternal --&gt; Sessions[Sessions&lt;br/&gt;src/agents/memory/]
+  RunInternal --&gt; Tracing[Tracing&lt;br/&gt;src/agents/tracing/]
+  Tools --&gt; MCP[MCP servers&lt;br/&gt;src/agents/mcp/]
+  Tools --&gt; Hosted[Hosted tools&lt;br/&gt;file search, web search, code interpreter]
+  Tools --&gt; Sandbox[Sandbox runtime&lt;br/&gt;src/agents/sandbox/]
+  Models --&gt; OpenAI[OpenAI APIs]
+  Models --&gt; Other[LiteLLM / any-llm providers]</div>
+<h2 id="kh-i-ni-m-l-i">Khái niệm lõi</h2>
+<ul>
+<li><code>Agent</code>: đơn vị hành vi chính. <code>src/agents/agent.py</code> định nghĩa <code>AgentBase</code> và <code>Agent</code>, gồm tên, instruction, tool, MCP server, handoff, guardrail, lifecycle hook, output type và model settings.</li>
+<li><code>Runner</code>: facade thực thi công khai. <code>src/agents/run.py</code> cung cấp <code>Runner.run</code>, <code>Runner.run_sync</code> và các biến thể streaming. Docstring mô tả vòng lặp: gọi agent, dừng khi có final output, chuyển agent khi có handoff, nếu không thì chạy tool rồi gọi model tiếp.</li>
+<li><code>RunConfig</code>: cấu hình toàn run trong <code>src/agents/run_config.py</code>, gồm override model provider, tracing, policy thực thi tool, sandbox và limit.</li>
+<li><code>Model</code> và <code>ModelProvider</code>: ranh giới trừu tượng của model trong <code>src/agents/models/interface.py</code>. Adapter OpenAI và provider khác nằm trong cùng cây <code>models/</code>.</li>
+<li><code>Tool</code>: tập hợp rộng trong <code>src/agents/tool.py</code>, bao gồm function tool, file search, web search, computer use, MCP, code interpreter, image generation, local shell, hosted shell, apply-patch, custom tool và tool search.</li>
+<li><code>Guardrail</code>: hàm tripwire input/output trong <code>src/agents/guardrail.py</code>; guardrail cho tool tách riêng ở <code>src/agents/tool_guardrails.py</code>.</li>
+<li><code>Session</code>: trừu tượng lưu lịch sử hội thoại dưới <code>src/agents/memory/</code>, với ví dụ SQLite, OpenAI conversation state, compaction, Redis, SQLAlchemy, MongoDB, Dapr và encrypted session.</li>
+<li><code>SandboxAgent</code>: kiến trúc worker dài hạn đã cấu hình sẵn trong <code>src/agents/sandbox/</code>, được đưa vào quickstart của <code>README.md</code> và thư mục ví dụ.</li>
+</ul>
+<h2 id="ki-n-tr-c-n-i-b">Kiến trúc nội bộ</h2>
+<p>Runtime công khai bắt đầu từ <code>Runner</code>, nhưng phần triển khai được chia nhỏ trong <code>src/agents/run_internal/</code>. <code>turn_preparation.py</code> xử lý model, tool, handoff, output schema và bộ lọc input trước khi gọi model. <code>run_loop.py</code> tập hợp helper điều phối mà <code>run.py</code> dùng. <code>turn_resolution.py</code> diễn giải response của model thành final output, tool run, handoff, interruption hoặc lượt tiếp theo. <code>tool_execution.py</code> thực thi function tool, computer action, local shell, hosted shell, apply-patch và computer tool. <code>session_persistence.py</code> chuẩn bị input từ session và ghi kết quả trở lại.</p>
+<p>SDK dùng schema chặt chẽ ở nhiều điểm. <code>function_schema.py</code>, <code>strict_schema.py</code>, <code>agent_output.py</code> và các định nghĩa tool dựa trên Pydantic dùng để validate input tool và structured output. Runtime có các lỗi domain như vượt max turn, guardrail tripwire, lỗi hành vi model và timeout tool, giúp ứng dụng xử lý có chủ đích hơn.</p>
+<h2 id="lu-ng-runtime-v-d-li-u">Luồng runtime và dữ liệu</h2>
+<div class="mermaid">sequenceDiagram
+  participant U as User/App
+  participant R as Runner
+  participant A as Agent
+  participant G as Guardrails
+  participant M as ModelProvider
+  participant T as Tools/MCP
+  participant S as Session/Trace
+
+  U-&gt;&gt;R: input, context, RunConfig, Session tuy chon
+  R-&gt;&gt;S: nap lich su va bat dau trace
+  R-&gt;&gt;G: chay input guardrails cho agent dau tien
+  R-&gt;&gt;A: resolve instruction, tool, handoff, output schema
+  A-&gt;&gt;M: goi model voi messages va tool schemas
+  M--&gt;&gt;A: response, tool calls, handoff, hoac final output
+  alt co tool calls
+    A-&gt;&gt;T: thuc thi tool va approval
+    T--&gt;&gt;A: tool results
+    A-&gt;&gt;M: luot model tiep voi tool results
+  else co handoff
+    A--&gt;&gt;R: doi active agent
+  else final output
+    A--&gt;&gt;R: output da validate
+  end
+  R-&gt;&gt;G: chay output guardrails
+  R-&gt;&gt;S: persist item, usage, span
+  R--&gt;&gt;U: RunResult hoac RunResultStreaming</div>
+<h2 id="i-m-m-r-ng">Điểm mở rộng</h2>
+<ul>
+<li>Thêm function tool bằng <code>function_tool</code> trong <code>src/agents/tool.py</code>; SDK tạo JSON schema từ chữ ký hàm và docstring Python.</li>
+<li>Tự triển khai <code>Model</code> hoặc <code>ModelProvider</code> dựa trên <code>src/agents/models/interface.py</code>, hoặc dùng adapter LiteLLM và any-llm trong <code>src/agents/extensions/models/</code>.</li>
+<li>Gắn lifecycle behavior bằng <code>RunHooksBase</code> và <code>AgentHooksBase</code> trong <code>src/agents/lifecycle.py</code>.</li>
+<li>Thêm MCP server qua <code>src/agents/mcp/server.py</code> và <code>MCPServerManager</code> trong <code>src/agents/mcp/manager.py</code>.</li>
+<li>Tùy biến session storage bằng cách triển khai <code>src/agents/memory/session.py</code>.</li>
+<li>Thêm tracing processor qua <code>src/agents/tracing/processor_interface.py</code> và <code>processors.py</code>.</li>
+<li>Mở rộng sandbox capability và provider trong <code>src/agents/sandbox/capabilities/</code>, <code>src/agents/sandbox/sandboxes/</code> và <code>src/agents/extensions/sandbox/</code>.</li>
+</ul>
+<h2 id="t-ch-h-p">Tích hợp</h2>
+<p>Các optional extras trong <code>pyproject.toml</code> cho thấy bề mặt tích hợp chính: <code>voice</code>, <code>realtime</code>, <code>litellm</code>, <code>any-llm</code>, <code>sqlalchemy</code>, <code>encrypt</code>, <code>redis</code>, <code>dapr</code>, <code>mongodb</code>, <code>docker</code>, <code>blaxel</code>, <code>daytona</code>, <code>cloudflare</code>, <code>e2b</code>, <code>modal</code>, <code>runloop</code>, <code>vercel</code>, <code>s3</code> và <code>temporal</code>. Thư mục <code>examples/</code> cung cấp mẫu cụ thể cho MCP transport, memory provider, shell và hosted tool, human-in-the-loop và voice.</p>
+<h2 id="s-tri-n-khai-v-v-n-h-nh">Sơ đồ triển khai và vận hành</h2>
+<div class="mermaid">flowchart LR
+  subgraph Runtime[&quot;Runtime ung dung&quot;]
+    API[FastAPI / service / worker]
+    SDK[openai-agents SDK]
+    LocalTools[Function tools cuc bo]
+  end
+  subgraph External[&quot;Dich vu ben ngoai&quot;]
+    OAI[OpenAI Responses / Chat Completions]
+    MCP[MCP servers]
+    DB[(Session store&lt;br/&gt;SQLite/Redis/SQLAlchemy/MongoDB/Dapr)]
+    Trace[OpenAI tracing hoac custom processors]
+    Sandbox[Sandbox provider&lt;br/&gt;local/Docker/E2B/Modal/etc.]
+  end
+  API --&gt; SDK
+  SDK --&gt; OAI
+  SDK --&gt; LocalTools
+  SDK --&gt; MCP
+  SDK --&gt; DB
+  SDK --&gt; Trace
+  SDK --&gt; Sandbox</div>
+<p>Về vận hành, hãy xem SDK là thư viện ứng dụng, không phải server độc lập. Nó có thể chạy trong API service, background worker, notebook, CLI hoặc durable workflow system. Với production, nên pin optional extras có chủ đích, đặt approval trước tool có side effect, rà soát chính sách dữ liệu nhạy cảm khi export trace và tách sandbox execution khỏi process ứng dụng chính.</p>
+<h2 id="observability-testing-evaluation-v-failure-modes">Observability, testing, evaluation và failure modes</h2>
+<p>Tracing là phân hệ hạng nhất trong <code>src/agents/tracing/</code>. <code>docs/tracing.md</code> trình bày trace, span, default tracing, custom processor, dữ liệu nhạy cảm và tích hợp khi dùng model ngoài OpenAI. Usage accounting nằm trong <code>src/agents/usage.py</code> và được runner internals gắn vào kết quả run và span.</p>
+<p>Repository dùng <code>pytest</code>, <code>pytest-asyncio</code>, <code>pytest-xdist</code>, <code>coverage</code>, <code>ruff</code>, <code>mypy</code> và <code>pyright</code> theo <code>pyproject.toml</code>. Các ví dụ trong <code>examples/agent_patterns/</code> là tài liệu thiết kế có thể chạy cho guardrail, routing, luồng deterministic, human-in-the-loop và nested agent.</p>
+<p>Các failure mode cần thiết kế trước:</p>
+<ul>
+<li>model không tạo structured output đúng schema;</li>
+<li>lỗi parse JSON hoặc validate schema của tool;</li>
+<li>timeout tool và lỗi side effect;</li>
+<li>guardrail tripwire;</li>
+<li>vượt giới hạn max turn;</li>
+<li>lỗi lifecycle của MCP server;</li>
+<li>race condition hoặc ghi thiếu trong session persistence;</li>
+<li>cấu hình sai filesystem hoặc network policy của sandbox;</li>
+<li>rò rỉ dữ liệu nhạy cảm qua tracing.</li>
+</ul>
+<h2 id="r-i-ro-b-o-m-t-v-governance">Rủi ro bảo mật và governance</h2>
+<p>Rủi ro chính là quyền hạn của tool, mức tin cậy MCP, sandbox quá rộng quyền hoặc bị escape, lưu giữ dữ liệu trong session/trace và chạy lệnh do model đề xuất. <code>docs/mcp.md</code> phân biệt hosted MCP, streamable HTTP, SSE, stdio, server manager, approval flow, filtering, caching và tracing. <code>docs/tools.md</code> bao phủ hosted tool, local runtime tool, function tool, agents-as-tools và approval gate. Khi deploy production, nên tắt tool rủi ro cao theo mặc định, yêu cầu approval cho shell/apply-patch/computer action, prefix tên MCP tool khi có nhiều server và redact hoặc tắt sensitive trace khi cần.</p>
+<h2 id="s-lifecycle-v-quy-t-nh">Sơ đồ lifecycle và quyết định</h2>
+<div class="mermaid">stateDiagram-v2
+  [*] --&gt; PrepareInput
+  PrepareInput --&gt; InputGuardrails
+  InputGuardrails --&gt; ModelTurn: pass
+  InputGuardrails --&gt; Tripwire: fail
+  ModelTurn --&gt; FinalOutput: output schema khop
+  ModelTurn --&gt; ToolExecution: tool calls
+  ModelTurn --&gt; Handoff: chon handoff
+  ToolExecution --&gt; Approval: can approval
+  Approval --&gt; ToolExecution: approved
+  Approval --&gt; ModelTurn: rejected result
+  ToolExecution --&gt; ModelTurn: tool results
+  Handoff --&gt; ModelTurn: active agent moi
+  FinalOutput --&gt; OutputGuardrails
+  OutputGuardrails --&gt; PersistAndTrace: pass
+  OutputGuardrails --&gt; Tripwire: fail
+  PersistAndTrace --&gt; [*]
+  Tripwire --&gt; [*]</div>
+<h2 id="c-u-h-nh-tri-n-khai-v-ghi-ch-ops">Cấu hình, triển khai và ghi chú ops</h2>
+<ul>
+<li>Môi trường: đặt credential provider như <code>OPENAI_API_KEY</code> ngoài code. Quickstart trong <code>README.md</code> nhắc điều này cho ví dụ sandbox.</li>
+<li>Cài đặt: dùng <code>openai-agents</code> cho lõi, chỉ thêm extras khi cần, ví dụ <code>openai-agents[voice]</code>, <code>openai-agents[redis]</code> hoặc <code>openai-agents[litellm]</code>.</li>
+<li>Type discipline: dự án có <code>py.typed</code> và dùng mypy/pyright nghiêm ngặt; code downstream nên giữ type hint cho tool và output.</li>
+<li>Sessions: chọn backend theo độ bền, tenancy và yêu cầu mã hóa. Ví dụ có SQLite, SQLAlchemy, Redis, MongoDB, Dapr, OpenAI session, compaction và encrypted session.</li>
+<li>Sandbox: cô lập workspace mount và network policy. Các provider sandbox có khác biệt lớn về rủi ro vận hành và chi phí.</li>
+<li>Streaming: dùng <code>RunResultStreaming</code> và stream events khi cần latency thấp hoặc quan sát nested tool.</li>
+</ul>
+<h2 id="h-ng-d-n-c-m-ngu-n">Hướng dẫn đọc mã nguồn</h2>
+<ol>
+<li>Bắt đầu với <code>README.md</code>, <code>docs/quickstart.md</code> và <code>docs/agents.md</code>.</li>
+<li>Đọc <code>src/agents/agent.py</code> và <code>src/agents/run.py</code> để hiểu API công khai.</li>
+<li>Đọc <code>src/agents/run_internal/turn_preparation.py</code>, <code>turn_resolution.py</code> và <code>tool_execution.py</code> để hiểu runtime.</li>
+<li>Đọc <code>docs/tools.md</code>, <code>docs/mcp.md</code>, <code>docs/guardrails.md</code> và <code>docs/running_agents.md</code>.</li>
+<li>Với production, đọc <code>docs/tracing.md</code>, <code>docs/sessions/*</code> và ví dụ liên quan trong <code>examples/memory/</code>, <code>examples/tools/</code>, <code>examples/agent_patterns/</code>.</li>
+</ol>
+<h2 id="l-tr-nh-h-c">Lộ trình học</h2>
+<ol>
+<li>Tạo một <code>Agent</code> đơn giản với function tool.</li>
+<li>Thêm structured output và output guardrail.</li>
+<li>Thêm session backend và xem lịch sử run.</li>
+<li>Chuyển một specialist agent thành tool, rồi so sánh với handoff.</li>
+<li>Thêm MCP với static hoặc dynamic tool filtering.</li>
+<li>Thêm tracing và usage monitoring.</li>
+<li>Thử sandboxed long-horizon work bằng local hoặc Docker sandbox trước khi dùng provider remote.</li>
+</ol>
+<h2 id="checklist-s-n-s-ng-production">Checklist sẵn sàng production</h2>
+<p>Dùng checklist này khi chuyển từ các ví dụ trong <code>examples/</code> sang service, worker hoặc notebook vận hành thật có import <code>src/agents</code>.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Khu vực</th><th>Neo theo repository</th><th>Kiểm tra kiến trúc</th></tr></thead>
+<tbody>
+<tr><td>Giới hạn vòng lặp agent</td><td><code>src/agents/run.py</code>, <code>src/agents/run_config.py</code>, <code>src/agents/exceptions.py</code></td><td>Cấu hình max turns, timeout, retry và cách xử lý <code>MaxTurnsExceeded</code>, lỗi hành vi model, lỗi tool.</td></tr>
+<tr><td>Quyền hạn của tool</td><td><code>src/agents/tool.py</code>, <code>src/agents/tool_guardrails.py</code>, <code>docs/tools.md</code></td><td>Tách tool chỉ đọc, tool có side effect, local shell, hosted tool và <code>apply_patch</code>; yêu cầu phê duyệt cho thao tác rủi ro cao.</td></tr>
+<tr><td>Ranh giới tin cậy MCP</td><td><code>src/agents/mcp/</code>, <code>docs/mcp.md</code>, <code>examples/mcp/</code></td><td>Chỉ dùng server đáng tin cậy, prefix tên tool, lọc catalog tool và xem lỗi lifecycle server là incident runtime.</td></tr>
+<tr><td>Độ bền session</td><td><code>src/agents/memory/</code>, <code>examples/memory/</code></td><td>Chọn SQLite/SQLAlchemy/Redis/MongoDB/Dapr/OpenAI session theo yêu cầu tenant, mã hóa và replay.</td></tr>
+<tr><td>An toàn trace</td><td><code>src/agents/tracing/</code>, <code>docs/tracing.md</code></td><td>Quyết định trace có được chứa prompt, tham số tool, output và usage hay không; redact hoặc tắt capture khi cần.</td></tr>
+<tr><td>Cô lập sandbox</td><td><code>src/agents/sandbox/</code>, <code>docs/sandbox_agents.md</code>, <code>examples/tools/</code></td><td>Kiểm soát mount filesystem, network policy, credential và giới hạn chi phí sandbox ngoài trust boundary của app chính.</td></tr>
+</tbody></table></div>
+<div class="mermaid">flowchart LR
+  PublicAPI[Agent, Runner, RunConfig] --&gt; TurnPrep[run_internal/turn_preparation.py]
+  TurnPrep --&gt; ModelPlane[models/interface.py va provider adapters]
+  TurnPrep --&gt; ToolPlane[tool.py va tool_guardrails.py]
+  ToolPlane --&gt; MCPPlane[mcp/server.py va manager.py]
+  ToolPlane --&gt; SandboxPlane[sandbox capabilities va providers]
+  TurnPrep --&gt; SessionPlane[memory/session.py va backends]
+  ModelPlane --&gt; TurnResolution[run_internal/turn_resolution.py]
+  ToolPlane --&gt; ToolExecution[run_internal/tool_execution.py]
+  SessionPlane --&gt; Persistence[run_internal/session_persistence.py]
+  TurnResolution --&gt; Result[result.py va stream_events.py]
+  Persistence --&gt; TracePlane[tracing processors va spans]</div>
+<h2 id="runbook-v-n-h-nh-v-ph-n-lo-i-l-i">Runbook vận hành và phân loại lỗi</h2>
+<p>Runbook production hữu ích nhất nên bám vào turn loop. Một lỗi hiếm khi chỉ là &quot;agent hỏng&quot;; thường nó nằm ở một chặng cụ thể: chuẩn bị input, guardrail, gọi model, chạy tool, handoff, lưu session hoặc export trace. Các file trong <code>src/agents/run_internal/</code> thể hiện rõ cách tách lớp này và là điểm đọc đầu tiên khi điều tra incident.</p>
+<div class="mermaid">flowchart TD
+  Incident[Ket qua run bat thuong hoac outage] --&gt; Classify{Loi o dau?}
+  Classify --&gt; Input[Input hoac replay session]
+  Classify --&gt; Guardrail[Guardrail tripwire]
+  Classify --&gt; Model[Goi model hoac structured output]
+  Classify --&gt; Tool[Tool, MCP hoac sandbox action]
+  Classify --&gt; Handoff[Handoff hoac agent-as-tool]
+  Classify --&gt; Trace[Tracing hoac persistence]
+  Input --&gt; CheckSession[memory backends va session_persistence.py]
+  Guardrail --&gt; CheckGuard[guardrail.py va tool_guardrails.py]
+  Model --&gt; CheckModel[model adapters, strict_schema.py, agent_output.py]
+  Tool --&gt; CheckTool[tool_execution.py, mcp/, sandbox/]
+  Handoff --&gt; CheckHandoff[handoffs/ va agent.py tool aggregation]
+  Trace --&gt; CheckTrace[tracing/ processors va usage.py]
+  CheckSession --&gt; Fix[Sua policy, config hoac implementation]
+  CheckGuard --&gt; Fix
+  CheckModel --&gt; Fix
+  CheckTool --&gt; Fix
+  CheckHandoff --&gt; Fix
+  CheckTrace --&gt; Fix</div>
+<p>Với kiến trúc sư cấp cao, quyết định quan trọng là SDK này chỉ là thư viện đồng bộ trong ứng dụng hay là một phần của durable workflow. Nếu tool có thể thay đổi hệ thống bên ngoài, hãy bọc <code>Runner.run</code> bằng idempotency key, trạng thái phê duyệt, hành động bù trừ và audit record bền vững. Nếu dùng agent cho sandbox dài hơi, cần lưu state ngoài process và định nghĩa rõ hành vi khi sandbox provider, MCP server hoặc model provider lỗi giữa chừng.</p>
+<div class="mermaid">sequenceDiagram
+  participant App as Service hoac worker
+  participant Policy as Lop policy va phe duyet
+  participant Runner as Runner.run
+  participant Tools as Tools va MCP
+  participant Store as Session va audit store
+  participant Trace as Trace processor
+
+  App-&gt;&gt;Policy: phan loai user, tenant, tool, data scope
+  Policy-&gt;&gt;Store: tao run record va idempotency key
+  Policy-&gt;&gt;Runner: run voi RunConfig va session
+  Runner-&gt;&gt;Tools: yeu cau tool execution duoc phe duyet
+  Tools--&gt;&gt;Policy: can phe duyet hoac tra ket qua
+  Policy--&gt;&gt;Runner: approved, rejected hoac sanitized result
+  Runner-&gt;&gt;Store: luu conversation items va usage
+  Runner-&gt;&gt;Trace: export spans theo redaction policy
+  Runner--&gt;&gt;App: final output hoac typed exception</div>
+<h2 id="ghi-ch-review-cho-ki-n-tr-c-s-c-p-cao">Ghi chú review cho kiến trúc sư cấp cao</h2>
+<p>Hãy review <code>openai-agents-python</code> như một runtime library có trust boundary rõ ràng, không chỉ như helper để viết prompt. Public API trong <code>src/agents/agent.py</code>, <code>src/agents/run.py</code> và <code>src/agents/run_config.py</code> khá nhỏ, nhưng blast radius đến từ các subsystem mà nó có thể gọi: <code>src/agents/tool.py</code>, <code>src/agents/mcp/</code>, <code>src/agents/sandbox/</code>, <code>src/agents/memory/</code> và <code>src/agents/tracing/</code>. Trong architecture review, cần hỏi subsystem nào được bật cho từng tenant và subsystem nào bị tắt ở mức import, config hoặc policy.</p>
+<p>Đặc biệt chú ý quyền sở hữu schema. <code>src/agents/function_schema.py</code>, <code>strict_schema.py</code>, <code>agent_output.py</code> và các model adapter trong <code>src/agents/models/</code> cùng định nghĩa cách chuyển đổi Python types, JSON schema, model response và tham số tool. Nếu application dùng function tool gọi hệ thống tài chính, bảo mật, deployment hoặc hệ thống có side effect lên dữ liệu, schema validation là cần thiết nhưng chưa đủ; application vẫn cần authorization và business-rule validation nằm ngoài model turn.</p>
+<p>Xem <code>Session</code> và <code>Trace</code> là hai miền governance khác nhau. Session storage dưới <code>src/agents/memory/</code> là product state, còn spans dưới <code>src/agents/tracing/</code> là operational telemetry. Chúng có thể có retention period, tenant access rule, yêu cầu mã hóa và nghĩa vụ incident response khác nhau. Các ví dụ trong <code>examples/memory/</code> là điểm bắt đầu tốt, nhưng production system nên tài liệu hóa replay, deletion và redaction behavior trước khi agent xử lý dữ liệu người dùng thật.</p>
+<h2 id="thu-t-ng">Thuật ngữ</h2>
+<ul>
+<li>Agent: actor dựa trên model, có instruction, tool, guardrail, handoff và contract output.</li>
+<li>Runner: thành phần thực thi vòng lặp agent.</li>
+<li>Turn: một lần gọi model cộng với lập kế hoạch và thực thi tool phát sinh.</li>
+<li>Handoff: chuyển quyền điều khiển từ agent này sang agent khác.</li>
+<li>Agent as tool: chạy nested agent như một tool call.</li>
+<li>Guardrail: logic validate có thể trip workflow trước hoặc sau khi gọi model.</li>
+<li>MCP: Model Context Protocol, dùng để expose tool và prompt ngoài cho agent.</li>
+<li>Session: lịch sử hội thoại được lưu giữa các run.</li>
+<li>Trace: telemetry thực thi có cấu trúc gồm trace và span.</li>
+<li>Sandbox Agent: agent được cấu hình để thao tác trên runtime/filesystem có kiểm soát.</li>
+</ul>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

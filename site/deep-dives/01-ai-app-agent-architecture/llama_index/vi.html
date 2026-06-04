@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kiến trúc LlamaIndex | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/01-ai-app-agent-architecture/llama_index/README.vi.md">View source</a>
+      <h1 id="ki-n-tr-c-llamaindex">Kiến trúc LlamaIndex</h1>
+<h2 id="t-m-t-t-i-u-h-nh">Tóm tắt điều hành</h2>
+<p>LlamaIndex là framework mã nguồn mở cho ứng dụng LLM có dữ liệu riêng và ứng dụng agentic. <code>README.md</code> ở root mô tả nó là bộ công cụ để tăng cường LLM bằng private data thông qua connector, index, graph, retrieval/query interface và integration. Trong checkout này, starter distribution <code>llama-index</code> là package mỏng phụ thuộc vào <code>llama-index-core</code>, integration LLM/embedding OpenAI và <code>nltk</code>. Trung tâm kiến trúc là <code>llama-index-core/llama_index/core</code>, trong khi <code>llama-index-integrations/</code> chứa hàng trăm package provider-specific cho LLM, embedding, vector store, reader, tool, memory, graph store và nhiều loại khác.</p>
+<p><code>pyproject.toml</code> phát hành <code>llama-index</code> phiên bản <code>0.14.22</code>. <code>llama-index-core/pyproject.toml</code> phát hành <code>llama-index-core</code> phiên bản <code>0.14.22</code>, yêu cầu Python <code>&gt;=3.10,&lt;4.0</code> và phụ thuộc SQLAlchemy, fsspec, httpx, nltk, numpy, tenacity, tiktoken, aiohttp, networkx, PyYAML, pydantic, <code>llama-index-workflows</code> và các thư viện runtime khác. <code>llama-index-instrumentation</code> là package riêng cho observability và spans.</p>
+<h2 id="v-n-c-gi-i-quy-t">Vấn đề được giải quyết</h2>
+<p>LlamaIndex giải quyết bài toán &quot;LLM trên dữ liệu của tôi&quot;. Nó cung cấp primitive cho ingestion, transformation, indexing, storage, retrieval, query synthesis, chat engine, agent, workflow, evaluation và observability. Một nhóm có thể dùng nó như framework RAG năm dòng code, hoặc như kiến trúc modular nơi từng bước đều có thể thay thế: reader, node parser, embedding model, vector store, retriever, reranker, response synthesizer, tool, memory và workflow agent.</p>
+<h2 id="vai-tr-trong-ai-stack">Vai trò trong AI Stack</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Lớp</th><th>Vai trò của repository</th><th>Căn cứ trong repo</th></tr></thead>
+<tbody>
+<tr><td>Data ingestion</td><td>Readers, documents, nodes, transformations, node parsers</td><td><code>llama-index-core/llama_index/core/readers</code>, <code>schema.py</code>, <code>node_parser/</code></td></tr>
+<tr><td>Index và retrieval</td><td>BaseIndex, VectorStoreIndex, retrievers, query engines</td><td><code>indices/base.py</code>, <code>indices/vector_store/base.py</code>, <code>retrievers/</code>, <code>query_engine/</code></td></tr>
+<tr><td>Storage</td><td>Document store, index store, vector stores, graph stores, storage context</td><td><code>storage/storage_context.py</code>, <code>storage/</code>, <code>vector_stores/</code>, <code>graph_stores/</code></td></tr>
+<tr><td>Agentic apps</td><td>Workflow agents, FunctionAgent, ReAct, CodeAct, tools, memory</td><td><code>agent/workflow/</code>, <code>tools/</code>, <code>memory/</code>, <code>workflow/</code></td></tr>
+<tr><td>Hệ sinh thái integration</td><td>Provider-specific packages trên nhiều category</td><td><code>llama-index-integrations/</code></td></tr>
+<tr><td>Observability/evaluation</td><td>Callbacks, instrumentation, evaluators, retrieval metrics</td><td><code>callbacks/</code>, <code>instrumentation/</code>, <code>evaluation/</code>, <code>llama-index-instrumentation/</code></td></tr>
+</tbody></table></div>
+<h2 id="b-n-c-y-ngu-n">Bản đồ cây nguồn</h2>
+<pre><code class="language-text">llama_index/
+  README.md                              # tổng quan framework và ví dụ
+  pyproject.toml                         # metadata starter package
+  docs/                                  # docs framework, examples, use cases, optimizing
+  llama-index-core/
+    pyproject.toml                       # metadata core package
+    llama_index/core/
+      schema.py                          # Document, BaseNode, metadata/resource schemas
+      settings.py                        # Settings global cho LLM, embedding, transformations
+      indices/                           # BaseIndex, VectorStoreIndex, graph/list/tree/etc.
+      storage/                           # StorageContext, docstore, index_store, chat_store
+      vector_stores/                     # core vector store types và simple store
+      query_engine/                      # module điều phối query
+      retrievers/                        # chiến lược retrieval
+      response_synthesizers/             # generation trên retrieved context
+      agent/workflow/                    # workflow-based agents và events
+      workflow/                          # event-driven workflow engine
+      tools/                             # BaseTool, FunctionTool, query/retriever tools
+      evaluation/                        # correctness, faithfulness, relevancy, retrieval metrics
+      callbacks/ and instrumentation/     # observability hooks
+  llama-index-integrations/
+    llms/ embeddings/ vector_stores/ readers/ tools/ memory/ graph_stores/ ...
+  llama-index-instrumentation/           # package instrumentation riêng
+  llama-index-utils/                     # utility integration packages
+  llama-dev/                             # release, package và CLI tooling
+  scripts/                               # publish, docs sync, integration health checks</code></pre>
+<h2 id="s-th-nh-ph-n">Sơ đồ thành phần</h2>
+<div class="mermaid">flowchart TB
+  App[Ung dung] --&gt; Core[llama-index-core]
+  Core --&gt; Settings[Settings&lt;br/&gt;settings.py]
+  Core --&gt; Ingestion[Readers / Documents / Nodes]
+  Ingestion --&gt; Transform[Transformations / Node parsers]
+  Transform --&gt; Indexes[Indexes&lt;br/&gt;BaseIndex, VectorStoreIndex]
+  Indexes --&gt; Storage[StorageContext&lt;br/&gt;docstore, index_store, vector_store, graph_store]
+  Indexes --&gt; Retrieval[Retrievers]
+  Retrieval --&gt; QueryEngine[Query engines]
+  QueryEngine --&gt; Synth[Response synthesizers]
+  Core --&gt; Agents[Workflow agents&lt;br/&gt;FunctionAgent, ReAct, CodeAct]
+  Agents --&gt; Tools[Tools va memory]
+  Integrations[llama-index-integrations] --&gt; Core
+  Integrations --&gt; Providers[LLMs, embeddings, vector DBs, readers]
+  Core --&gt; Eval[Evaluation]
+  Core --&gt; Obs[Callbacks / instrumentation]</div>
+<h2 id="kh-i-ni-m-l-i">Khái niệm lõi</h2>
+<ul>
+<li><code>Document</code> và <code>BaseNode</code>: object dữ liệu trong <code>llama_index/core/schema.py</code>. Document được ingest rồi transform thành node để index và retrieve.</li>
+<li><code>Settings</code>: cấu hình global trong <code>llama_index/core/settings.py</code>, gồm LLM mặc định, embedding model, tokenizer, callback manager và transformations.</li>
+<li><code>BaseIndex</code>: index abstract trong <code>indices/base.py</code>. Nó build index structure từ nodes, ghi index structure vào <code>StorageContext</code>, hỗ trợ insert/delete và expose chuyển đổi sang query/chat/retriever.</li>
+<li><code>VectorStoreIndex</code>: vector index cụ thể trong <code>indices/vector_store/base.py</code>. Nó resolve embedding model, embed node theo batch, ghi embedding vào vector store và có thể khởi tạo từ vector store đã lưu text.</li>
+<li><code>StorageContext</code>: dataclass trong <code>storage/storage_context.py</code>, gom docstore, index store, vector stores, graph store và property graph store tùy chọn. Nó có thể khởi tạo bằng in-memory default hoặc từ thư mục persisted.</li>
+<li><code>BaseRetriever</code> và <code>BaseQueryEngine</code>: abstraction query lõi trong <code>base/base_retriever.py</code> và <code>base/base_query_engine.py</code>.</li>
+<li><code>BaseTool</code> và <code>AsyncBaseTool</code>: tool contract trong <code>tools/types.py</code>, có metadata, schema, output, thực thi sync/async và adapter.</li>
+<li>Workflow agents: <code>agent/workflow/base_agent.py</code> kết hợp <code>Workflow</code>, Pydantic config, tools, tool retriever, handoff targets, memory, LLM, structured output, streaming và early stopping.</li>
+</ul>
+<h2 id="ki-n-tr-c-n-i-b">Kiến trúc nội bộ</h2>
+<p>LlamaIndex core được xây như pipeline gồm các component có thể thay thế. <code>BaseIndex.from_documents</code> ghi document hash vào docstore, chạy transformations đã cấu hình, tạo nodes, build index struct và lưu struct đó vào index store. <code>VectorStoreIndex</code> chuyên biệt hóa bằng cách resolve embedding model, embed batch node, add vào vector store đã cấu hình và lưu node metadata trong docstore/index structure khi vector store không lưu text.</p>
+<p>Phía query tách retrieval khỏi synthesis. Index sinh retriever; retriever trả về candidate nodes; postprocessor và reranker có thể chỉnh candidate; response synthesizer tạo câu trả lời cuối bằng LLM. Chat engine thêm conversational memory trên cùng dữ liệu. Module agent workflow thêm tool selection, state, handoff, structured output và event-driven workflow execution.</p>
+<h2 id="lu-ng-runtime-v-d-li-u">Luồng runtime và dữ liệu</h2>
+<div class="mermaid">sequenceDiagram
+  participant U as User/App
+  participant R as Reader
+  participant T as Transformations
+  participant I as Index
+  participant S as StorageContext
+  participant Q as QueryEngine
+  participant L as LLM/Embedding
+  participant O as Observability
+
+  U-&gt;&gt;R: load data source
+  R--&gt;&gt;T: Documents
+  T--&gt;&gt;I: Nodes
+  I-&gt;&gt;L: embed nodes neu la vector index
+  I-&gt;&gt;S: persist docstore, index_store, vector_store
+  U-&gt;&gt;Q: natural language query
+  Q-&gt;&gt;I: lay retriever tu index
+  I-&gt;&gt;S: doc vectors/nodes/index structs
+  Q-&gt;&gt;L: synthesize response tu retrieved context
+  Q-&gt;&gt;O: callbacks/spans/evaluation hooks
+  Q--&gt;&gt;U: response kem source context</div>
+<h2 id="i-m-m-r-ng">Điểm mở rộng</h2>
+<ul>
+<li>Thêm readers dưới <code>llama-index-integrations/readers/</code> hoặc implement reader contract trong core.</li>
+<li>Thêm LLM hoặc embedding dưới <code>llama-index-integrations/llms/</code> và <code>embeddings/</code>.</li>
+<li>Thêm vector store dưới <code>llama-index-integrations/vector_stores/</code> bằng cách implement core vector store types.</li>
+<li>Thêm retriever, postprocessor, response synthesizer, output parser hoặc selector dưới package core tương ứng.</li>
+<li>Thêm tools qua <code>BaseTool</code>, <code>FunctionTool</code>, query engine tools, retriever tools hoặc integration packages.</li>
+<li>Thêm workflow agent bằng cách mở rộng <code>BaseWorkflowAgent</code>, <code>FunctionAgent</code>, <code>ReActAgent</code>, <code>CodeActAgent</code> hoặc <code>MultiAgentWorkflow</code>.</li>
+<li>Thêm instrumentation handler bằng <code>llama-index-instrumentation</code> hoặc core callbacks.</li>
+</ul>
+<h2 id="t-ch-h-p">Tích hợp</h2>
+<p>Cây integration local rất rộng. <code>llama-index-integrations/llms/</code> gồm OpenAI, Azure OpenAI, Anthropic, Bedrock, Cohere, DeepSeek, Fireworks, Google GenAI, Groq, HuggingFace, LangChain, LiteLLM, llama.cpp, Mistral, NVIDIA, Ollama, OpenRouter, Perplexity, Vertex và nhiều provider khác. <code>vector_stores/</code> gồm Azure AI Search, Chroma, Elasticsearch, FAISS, LanceDB, Milvus, MongoDB, Neo4j, OpenSearch, PGVector/Postgres, Pinecone, Qdrant, Redis, Supabase, Timescale, Vespa, Weaviate, Zep và nhiều hơn. <code>readers/</code> gồm connector cho file, cloud storage, database, GitHub/GitLab, Jira, Confluence, hệ thống dạng Slack, LlamaParse và nhiều SaaS API.</p>
+<h2 id="s-tri-n-khai-v-v-n-h-nh">Sơ đồ triển khai và vận hành</h2>
+<div class="mermaid">flowchart LR
+  subgraph AppRuntime[&quot;Runtime ung dung&quot;]
+    API[API / worker / notebook]
+    LI[LlamaIndex core]
+    Agent[Workflow agent hoac query/chat engine]
+  end
+  subgraph Storage[&quot;Data va state&quot;]
+    Docs[(Docstore)]
+    Index[(Index store)]
+    Vec[(Vector store)]
+    Graph[(Graph/property graph store)]
+    Memory[(Chat/agent memory)]
+  end
+  subgraph External[&quot;Dich vu ben ngoai&quot;]
+    LLM[LLM provider]
+    Emb[Embedding provider]
+    Reader[Data source connectors]
+    Obs[Callbacks/instrumentation backend]
+    Eval[Evaluation datasets/metrics]
+  end
+  API --&gt; LI --&gt; Agent
+  Reader --&gt; LI
+  LI --&gt; Docs
+  LI --&gt; Index
+  LI --&gt; Vec
+  LI --&gt; Graph
+  Agent --&gt; Memory
+  Agent --&gt; LLM
+  LI --&gt; Emb
+  LI --&gt; Obs
+  LI --&gt; Eval</div>
+<p>Với production, hãy chọn package set tối thiểu thay vì cài toàn bộ integration. Dùng persistent storage cho docstore/index/vector/graph state; tách ingestion workload và query workload khi volume dữ liệu cao; đồng bộ embedding model, dimension vector store, chunking và retriever settings; và xem <code>Settings</code> là cấu hình global dùng chung cần kiểm soát chặt trong runtime multi-tenant.</p>
+<h2 id="observability-testing-evaluation-v-failure-modes">Observability, testing, evaluation và failure modes</h2>
+<p>Observability trong core gồm <code>callbacks/</code>, <code>instrumentation/</code> và package riêng <code>llama-index-instrumentation</code>. Package instrumentation có span handler, event handler, dispatcher, base events và test cho shutdown, propagation, manager, dispatcher. Module evaluation trong core gồm correctness, faithfulness, relevancy, context relevancy, semantic similarity, pairwise evaluation, batch runner, dataset generation và retrieval metrics.</p>
+<p>Test trong <code>llama-index-core/tests/</code> bao phủ agents, callbacks, chat engines, embeddings, evaluation, graph stores, ingestion, indices, LLMs, memory, node parsers, postprocessors, programs, prompts, query engines, readers, response synthesizers, retrievers, schema, storage, tools, vector stores và voice agents. Root và package <code>pyproject.toml</code> cấu hình pytest, pytest-asyncio, pytest-cov, mypy, ruff, black, pre-commit và codespell.</p>
+<p>Các failure mode cần thiết kế:</p>
+<ul>
+<li>ingestion connector trả về document malformed hoặc quá lớn;</li>
+<li>chiến lược chunking làm mất context quan trọng;</li>
+<li>embedding model không khớp dimension vector đã persist;</li>
+<li>vector store không lưu text, đòi hỏi docstore/index-store nhất quán;</li>
+<li>index stale sau khi document update;</li>
+<li>retrieval trả context không liên quan;</li>
+<li>response synthesizer hallucinate dù có retrieval;</li>
+<li><code>Settings</code> global bị rò giữa tenant hoặc test;</li>
+<li>callback/instrumentation gây overhead hoặc log dữ liệu nhạy cảm;</li>
+<li>drift version package giữa core và integration packages.</li>
+</ul>
+<h2 id="r-i-ro-b-o-m-t-v-governance">Rủi ro bảo mật và governance</h2>
+<p>LlamaIndex thường dùng với private data, nên governance là vấn đề trung tâm. Rủi ro gồm gửi tài liệu riêng tư tới model hoặc embedding provider bên ngoài, prompt injection từ nội dung đã index, reader connector không an toàn, rò dữ liệu giữa tenant qua <code>Settings</code> hoặc storage context dùng chung, thiếu ACL ở vector store, xóa document không triệt để, và thiếu source attribution. Root <code>README.md</code> cũng nhắc xác minh build asset cho cache <code>_static</code> nltk và tiktoken được đóng gói, có liên quan tới rà soát supply chain.</p>
+<p>Control production nên gồm data classification trước ingestion, allowlist connector, storage context theo tenant, rà soát region và retention của provider, giữ source metadata, retrieval filters, đánh giá prompt injection, trace redaction và test rebuild/xóa index định kỳ.</p>
+<h2 id="s-lifecycle-v-ph-thu-c">Sơ đồ lifecycle và phụ thuộc</h2>
+<div class="mermaid">stateDiagram-v2
+  [*] --&gt; ChoosePackage
+  ChoosePackage --&gt; Starter: llama-index
+  ChoosePackage --&gt; Custom: llama-index-core + selected integrations
+  Starter --&gt; ConfigureSettings
+  Custom --&gt; ConfigureSettings
+  ConfigureSettings --&gt; IngestDocuments
+  IngestDocuments --&gt; TransformNodes
+  TransformNodes --&gt; BuildIndex
+  BuildIndex --&gt; PersistStorage
+  PersistStorage --&gt; QueryOrChat
+  QueryOrChat --&gt; Retrieve
+  Retrieve --&gt; Synthesize
+  Synthesize --&gt; Evaluate
+  Evaluate --&gt; TunePipeline
+  TunePipeline --&gt; TransformNodes
+  Evaluate --&gt; [*]</div>
+<h2 id="c-u-h-nh-tri-n-khai-v-ghi-ch-ops">Cấu hình, triển khai và ghi chú ops</h2>
+<ul>
+<li>Dùng <code>llama-index</code> cho quick start và <code>llama-index-core</code> cộng selected integrations cho deployment kiểm soát tốt.</li>
+<li>Giữ cấu hình LLM và embedding rõ ràng qua <code>Settings</code> hoặc constructor argument ở từng object.</li>
+<li>Persist <code>StorageContext</code> cho production; default in-memory phù hợp prototype và test.</li>
+<li>Chọn package vector store theo scale, filtering, metadata, tenancy và ownership vận hành.</li>
+<li>Giữ ingestion job idempotent bằng document hash và hành vi update/delete rõ ràng.</li>
+<li>Dùng module evaluation cho faithfulness, relevancy, correctness, semantic similarity và retrieval metrics trước release.</li>
+<li>Rà soát <code>_static</code> packaged assets và kỳ vọng build provenance khi vận hành trong môi trường bị khóa chặt.</li>
+</ul>
+<h2 id="h-ng-d-n-c-m-ngu-n">Hướng dẫn đọc mã nguồn</h2>
+<ol>
+<li>Đọc root <code>README.md</code> và <code>docs/src/content/docs/framework/getting_started/concepts.mdx</code>.</li>
+<li>Đọc <code>llama-index-core/pyproject.toml</code> để hiểu phụ thuộc core.</li>
+<li>Đọc <code>llama_index/core/schema.py</code>, <code>settings.py</code> và <code>storage/storage_context.py</code>.</li>
+<li>Đọc <code>indices/base.py</code> và <code>indices/vector_store/base.py</code>.</li>
+<li>Đọc <code>base/base_retriever.py</code>, <code>base/base_query_engine.py</code>, <code>response_synthesizers/</code> và <code>postprocessor/</code>.</li>
+<li>Đọc <code>agent/workflow/base_agent.py</code> và <code>workflow/</code> cho agentic applications.</li>
+<li>Với production, kiểm tra integration package sẽ dùng và tests của nó.</li>
+</ol>
+<h2 id="l-tr-nh-h-c">Lộ trình học</h2>
+<ol>
+<li>Load file local bằng reader và kiểm tra metadata của <code>Document</code>.</li>
+<li>Build <code>VectorStoreIndex.from_documents</code>.</li>
+<li>Persist và reload <code>StorageContext</code>.</li>
+<li>Tuning chunking, embedding model và vector store settings.</li>
+<li>Chuyển index thành retriever, query engine và chat engine.</li>
+<li>Thêm postprocessor, reranker hoặc custom response synthesis.</li>
+<li>Thêm workflow agent với tools và memory.</li>
+<li>Thêm evaluation và instrumentation trước khi deploy.</li>
+</ol>
+<h2 id="checklist-s-n-s-ng-production">Checklist sẵn sàng production</h2>
+<p>Sẵn sàng production với LlamaIndex nghĩa là xem ingestion, storage, retrieval, synthesis, agents và instrumentation như các contract tách biệt. Source tree thể hiện rõ các contract này trong <code>llama-index-core/llama_index/core</code> và các provider package dưới <code>llama-index-integrations/</code>.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Khu vực</th><th>Neo theo repository</th><th>Kiểm tra kiến trúc</th></tr></thead>
+<tbody>
+<tr><td>Tối thiểu package</td><td><code>pyproject.toml</code>, <code>llama-index-core/pyproject.toml</code>, <code>llama-index-integrations/</code></td><td>Với deployment có kiểm soát, cài <code>llama-index-core</code> cộng integration cần dùng thay vì kéo mọi connector mặc định.</td></tr>
+<tr><td>Lineage dữ liệu</td><td><code>schema.py</code>, <code>readers/</code>, <code>node_parser/</code>, <code>ingestion/</code></td><td>Giữ source ID, metadata, hash, tham số chunking và semantics update/delete.</td></tr>
+<tr><td>Nhất quán storage</td><td><code>storage/storage_context.py</code>, <code>vector_stores/</code>, <code>graph_stores/</code></td><td>Đảm bảo docstore, index store, vector store và graph store được persist cùng version và cùng tenant scope.</td></tr>
+<tr><td>Chất lượng retrieval</td><td><code>retrievers/</code>, <code>postprocessor/</code>, <code>response_synthesizers/</code>, <code>evaluation/</code></td><td>Đo retrieval relevance, source attribution, hallucination và chất lượng câu trả lời trước release.</td></tr>
+<tr><td>Global settings</td><td><code>settings.py</code></td><td>Tránh rò rỉ LLM, embedding, tokenizer, callback hoặc transformation mặc định giữa tenant hoặc test.</td></tr>
+<tr><td>Instrumentation</td><td><code>callbacks/</code>, <code>instrumentation/</code>, <code>llama-index-instrumentation/</code></td><td>Quyết định span và event có được chứa nội dung tài liệu riêng tư hay tenant ID hay không; redact khi cần.</td></tr>
+</tbody></table></div>
+<div class="mermaid">flowchart LR
+  Documents[schema.py Document va BaseNode] --&gt; Transform[node_parser va ingestion]
+  Transform --&gt; Indexes[indices base va vector_store]
+  Indexes --&gt; Storage[storage_context.py]
+  Storage --&gt; DocStore[docstore]
+  Storage --&gt; IndexStore[index_store]
+  Storage --&gt; VectorStore[vector_stores]
+  Storage --&gt; GraphStore[graph_stores]
+  Indexes --&gt; Retrievers[retrievers]
+  Retrievers --&gt; Post[postprocessor va rerankers]
+  Post --&gt; Synth[response_synthesizers]
+  Synth --&gt; Query[query_engine va chat_engine]
+  Query --&gt; Eval[evaluation]
+  Query --&gt; Obs[callbacks va instrumentation]</div>
+<h2 id="runbook-v-n-h-nh-v-ph-n-lo-i-l-i">Runbook vận hành và phân loại lỗi</h2>
+<p>Incident trong LlamaIndex thường đến từ dữ liệu stale, embedding mismatch, rò rỉ global configuration hoặc chất lượng retrieval, không chỉ từ một bug trong query engine. Triage nên đi theo đường dữ liệu: reader, node, index, store, retriever, synthesizer.</p>
+<div class="mermaid">flowchart TD
+  Incident[Cau tra loi sai hoac RAG outage] --&gt; Stage{Giai doan pipeline}
+  Stage --&gt; Ingest[Reader hoac ingestion]
+  Stage --&gt; Chunk[Node parser hoac transformation]
+  Stage --&gt; Embed[Embedding model hoac dimension]
+  Stage --&gt; Store[Docstore/index/vector consistency]
+  Stage --&gt; Retrieve[Retriever hoac filters]
+  Stage --&gt; Synthesize[Response synthesizer hoac LLM]
+  Stage --&gt; Agent[Workflow agent, memory, tools]
+  Ingest --&gt; Files1[readers, schema.py, ingestion]
+  Chunk --&gt; Files2[node_parser, text_splitter]
+  Embed --&gt; Files3[embeddings va Settings]
+  Store --&gt; Files4[storage_context.py va vector_stores]
+  Retrieve --&gt; Files5[retrievers va postprocessor]
+  Synthesize --&gt; Files6[response_synthesizers va query_engine]
+  Agent --&gt; Files7[agent/workflow va workflow]
+  Files1 --&gt; Fix[Rebuild, retune hoac patch]
+  Files2 --&gt; Fix
+  Files3 --&gt; Fix
+  Files4 --&gt; Fix
+  Files5 --&gt; Fix
+  Files6 --&gt; Fix
+  Files7 --&gt; Fix</div>
+<p>Với kiến trúc sư cấp cao, quyết định quan trọng nhất là deployment chỉ là một query engine đơn giản hay là một data application platform rộng hơn. Nếu ingestion và query chạy chung process, cập nhật dữ liệu lớn có thể làm tăng latency và khiến freshness khó kiểm soát. Tách ingestion jobs, version hóa storage context và giữ evaluation dataset thường dễ vận hành hơn.</p>
+<div class="mermaid">sequenceDiagram
+  participant Ingest as Ingestion job
+  participant Store as StorageContext
+  participant Query as Query service
+  participant Eval as Evaluation suite
+  participant Obs as Instrumentation
+  participant User as User
+
+  Ingest-&gt;&gt;Store: write docstore, index_store, vector_store
+  Ingest-&gt;&gt;Eval: record data version va chunk settings
+  User-&gt;&gt;Query: ask question
+  Query-&gt;&gt;Store: retrieve nodes cho tenant va version
+  Query-&gt;&gt;Obs: emit spans va source metadata
+  Query--&gt;&gt;User: answer voi source context
+  Eval-&gt;&gt;Query: regression questions va retrieval metrics
+  Eval--&gt;&gt;Ingest: tune parser, embeddings, filters hoac synthesis</div>
+<h2 id="ghi-ch-review-cho-ki-n-tr-c-s-c-p-cao">Ghi chú review cho kiến trúc sư cấp cao</h2>
+<p>Hãy review LlamaIndex như một data application framework, không chỉ là retrieval helper. Đường lõi từ <code>schema.py</code> sang <code>node_parser/</code>, <code>indices/</code>, <code>storage/storage_context.py</code>, <code>retrievers/</code>, <code>response_synthesizers/</code> và <code>query_engine/</code> định nghĩa lifecycle của một data product. Mọi quyết định production nên trả lời được data version nào, parser settings nào, embedding model nào, vector store namespace nào và response synthesis policy nào đã tạo ra một câu trả lời.</p>
+<p>Tách ownership của ingestion khỏi ownership của query từ sớm. Ingestion code xử lý source connectors, document normalization, chunking, embeddings và persistence. Query code xử lý tenant filters, retrieval, reranking, source presentation và answer synthesis. Nếu cả hai sống trong cùng API process, operator sẽ khó kiểm soát freshness, partial reindexing và lỗi connector latency cao. Repository đã phản ánh sự tách lớp này qua <code>ingestion/</code>, <code>readers/</code>, <code>storage/</code>, <code>retrievers/</code> và <code>query_engine/</code>; production topology nên mirror điều đó.</p>
+<p><code>Settings</code> tiện nhưng nguy hiểm trong shared runtime. <code>llama_index/core/settings.py</code> có thể tập trung LLM, embedding, tokenizer, callback manager và transformations, rất hữu ích cho notebook và app đơn giản. Trong service multi-tenant, nên ưu tiên cấu hình explicit ở object level hoặc tenant-scoped factories để một request không thừa hưởng provider, callback policy hoặc embedding model của tenant khác.</p>
+<p>Cuối cùng, hãy xem evaluation là một phần của kiến trúc. Các module dưới <code>evaluation/</code> không phải phần trang trí; chúng là feedback loop cho biết chunking, retrieval filters, reranking và response synthesis có hoạt động không. Một senior review nên yêu cầu retrieval metrics, faithfulness checks và source-attribution tests trước khi phê duyệt RAG pipeline cho workload user-facing.</p>
+<h2 id="thu-t-ng">Thuật ngữ</h2>
+<ul>
+<li>Document: item dữ liệu cấp cao được load từ source.</li>
+<li>Node: chunk hoặc đơn vị có cấu trúc sinh từ document để index và retrieve.</li>
+<li>Index: cấu trúc tổ chức node cho retrieval hoặc synthesis.</li>
+<li>VectorStoreIndex: index dựa trên embedding và vector store.</li>
+<li>StorageContext: container cho docstore, index store, vector stores, graph store và property graph store.</li>
+<li>Retriever: component trả về candidate nodes cho query.</li>
+<li>QueryEngine: luồng query end-to-end, retrieve context và synthesize answer.</li>
+<li>ResponseSynthesizer: component tạo answer từ retrieved context.</li>
+<li>WorkflowAgent: agent xây trên workflow engine của LlamaIndex, có tool, memory và state.</li>
+<li>Settings: default global cho LLM, embedding, callback, tokenizer và transformations.</li>
+</ul>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

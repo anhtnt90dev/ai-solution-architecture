@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.1.1 - 2026-06-04
+
+### Added
+
+- Static HTML documentation pages generated from the Markdown knowledge system.
+- Internal GitHub Pages navigation for course, toolkit, capstone, assessments, and repository deep dives.
+- Site page validator that checks required pages, local links, and landing page source-file regressions.
+- GitHub Actions steps to rebuild static pages and ensure committed HTML stays current.
+
+### Changed
+
+- Root landing page links now open GitHub Pages documentation pages instead of GitHub `blob/main` or `tree/main` file views.
+- README user-facing links now point to live documentation pages.
+
 ## v0.1.0 - 2026-06-04
 
 Initial public release.

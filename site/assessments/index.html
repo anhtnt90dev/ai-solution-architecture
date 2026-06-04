@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Assessment Pack | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../learn/en/index.html">English</a>
+        <a href="../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../learn/en/curriculum.html">Curriculum</a>
+        <a href="../templates/index.html">Toolkit</a>
+        <a href="../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../learn/en/index.html">English course</a>
+      <a href="../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../learn/en/curriculum.html">Curriculum</a>
+      <a href="../learn/en/projects.html">Projects</a>
+      <a href="../templates/index.html">Architecture toolkit</a>
+      <a href="../capstone/index.html">Capstone</a>
+      <a href="index.html">Assessments</a>
+      <a href="../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/assessments/README.md">View source</a>
+      <h1 id="assessment-pack">Assessment Pack</h1>
+<p>The assessment pack helps learners verify that they can reason like AI solution architects, not only recall tool names.</p>
+<h2 id="tracks">Tracks</h2>
+<ul>
+<li><a href="en/architecture-review-exam.html">English architecture review exam</a></li>
+<li><a href="en/answer-key.html">English answer key</a></li>
+<li><a href="vi/bai-kiem-tra-kien-truc.html">Bài kiểm tra kiến trúc tiếng Việt</a></li>
+<li><a href="vi/dap-an.html">Đáp án tiếng Việt</a></li>
+</ul>
+<h2 id="scoring">Scoring</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Score</th><th>Level</th><th>Interpretation</th></tr></thead>
+<tbody>
+<tr><td>0-39</td><td>Beginner</td><td>Can name tools but misses architecture boundaries and evidence.</td></tr>
+<tr><td>40-69</td><td>Practitioner</td><td>Understands layers and common trade-offs but needs stronger production reasoning.</td></tr>
+<tr><td>70-89</td><td>Senior engineer</td><td>Can connect decisions to evidence, failure modes, and operations.</td></tr>
+<tr><td>90-100</td><td>Solution architect</td><td>Produces defensible decisions across product, runtime, data, security, evaluation, and operations.</td></tr>
+</tbody></table></div>
+<h2 id="assessment-flow">Assessment Flow</h2>
+<div class="mermaid">flowchart LR
+  Scenario[Scenario] --&gt; Decisions[Architecture decisions]
+  Decisions --&gt; Evidence[Evidence and metrics]
+  Evidence --&gt; Risks[Failure modes and governance]
+  Risks --&gt; Review[Score with rubric]</div>
+<h2 id="how-to-run-the-assessment">How To Run The Assessment</h2>
+<p>Use the assessment after learners have completed the course path and at least one repository deep dive from each major domain. Give learners a fixed scenario and ask them to produce an architecture review, not a tool comparison. The expected answer should include boundaries, trade-offs, evidence, failure modes, security controls, and operational gates.</p>
+<p>For self-study, complete the exam without reading the answer key first. Then compare your answer against the rubric and rewrite the weak sections. For team workshops, split participants into small groups and ask each group to defend a different architectural position. The discussion is more valuable when teams must explain why a reasonable alternative was rejected.</p>
+<h2 id="expected-submission">Expected Submission</h2>
+<p>A complete submission should include a concise architecture diagram, an Architecture Decision Record, a runtime decision, a RAG or data contract when retrieval is involved, an LLMOps scorecard, and a security/governance review. The answer should also describe what evidence would change the decision. Senior-level work is not defined by naming more tools; it is defined by making sharper trade-offs and creating better verification paths.</p>
+<h2 id="retake-guidance">Retake Guidance</h2>
+<p>If the score is below 70, revisit the curriculum sections for the weakest dimensions and redo the exam with a different scenario. If the score is between 70 and 89, focus on making evidence stronger and failure modes more specific. If the score is above 90, extend the scenario with scale, compliance, multi-tenant retrieval, or tool-governance constraints and review whether the architecture still holds.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Qdrant Architecture Notes | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/04-rag-vector-database/qdrant/README.en.md">View source</a>
+      <h1 id="qdrant-architecture-notes">Qdrant Architecture Notes</h1>
+<h2 id="source-basis">Source Basis</h2>
+<p>This document is based on static inspection of the local repository at <code>github-repos/04-rag-vector-database/qdrant</code>. The main files and directories used were <code>README.md</code>, <code>Cargo.toml</code>, <code>Dockerfile</code>, <code>config/config.yaml</code>, <code>src/main.rs</code>, <code>src/settings.rs</code>, <code>src/startup.rs</code>, <code>src/actix</code>, <code>src/tonic</code>, <code>lib/storage</code>, <code>lib/collection</code>, <code>lib/shard</code>, <code>lib/segment</code>, <code>lib/sparse</code>, <code>lib/wal</code>, <code>lib/edge</code>, <code>openapi</code>, and <code>tests/e2e_tests</code>.</p>
+<h2 id="executive-summary">Executive Summary</h2>
+<p>Qdrant is a Rust vector database and search engine for AI applications. In a RAG architecture, it is the durable retrieval tier that stores embeddings, payload metadata, sparse vectors, multivectors, and operational state, then serves low-latency nearest-neighbor and filtered retrieval over REST and gRPC.</p>
+<p>The repository is organized as a Rust workspace. The executable in <code>src/main.rs</code> wires together process configuration, telemetry, authentication, API servers, cluster consensus, shard transfer services, inference, and the main storage facade. Core database behavior is implemented in workspace crates under <code>lib/</code>: <code>storage</code> owns the <code>TableOfContent</code> and dispatch path, <code>collection</code> owns collection-level shard orchestration, <code>shard</code> and <code>segment</code> implement the local data and index structures, and <code>wal</code> provides durable write-ahead logging.</p>
+<p>Operationally, Qdrant can run as a single Docker process, an embedded/local Qdrant Edge library, or a distributed cluster using peer-to-peer gRPC, Raft consensus, shard replication, and shard transfer. Its architecture is especially relevant when the AI stack needs retrieval with payload filtering, hybrid dense/sparse search, snapshot recovery, multitenancy, and production-grade controls such as TLS, API keys, JWT RBAC, metrics, telemetry, and audit logging.</p>
+<h2 id="problem-solved">Problem Solved</h2>
+<p>Embedding models convert documents, chunks, images, or user context into vectors. A RAG system then needs a retrieval engine that can:</p>
+<ul>
+<li>Store vector records durably with user-defined metadata.</li>
+<li>Search by dense vector, sparse vector, or multiple named vectors.</li>
+<li>Combine vector similarity with payload filters.</li>
+<li>Keep search latency predictable as data grows.</li>
+<li>Support online updates without rebuilding the whole index.</li>
+<li>Scale beyond one node with shard placement, replication, and recovery.</li>
+<li>Expose stable APIs to application services and SDKs.</li>
+<li>Provide operational hooks for snapshots, health, metrics, and security.</li>
+</ul>
+<p>Qdrant solves this problem as a purpose-built vector database rather than a thin library around an ANN index. The repository reflects that difference: request handling, consensus, collection metadata, shard lifecycle, WAL recovery, segment optimization, vector storage, payload indexing, and API schemas are all first-class modules.</p>
+<h2 id="role-in-an-ai-stack">Role in an AI Stack</h2>
+<p>Qdrant typically sits between application/orchestration services and storage/embedding pipelines:</p>
+<ul>
+<li>Ingestion services call embedding providers or local models, then upsert points into Qdrant.</li>
+<li>RAG query services embed a user query, search Qdrant, apply metadata filters, optionally rerank, and pass retrieved context to an LLM.</li>
+<li>Agents can use Qdrant as long-term memory, semantic cache, document memory, or tool result index.</li>
+<li>Evaluation pipelines can replay query sets against Qdrant collections to measure recall, latency, filtering behavior, and retrieval quality.</li>
+<li>Operations teams manage Qdrant like a stateful data service with backups, API security, resource budgets, and cluster health.</li>
+</ul>
+<p>Qdrant does not replace the embedding model, chunking pipeline, reranker, LLM, or governance layer. It is the retrieval and vector-state system those layers depend on.</p>
+<h2 id="source-tree-map">Source Tree Map</h2>
+<p>Important repository areas:</p>
+<pre><code class="language-text">qdrant/
+  README.md                         Product overview, quick start, feature summary.
+  Cargo.toml                        Rust workspace, binary package, features, crate dependencies.
+  Dockerfile                        Multi-stage build and runtime image, GPU variants, exposed ports.
+  config/config.yaml                Default service, storage, cluster, TLS, audit, GPU settings.
+  openapi/                          REST API schema sources.
+  src/
+    main.rs                         Process bootstrap and service composition.
+    settings.rs                     Configuration model and layered config loading.
+    startup.rs                      API server startup helpers.
+    actix/                          REST API handlers and middleware.
+    tonic/                          gRPC API and service wiring.
+    consensus.rs                    Distributed consensus integration.
+    snapshots.rs                    Snapshot recovery and startup handling.
+    common/                         Auth, telemetry, inference, logging, helpers.
+  lib/
+    api/                            Shared API types and gRPC proto definitions.
+    storage/                        TableOfContent, dispatcher, cluster metadata, snapshots.
+    collection/                     Collection object, shard holder, replica set, local shard.
+    shard/                          Shard-level abstractions.
+    segment/                        Segment storage, vector indexes, payload index, persistence.
+    sparse/                         Sparse vector support.
+    wal/                            Write-ahead log implementation.
+    edge/                           Qdrant Edge embedded/local shard API.
+    common/, gridstore/, posting_list/, gpu/ Shared utilities and indexing support.
+  tests/
+    e2e_tests/                      End-to-end and compatibility tests, TLS and snapshot scenarios.</code></pre>
+<h2 id="core-concepts">Core Concepts</h2>
+<h3 id="point">Point</h3>
+<p>A point is the persisted unit of retrieval. It usually contains one or more vectors, a point identifier, and optional payload metadata. RAG systems commonly map one point to a document chunk, image region, transcript segment, or memory item.</p>
+<h3 id="vector-and-named-vector">Vector and Named Vector</h3>
+<p>Qdrant supports dense vectors, sparse vectors, and multiple named vectors. Named vectors let one collection carry different embedding spaces, such as title embeddings, body embeddings, image embeddings, or separate dense and sparse retrieval signals.</p>
+<h3 id="payload">Payload</h3>
+<p>Payload is structured metadata attached to points. Payload indexes let Qdrant filter search by attributes such as tenant, document type, timestamp, access group, language, or source system.</p>
+<h3 id="collection">Collection</h3>
+<p>The <code>lib/collection</code> crate treats a collection as a set of points that share vector configuration and payload schema. A collection owns shard metadata, optimizers, runtime handles, and callbacks used by cluster coordination.</p>
+<h3 id="shard-and-replica-set">Shard and Replica Set</h3>
+<p>Collections are partitioned into shards. In distributed mode, a shard can have multiple replicas across peers. The <code>ShardReplicaSet</code> tracks local and remote replicas, replica states, write ordering, transfer state, and read/write routing.</p>
+<h3 id="local-shard">Local Shard</h3>
+<p><code>LocalShard</code> owns local data for a shard: segments, WAL, update pipeline, optimizers, rate limiters, and consistency checks. It is the bridge between cluster-level orchestration and low-level segment storage.</p>
+<h3 id="segment">Segment</h3>
+<p><code>lib/segment</code> implements the independent storage and index unit. A segment owns vector storage, vector index structures, quantized vectors, payload storage, payload index, point versioning, and persistence metadata. Segment optimization is how Qdrant compacts and reorganizes data over time.</p>
+<h3 id="wal">WAL</h3>
+<p>The write-ahead log records updates before they are applied to segment state. This is central to crash recovery and to local shard loading, repair, and consistency checks.</p>
+<h3 id="tableofcontent">TableOfContent</h3>
+<p><code>TableOfContent</code> in <code>lib/storage/src/content_manager/toc</code> is the main storage service object. It owns loaded collections, alias persistence, optimizer budgets, internal runtimes, channel service references, and collection lifecycle operations.</p>
+<h3 id="dispatcher-and-consensus">Dispatcher and Consensus</h3>
+<p><code>Dispatcher</code> routes metadata and update operations through either local execution or distributed consensus. In distributed mode, it proposes collection metadata operations through Raft and waits for expected operation application when necessary.</p>
+<h2 id="component-and-system-diagram">Component and System Diagram</h2>
+<div class="mermaid">flowchart TB
+    Client[Applications, SDKs, RAG services]
+    Rest[REST API&lt;br/&gt;src/actix]
+    Grpc[gRPC API&lt;br/&gt;src/tonic + lib/api/proto]
+    Auth[Auth, TLS, RBAC, telemetry middleware&lt;br/&gt;src/common]
+    Dispatcher[Dispatcher&lt;br/&gt;lib/storage]
+    Consensus[ConsensusManager / Raft&lt;br/&gt;src/consensus]
+    Toc[TableOfContent&lt;br/&gt;lib/storage/content_manager/toc]
+    Collection[Collection&lt;br/&gt;lib/collection]
+    ShardHolder[ShardHolder]
+    ReplicaSet[ShardReplicaSet]
+    LocalShard[LocalShard]
+    Segment[Segment&lt;br/&gt;lib/segment]
+    Wal[WAL&lt;br/&gt;lib/wal]
+    Payload[Payload storage and payload indexes]
+    Vector[Vector storage, HNSW, sparse, quantization]
+    Snapshot[Snapshots and shard transfer]
+
+    Client --&gt; Rest
+    Client --&gt; Grpc
+    Rest --&gt; Auth
+    Grpc --&gt; Auth
+    Auth --&gt; Dispatcher
+    Dispatcher --&gt; Consensus
+    Dispatcher --&gt; Toc
+    Consensus --&gt; Toc
+    Toc --&gt; Collection
+    Collection --&gt; ShardHolder
+    ShardHolder --&gt; ReplicaSet
+    ReplicaSet --&gt; LocalShard
+    ReplicaSet -. remote peer .-&gt; Grpc
+    LocalShard --&gt; Wal
+    LocalShard --&gt; Segment
+    Segment --&gt; Payload
+    Segment --&gt; Vector
+    Toc --&gt; Snapshot</div>
+<h2 id="internal-architecture">Internal Architecture</h2>
+<h3 id="process-bootstrap">Process Bootstrap</h3>
+<p><code>src/main.rs</code> is the best entry point for understanding runtime composition. It parses CLI options such as bootstrap URI, peer URI, snapshot recovery, config path, telemetry disabling, stacktrace behavior, and consensus reinitialization. It then loads <code>Settings</code>, initializes feature flags, configures logging and panic handling, checks filesystem compatibility, initializes GPU manager when the <code>gpu</code> feature is enabled, and recovers or initializes persistent consensus state.</p>
+<p>After resource budgets are configured, startup creates a peer <code>ChannelService</code>, opens the <code>TableOfContent</code>, loads collections, creates a <code>Dispatcher</code>, optionally wraps operations with consensus, initializes telemetry and request profiling, starts inference services, and launches REST, metrics, and gRPC servers based on configuration.</p>
+<h3 id="api-layer">API Layer</h3>
+<p>The API surface is split between:</p>
+<ul>
+<li><code>src/actix</code>: REST API, static Web UI serving, middleware, and HTTP concerns.</li>
+<li><code>src/tonic</code>: gRPC service wiring.</li>
+<li><code>lib/api</code>: shared API types and protobuf definitions, including <code>lib/api/src/grpc/proto/qdrant.proto</code>.</li>
+</ul>
+<p>The service exposes the same database concepts through SDK-friendly interfaces. REST defaults to port <code>6333</code>; gRPC defaults to <code>6334</code>; the peer-to-peer cluster port defaults to <code>6335</code>.</p>
+<h3 id="storage-and-metadata-layer">Storage and Metadata Layer</h3>
+<p><code>lib/storage</code> is the database coordination layer inside one process. <code>TableOfContent</code> owns collection instances and aliases, while <code>Dispatcher</code> determines whether an operation can execute locally or must go through consensus. This layer also handles collection creation, deletion, alias management, snapshots, shard transfers, cluster metadata, and runtime budget coordination.</p>
+<h3 id="collection-layer">Collection Layer</h3>
+<p><code>lib/collection</code> owns the collection lifecycle. It loads collection config, version files, shard distribution, shard state, transfer tasks, optimizers, and telemetry. Collection methods coordinate reads and writes across shard holders and replica sets.</p>
+<h3 id="shard-and-replica-layer">Shard and Replica Layer</h3>
+<p>The replica-set code explicitly models shard replica state such as initializing, active, listener, dead, and partial states. It persists replica state in <code>replica_state.json</code>, manages local and remote shard references, handles transfer and recovery callbacks, and applies write ordering rules. This is the critical layer for distributed correctness.</p>
+<h3 id="segment-and-index-layer">Segment and Index Layer</h3>
+<p><code>lib/segment</code> is where point-level storage and search mechanics live. A segment combines:</p>
+<ul>
+<li>ID tracking.</li>
+<li>Point versions.</li>
+<li>Dense, sparse, multi-vector, and quantized vector storage.</li>
+<li>Vector indexes.</li>
+<li>Payload storage and payload indexes.</li>
+<li>Segment config, persistence, and error status.</li>
+</ul>
+<p>Higher layers route operations to segments; segment internals decide how to scan, index, score, filter, and persist.</p>
+<h2 id="end-to-end-runtime-flow">End-to-End Runtime Flow</h2>
+<div class="mermaid">sequenceDiagram
+    participant App as RAG application
+    participant API as REST/gRPC API
+    participant Disp as Dispatcher
+    participant Toc as TableOfContent
+    participant Coll as Collection
+    participant Rep as ShardReplicaSet
+    participant Local as LocalShard
+    participant Seg as Segment indexes/storage
+
+    App-&gt;&gt;API: Upsert points with vectors and payload
+    API-&gt;&gt;Disp: Validate auth and request schema
+    Disp-&gt;&gt;Toc: Route update or propose metadata op
+    Toc-&gt;&gt;Coll: Resolve collection and shard placement
+    Coll-&gt;&gt;Rep: Apply write to required replicas
+    Rep-&gt;&gt;Local: Queue local update
+    Local-&gt;&gt;Local: Append WAL and track sequence
+    Local-&gt;&gt;Seg: Apply update to segment state
+    App-&gt;&gt;API: Search/query vector with filters
+    API-&gt;&gt;Disp: Validate and normalize query
+    Disp-&gt;&gt;Toc: Resolve collection
+    Toc-&gt;&gt;Coll: Fan out to shards
+    Coll-&gt;&gt;Rep: Select local or remote replicas
+    Rep-&gt;&gt;Local: Execute search if local
+    Local-&gt;&gt;Seg: Score vectors and evaluate payload filters
+    Seg--&gt;&gt;App: Nearest points with payload/vector data as requested</div>
+<h3 id="write-flow">Write Flow</h3>
+<p>For a point upsert, API handlers validate the request and authorization context, then submit the operation through the dispatcher and collection hierarchy. Local shard writes are appended to WAL before being applied to segment state. In a replicated collection, the replica set coordinates writes across local and remote replicas according to collection and shard consistency rules.</p>
+<h3 id="query-flow">Query Flow</h3>
+<p>For vector search, the API layer parses the query, filters, vector names, limits, and read consistency preferences. Collection logic selects target shards, replica sets select local or remote replicas, and local shards execute scoring across segment indexes. Payload indexes reduce candidate sets when filters are selective; vector indexes accelerate nearest-neighbor lookup; segment results are merged by higher layers.</p>
+<h3 id="startup-and-recovery-flow">Startup and Recovery Flow</h3>
+<p>On startup, Qdrant loads settings from layered configuration, prepares runtime budgets, opens persistent state, recovers snapshots if requested, initializes or joins cluster consensus, loads all collections into the <code>TableOfContent</code>, and starts API servers. Local shard loading reads segment directories, WAL state, payload schemas, and optimizer state, with repair paths for inconsistent or obsolete segment files.</p>
+<h2 id="deployment-and-operations-topology">Deployment and Operations Topology</h2>
+<div class="mermaid">flowchart LR
+    subgraph Clients
+        SDK[Python/JS/Go/Rust/.NET/Java SDKs]
+        RAG[RAG and agent services]
+        Ops[Admin and backup jobs]
+    end
+
+    subgraph NodeA[Qdrant node A]
+        AHttp[REST 6333]
+        AGrpc[gRPC 6334]
+        AP2P[P2P 6335]
+        AStore[(storage path)]
+        ASnap[(snapshots)]
+        AMetrics[metrics port]
+    end
+
+    subgraph NodeB[Qdrant node B]
+        BHttp[REST 6333]
+        BGrpc[gRPC 6334]
+        BP2P[P2P 6335]
+        BStore[(storage path)]
+        BSnap[(snapshots)]
+        BMetrics[metrics port]
+    end
+
+    subgraph NodeC[Qdrant node C]
+        CHttp[REST 6333]
+        CGrpc[gRPC 6334]
+        CP2P[P2P 6335]
+        CStore[(storage path)]
+        CSnap[(snapshots)]
+        CMetrics[metrics port]
+    end
+
+    SDK --&gt; AHttp
+    RAG --&gt; AGrpc
+    Ops --&gt; AHttp
+    AP2P &lt;--&gt; BP2P
+    BP2P &lt;--&gt; CP2P
+    CP2P &lt;--&gt; AP2P
+    AMetrics --&gt; Prom[Prometheus or metrics collector]
+    BMetrics --&gt; Prom
+    CMetrics --&gt; Prom</div>
+<h3 id="single-node">Single Node</h3>
+<p>The quick-start path in <code>README.md</code> runs a single Docker container exposing port <code>6333</code>. This is the simplest mode for local development, demos, and small deployments. It still uses the same collection, shard, WAL, segment, and snapshot architecture internally.</p>
+<h3 id="distributed-cluster">Distributed Cluster</h3>
+<p>Distributed mode adds peer discovery, Raft-backed metadata consensus, shard distribution, replica sets, and peer-to-peer communication. Cluster settings live under <code>cluster</code> in <code>config/config.yaml</code>; peer service defaults to port <code>6335</code>.</p>
+<h3 id="container-image">Container Image</h3>
+<p><code>Dockerfile</code> shows a multi-stage Rust build, optional GPU build variants, generated SBOM support, static Web UI assets, runtime config, and exposed REST/gRPC ports. Runtime images set <code>RUN_MODE=production</code> and copy <code>config/production.yaml</code> into the image.</p>
+<h3 id="qdrant-edge">Qdrant Edge</h3>
+<p><code>lib/edge</code> is a separate embedded/local deployment model. It exposes Rust and Python APIs for local shard use cases and synchronization with Qdrant server. This is useful for edge devices, local-first applications, or architectures that need offline retrieval followed by central synchronization.</p>
+<h2 id="lifecycle-and-decision-diagram">Lifecycle and Decision Diagram</h2>
+<div class="mermaid">stateDiagram-v2
+    [*] --&gt; ProcessStart
+    ProcessStart --&gt; LoadSettings
+    LoadSettings --&gt; InitTelemetryAndSecurity
+    InitTelemetryAndSecurity --&gt; RecoverConsensus
+    RecoverConsensus --&gt; LoadCollections
+    LoadCollections --&gt; StartApis
+    StartApis --&gt; Serving
+
+    Serving --&gt; LocalMetadataOp: single node metadata change
+    Serving --&gt; ConsensusProposal: distributed metadata change
+    ConsensusProposal --&gt; ApplyCommittedOp
+    LocalMetadataOp --&gt; ApplyCommittedOp
+    ApplyCommittedOp --&gt; Serving
+
+    Serving --&gt; SnapshotRecovery: snapshot requested
+    SnapshotRecovery --&gt; LoadCollections
+
+    Serving --&gt; GracefulShutdown
+    GracefulShutdown --&gt; [*]</div>
+<div class="mermaid">flowchart TD
+    Request[Incoming operation]
+    IsMeta{Collection metadata operation?}
+    Distributed{Distributed mode enabled?}
+    Consensus[Propose through Raft consensus]
+    LocalToc[Execute through TableOfContent]
+    IsWrite{Point write?}
+    Replica[Route through ShardReplicaSet]
+    Wal[Append WAL]
+    Segment[Apply to segment]
+    IsSearch{Search/query?}
+    SelectReplica[Select local or remote replica]
+    Score[Score vector candidates and filter payload]
+
+    Request --&gt; IsMeta
+    IsMeta -- yes --&gt; Distributed
+    Distributed -- yes --&gt; Consensus --&gt; LocalToc
+    Distributed -- no --&gt; LocalToc
+    IsMeta -- no --&gt; LocalToc
+    LocalToc --&gt; IsWrite
+    IsWrite -- yes --&gt; Replica --&gt; Wal --&gt; Segment
+    IsWrite -- no --&gt; IsSearch
+    IsSearch -- yes --&gt; SelectReplica --&gt; Score</div>
+<h2 id="extension-points">Extension Points</h2>
+<p>Qdrant is not a plugin-only system; most extension points are API, configuration, and crate-level seams:</p>
+<ul>
+<li>REST and gRPC APIs in <code>src/actix</code>, <code>src/tonic</code>, <code>openapi</code>, and <code>lib/api</code>.</li>
+<li>Client SDKs listed in <code>README.md</code> for Python, JavaScript/TypeScript, Go, Rust, .NET, Java, and community PHP.</li>
+<li>Collection configuration for vectors, named vectors, sparse vectors, quantization, sharding, replication, optimizers, HNSW, on-disk payload, and strict mode.</li>
+<li>Payload schema and payload indexes for application-specific filtering.</li>
+<li>Snapshot and recovery workflows for backup/restore integration.</li>
+<li>Metrics and telemetry hooks for monitoring platforms.</li>
+<li>TLS, API keys, read-only API keys, JWT RBAC, and internal-auth settings for security integration.</li>
+<li>GPU feature gates and GPU indexing settings under <code>GpuConfig</code>.</li>
+<li><code>lib/edge</code> for local embedded use cases.</li>
+</ul>
+<h2 id="integrations">Integrations</h2>
+<p>Common integration patterns:</p>
+<ul>
+<li><strong>Embedding providers:</strong> Application code generates embeddings using OpenAI, Azure OpenAI, local models, Hugging Face, or other providers, then writes vectors to Qdrant.</li>
+<li><strong>RAG frameworks:</strong> LangChain, LlamaIndex, Haystack, Semantic Kernel, and custom orchestrators use Qdrant as a vector store.</li>
+<li><strong>Model serving:</strong> Qdrant can sit next to a reranker, cross-encoder, or LLM gateway. It returns candidate context; another service decides final answer composition.</li>
+<li><strong>Observability:</strong> Metrics endpoint and telemetry can feed Prometheus-compatible or centralized monitoring systems.</li>
+<li><strong>Kubernetes/stateful platforms:</strong> Qdrant can run as a stateful workload with persistent volumes, service discovery, TLS, and backup jobs.</li>
+<li><strong>Edge deployments:</strong> Qdrant Edge supports local retrieval and sync-oriented designs.</li>
+</ul>
+<h2 id="configuration-deployment-and-operations">Configuration, Deployment, and Operations</h2>
+<h3 id="configuration-loading">Configuration Loading</h3>
+<p><code>src/settings.rs</code> loads configuration from embedded defaults, <code>config/config.yaml</code>, mode-specific files such as <code>config/{RUN_MODE}</code>, local overrides, debian package config, a CLI-supplied <code>--config-path</code>, and environment variables. Environment variables use the <code>QDRANT</code> prefix and <code>__</code> as a separator.</p>
+<h3 id="key-settings">Key Settings</h3>
+<p>From <code>config/config.yaml</code> and <code>src/settings.rs</code>:</p>
+<ul>
+<li><code>storage.storage_path</code>, <code>snapshots_path</code>, and <code>temp_path</code> control state locations.</li>
+<li><code>storage.on_disk_payload</code> controls whether payload data is persisted on disk.</li>
+<li>WAL capacity and segment optimizer settings control update and compaction behavior.</li>
+<li>HNSW defaults include <code>m</code>, <code>ef_construct</code>, <code>full_scan_threshold_kb</code>, indexing threads, and on-disk mode.</li>
+<li>Collection defaults include replication factor, write consistency, vector storage defaults, quantization defaults, and strict mode.</li>
+<li><code>service.host</code>, <code>http_port</code>, <code>grpc_port</code>, and optional <code>metrics_port</code> control network listeners.</li>
+<li><code>service.api_key</code>, <code>read_only_api_key</code>, <code>jwt_rbac</code>, and <code>enforce_internal_auth</code> control authentication and authorization.</li>
+<li><code>tls</code> controls service certificate, key, CA certificate, and reload TTL.</li>
+<li><code>cluster</code> controls peer-to-peer port and consensus settings.</li>
+<li><code>gpu</code> controls optional GPU indexing behavior.</li>
+<li><code>audit</code> controls audit logging and forwarded-header handling.</li>
+</ul>
+<h3 id="operations-guidance">Operations Guidance</h3>
+<ul>
+<li>Treat <code>storage_path</code> and <code>snapshots_path</code> as stateful data, not disposable container filesystem paths.</li>
+<li>Enable API authentication before exposing REST or gRPC endpoints outside trusted networks. The README explicitly warns that the quick-start Docker command is insecure without authentication.</li>
+<li>Monitor disk, file descriptors, CPU, memory, vector index build pressure, WAL growth, and optimizer backlog.</li>
+<li>Use snapshots for backup, migration, and disaster recovery. Test restore behavior, not just snapshot creation.</li>
+<li>For distributed deployments, define clear shard count, replication factor, and write consistency policies before production load.</li>
+<li>Validate payload index design against expected filters; unindexed or low-selectivity filters can increase query cost.</li>
+<li>Plan capacity around vector dimensionality, number of vectors per point, payload size, quantization, on-disk settings, and replication.</li>
+</ul>
+<h2 id="observability-testing-evaluation-and-failure-modes">Observability, Testing, Evaluation, and Failure Modes</h2>
+<h3 id="observability">Observability</h3>
+<p>Qdrant includes telemetry and metrics concerns in <code>src/main.rs</code>, <code>src/common</code>, settings, and service startup. Relevant controls include metrics port, hardware reporting, slow query logging, telemetry disabling, request profiling, audit logging, and panic/stacktrace configuration.</p>
+<p>Operational dashboards should track:</p>
+<ul>
+<li>Request rate, latency, error rate, and slow queries.</li>
+<li>Search latency by collection and filter type.</li>
+<li>WAL and segment growth.</li>
+<li>Optimizer activity and pending compactions.</li>
+<li>Replica state, shard transfers, and consensus health.</li>
+<li>Disk usage, memory usage, file descriptors, CPU, and GPU use when enabled.</li>
+<li>Snapshot creation, restore, and transfer failures.</li>
+</ul>
+<h3 id="testing">Testing</h3>
+<p>The repository includes broad tests, with useful starting points in:</p>
+<ul>
+<li><code>tests/e2e_tests</code> for end-to-end API, TLS, compatibility, and snapshot scenarios.</li>
+<li><code>lib/collection</code> tests for collection and shard behavior.</li>
+<li><code>lib/segment</code> tests for vector storage, payload indexing, and segment behavior.</li>
+<li><code>lib/storage</code> tests for metadata and content-manager behavior.</li>
+<li>gRPC and OpenAPI definitions under <code>lib/api</code> and <code>openapi</code>.</li>
+</ul>
+<p>For a RAG workload, repository tests should be supplemented with retrieval evaluation: recall@k, MRR/NDCG, filter correctness, latency percentiles, update freshness, and robustness after restart or snapshot restore.</p>
+<h3 id="failure-modes">Failure Modes</h3>
+<p>Important failure modes to design for:</p>
+<ul>
+<li><strong>Misconfigured security:</strong> Public REST/gRPC endpoints without API keys, JWT RBAC, or TLS.</li>
+<li><strong>Disk pressure:</strong> Segment, WAL, and snapshot growth can exhaust local volumes.</li>
+<li><strong>Payload filter drift:</strong> Application filters may depend on metadata keys that are missing, unindexed, or inconsistent across ingestion jobs.</li>
+<li><strong>Replica divergence:</strong> Distributed deployments need monitoring for dead, partial, or transferring replica states.</li>
+<li><strong>Consensus instability:</strong> Network partitions or bad peer configuration can block metadata operations.</li>
+<li><strong>Long index builds:</strong> Large collection imports can trigger optimizer pressure and affect latency.</li>
+<li><strong>Snapshot restore mismatch:</strong> Restoring into incompatible versions or storage layouts requires compatibility testing.</li>
+<li><strong>Resource overcommit:</strong> Dense vectors, multivectors, sparse indexes, and quantization choices affect RAM, disk, and CPU differently.</li>
+</ul>
+<h2 id="security-and-governance-risks">Security and Governance Risks</h2>
+<ul>
+<li><strong>Tenant isolation:</strong> If multiple tenants share collections, payload filters must not be the only security boundary unless enforced consistently in application code and tested.</li>
+<li><strong>Key management:</strong> API keys, read-only keys, TLS private keys, and JWT secrets must be managed outside source control and rotated.</li>
+<li><strong>Transport security:</strong> Enable TLS and validate client/server trust for untrusted networks.</li>
+<li><strong>Authorization design:</strong> JWT RBAC and read-only keys should be mapped to operational roles, not treated as a generic on/off switch.</li>
+<li><strong>Data retention:</strong> Vectors can leak semantic information about source documents. Deletion, snapshot retention, and backup lifecycle must match governance policies.</li>
+<li><strong>Audit logging:</strong> Audit settings are present, but logs must be collected, protected, and reviewed. Be careful with forwarded headers; <code>config/config.yaml</code> warns about trusting them.</li>
+<li><strong>Model governance:</strong> Embedding model changes can make existing vector spaces incompatible. Store embedding model/version metadata and plan migrations.</li>
+</ul>
+<h2 id="reading-guide">Reading Guide</h2>
+<p>Recommended order for senior engineers:</p>
+<ol>
+<li><code>README.md</code> for product capabilities and supported APIs.</li>
+<li><code>Cargo.toml</code> for workspace boundaries and feature flags.</li>
+<li><code>config/config.yaml</code> and <code>src/settings.rs</code> for operational shape.</li>
+<li><code>src/main.rs</code> for process bootstrap and service wiring.</li>
+<li><code>src/actix</code>, <code>src/tonic</code>, and <code>lib/api</code> for API boundaries.</li>
+<li><code>lib/storage/src/content_manager/toc</code> and <code>lib/storage/src/dispatcher.rs</code> for operation routing.</li>
+<li><code>lib/collection/src/collection</code>, <code>lib/collection/src/shards/replica_set</code>, and <code>lib/collection/src/shards/local_shard</code> for collection and shard behavior.</li>
+<li><code>lib/segment</code> for actual storage, payload, and vector index internals.</li>
+<li><code>tests/e2e_tests</code> for deployment-facing behavior and compatibility expectations.</li>
+<li><code>lib/edge</code> if local embedded retrieval is part of the target architecture.</li>
+</ol>
+<h2 id="learning-path">Learning Path</h2>
+<ol>
+<li>Run a local single-node container in an isolated development environment and create a collection with one dense vector.</li>
+<li>Add payload filters and payload indexes, then compare filtered and unfiltered query plans and latency.</li>
+<li>Add a second named vector or sparse vector to understand hybrid retrieval design.</li>
+<li>Read <code>LocalShard</code> loading and WAL code to understand durability.</li>
+<li>Read segment vector storage and payload index modules to understand performance tradeoffs.</li>
+<li>Configure snapshots and test restore into a fresh local instance.</li>
+<li>Study distributed settings, replica-set state, and consensus flow before designing a cluster.</li>
+<li>Add workload-specific retrieval evaluation using a fixed query set and labeled relevant chunks.</li>
+</ol>
+<h2 id="glossary">Glossary</h2>
+<ul>
+<li><strong>ANN:</strong> Approximate nearest-neighbor search, used to retrieve vectors similar to a query vector.</li>
+<li><strong>Collection:</strong> Logical container for points with shared vector and payload configuration.</li>
+<li><strong>Consensus:</strong> Cluster agreement mechanism used for distributed metadata operations.</li>
+<li><strong>Dispatcher:</strong> Storage-layer router that chooses local execution or consensus-backed execution.</li>
+<li><strong>HNSW:</strong> Hierarchical Navigable Small World graph index for vector search.</li>
+<li><strong>LocalShard:</strong> Local durable shard implementation with WAL, segments, updates, and optimizers.</li>
+<li><strong>Payload:</strong> Metadata attached to points and used for filtering or returning context.</li>
+<li><strong>Point:</strong> Stored vector record, usually representing a RAG chunk or item.</li>
+<li><strong>Quantization:</strong> Compression technique for reducing vector memory or disk footprint.</li>
+<li><strong>Replica Set:</strong> Group of local and remote replicas for a shard.</li>
+<li><strong>Segment:</strong> Low-level storage and index unit inside a local shard.</li>
+<li><strong>Shard:</strong> Partition of a collection.</li>
+<li><strong>Snapshot:</strong> Backup artifact for collection or storage state.</li>
+<li><strong>Sparse Vector:</strong> Vector representation optimized for lexical or sparse retrieval signals.</li>
+<li><strong>TableOfContent:</strong> Main in-process storage facade that owns loaded collections.</li>
+<li><strong>WAL:</strong> Write-ahead log used for durable update recovery.</li>
+</ul>
+<h2 id="deep-dive-addendum-repository-grounded-operating-model">Deep-Dive Addendum: Repository-Grounded Operating Model</h2>
+<p>This addendum is meant to help a senior engineer move from &quot;Qdrant as a vector database&quot; to &quot;Qdrant as a clusterable storage engine with strict operational trade-offs.&quot; Keep the following files open while reading the code: <code>github-repos/04-rag-vector-database/qdrant/src/main.rs</code> for process entry, <code>src/startup.rs</code> and <code>src/settings.rs</code> for runtime construction, <code>src/actix/api/</code> and <code>src/tonic/api/</code> for REST and gRPC surfaces, <code>lib/storage/src/content_manager/toc/</code> for the storage facade, <code>lib/collection/src/shards/local_shard/</code> for local shard behavior, <code>lib/segment/src/index/</code> for vector and payload indexes, <code>lib/wal/src/</code> for durability, and <code>openapi/</code> for the public REST contract.</p>
+<div class="mermaid">flowchart LR
+  Client[&quot;RAG app or SDK client&quot;] --&gt; Rest[&quot;REST handlers src/actix/api&quot;]
+  Client --&gt; Grpc[&quot;gRPC handlers src/tonic/api&quot;]
+  Rest --&gt; Auth[&quot;auth, telemetry, validation&quot;]
+  Grpc --&gt; Auth
+  Auth --&gt; Toc[&quot;TableOfContent lib/storage/src/content_manager/toc&quot;]
+  Toc --&gt; Collection[&quot;collection orchestration lib/collection/src&quot;]
+  Collection --&gt; LocalShard[&quot;local shard lib/collection/src/shards/local_shard&quot;]
+  Collection --&gt; RemoteShard[&quot;remote shard / replica path&quot;]
+  LocalShard --&gt; Wal[&quot;WAL lib/wal/src&quot;]
+  LocalShard --&gt; Segment[&quot;segments lib/segment/src&quot;]
+  Segment --&gt; VectorIndex[&quot;HNSW, sparse, plain vector indexes&quot;]
+  Segment --&gt; PayloadIndex[&quot;payload indexes and filters&quot;]
+  Toc --&gt; Snapshots[&quot;snapshot and transfer logic&quot;]</div>
+<p>The main architectural tension is not just nearest-neighbor performance. It is the balance between ingestion durability, optimizer pressure, query freshness, replica consistency, and memory footprint. The file layout shows this separation clearly: API handlers do not own storage mechanics; <code>TableOfContent</code> routes collection operations; collections own shard topology; local shards own WAL, segment mutation, snapshot, and telemetry code; segments own the low-level vector and payload structures. That layering is what lets Qdrant expose both single-node and distributed behavior without making every request handler understand consensus, segment compaction, or HNSW internals.</p>
+<h3 id="runtime-durability-and-consistency-checkpoints">Runtime Durability and Consistency Checkpoints</h3>
+<div class="mermaid">sequenceDiagram
+  participant App as Client application
+  participant API as REST or gRPC API
+  participant TOC as TableOfContent
+  participant Shard as LocalShard
+  participant WAL as Write-ahead log
+  participant Seg as Segment storage
+  participant Opt as Optimizer workers
+  App-&gt;&gt;API: upsert/delete/update points
+  API-&gt;&gt;TOC: validate collection and route operation
+  TOC-&gt;&gt;Shard: apply update with ordering policy
+  Shard-&gt;&gt;WAL: append durable operation
+  WAL--&gt;&gt;Shard: operation persisted
+  Shard-&gt;&gt;Seg: apply to mutable segment state
+  Shard--&gt;&gt;TOC: acknowledge by wait/ordering mode
+  TOC--&gt;&gt;API: response
+  Opt-&gt;&gt;Seg: compact, index, quantize, or flush later</div>
+<p>For production review, inspect whether application write semantics line up with Qdrant&#x27;s wait and ordering choices. A RAG ingestion pipeline that acknowledges chunks before WAL persistence or before replica transfer is operationally different from one that blocks until updates are visible. The relevant code paths are distributed across <code>local_shard/wal_ops.rs</code>, <code>local_shard/updaters.rs</code>, <code>local_shard/query.rs</code>, and the storage dispatcher under <code>lib/storage/src/dispatcher.rs</code>. The right reading strategy is to trace one mutation, then one query, then one snapshot recovery path; otherwise it is easy to confuse API shape with durability semantics.</p>
+<h3 id="failure-mode-map">Failure-Mode Map</h3>
+<div class="mermaid">flowchart TD
+  Risk[&quot;Production risk&quot;] --&gt; Disk[&quot;Disk pressure&quot;]
+  Risk --&gt; Memory[&quot;Memory or mmap pressure&quot;]
+  Risk --&gt; Cluster[&quot;Replica or consensus drift&quot;]
+  Risk --&gt; Payload[&quot;Payload filter selectivity&quot;]
+  Risk --&gt; Model[&quot;Embedding model change&quot;]
+  Risk --&gt; Snapshot[&quot;Snapshot and restore gap&quot;]
+  Disk --&gt; D1[&quot;WAL cannot grow safely&quot;]
+  Disk --&gt; D2[&quot;optimizer cannot materialize segments&quot;]
+  Memory --&gt; M1[&quot;HNSW and payload indexes compete with query cache&quot;]
+  Cluster --&gt; C1[&quot;remote shard transfer stalls&quot;]
+  Cluster --&gt; C2[&quot;metadata operation waits on consensus&quot;]
+  Payload --&gt; P1[&quot;filter-first queries become slow if indexes are absent&quot;]
+  Model --&gt; E1[&quot;vector dimensions or distance assumptions no longer match&quot;]
+  Snapshot --&gt; S1[&quot;restore point is older than acknowledged ingestion&quot;]</div>
+<p>The most important governance risk is silent semantic drift. Qdrant can store vectors, sparse vectors, and payloads, but it cannot know when an embedding model, chunker, metadata schema, or ranking policy has changed in the upstream RAG application. Treat collection configuration, vector size, distance metric, named vector usage, sparse-vector policy, and payload index definitions as governed schema, not as incidental runtime settings.</p>
+<h3 id="production-readiness-checklist">Production Readiness Checklist</h3>
+<ul>
+<li>Confirm collection schemas in application code match Qdrant collection creation payloads, especially vector dimension, distance metric, named vectors, sparse vectors, and quantization options.</li>
+<li>Define a payload indexing policy before traffic arrives. Fields used in filters, access control, tenant isolation, or reranking should not depend on full scans during peak query load.</li>
+<li>Exercise WAL recovery by killing a node during ingestion and checking restored points, not only by running happy-path API tests.</li>
+<li>Test snapshot creation, transfer, and restore for at least one large collection; include disk-full and partial-transfer cases.</li>
+<li>If clustering is used, document shard count, replica count, write ordering expectations, and the procedure for replacing a node.</li>
+<li>Export and alert on request latency, update latency, collection telemetry, optimizer backlog, disk usage, and per-collection memory pressure from <code>src/common/telemetry_ops/</code>.</li>
+<li>Decide whether local inference paths under <code>src/common/inference/</code> are allowed in production or whether embeddings must be generated outside Qdrant for stronger model governance.</li>
+<li>Keep <code>config/production.yaml</code>, <code>config/config.yaml</code>, and deployment manifests under release control; avoid changing optimizer, storage, or cluster settings as ad hoc incident response.</li>
+</ul>
+<h3 id="senior-architect-reading-guide">Senior Architect Reading Guide</h3>
+<p>Read the repository in four passes. First, map ingress from <code>src/main.rs</code>, <code>src/startup.rs</code>, <code>src/actix/api/</code>, and <code>src/tonic/api/</code>. Second, follow storage routing through <code>lib/storage/src/content_manager/toc/</code> and <code>lib/storage/src/dispatcher.rs</code>. Third, inspect local shard mechanics in <code>lib/collection/src/shards/local_shard/</code>, especially WAL, snapshot, query, and update modules. Fourth, go down to <code>lib/segment/src/index/</code> and separate vector scoring from payload filtering. This order keeps API, topology, durability, and search quality concerns distinct.</p>
+<h3 id="additional-glossary">Additional Glossary</h3>
+<ul>
+<li><strong>Optimizer backlog:</strong> Pending work that must compact or index segments after writes; it affects query latency and disk growth.</li>
+<li><strong>Payload selectivity:</strong> How strongly a metadata filter narrows candidate points before vector scoring.</li>
+<li><strong>Semantic drift:</strong> A mismatch between stored vectors/payloads and the current application embedding or chunking policy.</li>
+<li><strong>Shard transfer:</strong> Movement or replication of shard data during cluster scaling, recovery, or rebalancing.</li>
+</ul>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

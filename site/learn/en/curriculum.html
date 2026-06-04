@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Curriculum | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="index.html">English</a>
+        <a href="../vi/index.html">Tiếng Việt</a>
+        <a href="curriculum.html">Curriculum</a>
+        <a href="../../templates/index.html">Toolkit</a>
+        <a href="../../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="index.html">English course</a>
+      <a href="../vi/index.html">Trang tiếng Việt</a>
+      <a href="curriculum.html">Curriculum</a>
+      <a href="projects.html">Projects</a>
+      <a href="../../templates/index.html">Architecture toolkit</a>
+      <a href="../../capstone/index.html">Capstone</a>
+      <a href="../../assessments/index.html">Assessments</a>
+      <a href="../../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/curriculum.md">View source</a>
+      <h1 id="curriculum">Curriculum</h1>
+<p>The curriculum has twelve lessons across six phases. Each lesson asks one architecture question and points to the repositories that make the answer concrete.</p>
+<h2 id="curriculum-map">Curriculum Map</h2>
+<div class="mermaid">flowchart TB
+  L01[L01 End-to-end AI system map] --&gt; L02[L02 Agent decomposition]
+  L02 --&gt; L03[L03 Workflows vs agent loops]
+  L03 --&gt; L04[L04 Model runtime choices]
+  L04 --&gt; L05[L05 Production serving]
+  L05 --&gt; L06[L06 Adaptation and training]
+  L06 --&gt; L07[L07 Vector data modeling]
+  L07 --&gt; L08[L08 Retrieval orchestration]
+  L08 --&gt; L09[L09 Evaluation and tracing]
+  L09 --&gt; L10[L10 Experiment and model lineage]
+  L10 --&gt; L11[L11 Tool and MCP governance]
+  L11 --&gt; L12[L12 Production readiness review]</div>
+<h2 id="phase-1-application-and-agent-architecture">Phase 1: Application And Agent Architecture</h2>
+<h3 id="l01-what-does-an-ai-solution-architecture-contain">L01: What Does An AI Solution Architecture Contain?</h3>
+<p>An AI solution architecture contains the user workflow, the application/agent control layer, model runtime, data/retrieval plane, evaluation loop, operations, and governance. The mistake to avoid is treating the LLM as the system. The LLM is one capability provider inside a larger architecture.</p>
+<p>Primary repositories: OpenAI Agents Python, LangChain, LlamaIndex, AutoGen, Open WebUI.</p>
+<p>Architecture output: draw an end-to-end system context diagram and mark which layer owns user state, tool execution, model calls, retrieval, traces, and human escalation.</p>
+<h3 id="l02-how-should-agent-applications-be-decomposed">L02: How Should Agent Applications Be Decomposed?</h3>
+<p>Agent frameworks split responsibilities differently. OpenAI Agents Python emphasizes agents, handoffs, tools, guardrails, and tracing. LangChain separates model interfaces, chains, tools, retrievers, and LangGraph workflows. AutoGen layers Core, AgentChat, extensions, runtime, and multi-agent teams. LlamaIndex centers data-aware agents, indices, query engines, and workflow orchestration.</p>
+<p>Architecture output: choose the primary control model: single agent loop, deterministic workflow, multi-agent team, retrieval-first engine, or hybrid.</p>
+<h3 id="l03-when-do-you-choose-workflows-agents-or-teams">L03: When Do You Choose Workflows, Agents, Or Teams?</h3>
+<p>Use deterministic workflows when the process is auditable and repeatable. Use agent loops when task planning must adapt at runtime. Use multi-agent teams when roles need separate memory, tools, policies, or execution contexts. Use retrieval engines when the main risk is grounding, evidence selection, or data access.</p>
+<div class="mermaid">flowchart LR
+  Need{Main uncertainty} --&gt;|Procedure| Workflow[Workflow graph]
+  Need --&gt;|Planning| Agent[Agent loop]
+  Need --&gt;|Role separation| Team[Multi-agent team]
+  Need --&gt;|Knowledge grounding| Retrieval[Retrieval/query engine]
+  Workflow --&gt; LangGraph[LangChain / LangGraph]
+  Agent --&gt; OpenAIAgents[OpenAI Agents Python]
+  Team --&gt; AutoGen[AutoGen]
+  Retrieval --&gt; LlamaIndex[LlamaIndex]</div>
+<h2 id="phase-2-model-serving-and-runtime">Phase 2: Model Serving And Runtime</h2>
+<h3 id="l04-how-do-model-runtimes-change-architecture-decisions">L04: How Do Model Runtimes Change Architecture Decisions?</h3>
+<p>Transformers is the compatibility and model API backbone. vLLM is optimized for high-throughput serving with scheduling and KV-cache efficiency. llama.cpp is optimized for local, edge, CPU/GPU hybrid, and quantized inference. The runtime affects prompt format, tokenizer compatibility, latency, throughput, memory footprint, observability, and rollout strategy.</p>
+<p>Architecture output: create a runtime decision table with constraints for latency, throughput, memory, deployment environment, supported model formats, streaming behavior, and operational tooling.</p>
+<h3 id="l05-what-makes-serving-production-grade">L05: What Makes Serving Production-Grade?</h3>
+<p>Production serving needs admission control, batching behavior, streaming semantics, capacity planning, health checks, model artifact provenance, rollback, autoscaling, metrics, and incident playbooks. A serving endpoint is not production-ready just because it returns tokens.</p>
+<p>Primary repositories: vLLM, llama.cpp, Transformers, Open WebUI.</p>
+<h2 id="phase-3-training-and-adaptation">Phase 3: Training And Adaptation</h2>
+<h3 id="l06-when-should-you-fine-tune-adapt-or-avoid-training">L06: When Should You Fine-Tune, Adapt, Or Avoid Training?</h3>
+<p>Start with prompting and retrieval when the problem is context or instruction clarity. Use PEFT adapters when you need task/domain adaptation without owning full-model training cost. Use DeepSpeed when distributed training, optimizer sharding, checkpointing, and memory efficiency become central. Avoid training when data quality, evaluation, or deployment governance is not ready.</p>
+<div class="mermaid">flowchart TB
+  Problem[Model quality gap] --&gt; Cause{Dominant cause}
+  Cause --&gt;|Missing knowledge| RAG[RAG / better retrieval]
+  Cause --&gt;|Instruction mismatch| Prompt[Prompt and workflow design]
+  Cause --&gt;|Domain behavior| PEFT[PEFT adapter tuning]
+  Cause --&gt;|Large-scale training| DS[DeepSpeed distributed training]
+  RAG --&gt; Eval[Evaluate before changing model weights]
+  Prompt --&gt; Eval
+  PEFT --&gt; Serving[Adapter serving and artifact governance]
+  DS --&gt; Serving</div>
+<h2 id="phase-4-rag-and-vector-data">Phase 4: RAG And Vector Data</h2>
+<h3 id="l07-how-should-rag-data-be-modeled-and-operated">L07: How Should RAG Data Be Modeled And Operated?</h3>
+<p>RAG design is data architecture. You must decide chunking, embedding model, metadata schema, collection layout, tenant boundaries, durability, indexing strategy, hybrid search, and deletion/update semantics. Qdrant emphasizes vector search, payload filtering, sharding, segments, WAL, and distributed operation. Chroma emphasizes developer-friendly local/server modes, collection APIs, embedding functions, and evolving distributed components.</p>
+<p>Architecture output: create a retrieval data contract: document IDs, chunk IDs, metadata, embedding version, access controls, freshness policy, and query filters.</p>
+<h3 id="l08-how-do-retrieval-and-agent-orchestration-interact">L08: How Do Retrieval And Agent Orchestration Interact?</h3>
+<p>Retrieval can be a pre-step, a tool, a query engine, a memory mechanism, or a routing decision. The orchestrator must know when to retrieve, how to cite, how to merge retrieved evidence, and when to reject low-quality context.</p>
+<h2 id="phase-5-observability-evaluation-and-llmops">Phase 5: Observability, Evaluation, And LLMOps</h2>
+<h3 id="l09-what-should-be-traced-scored-and-evaluated">L09: What Should Be Traced, Scored, And Evaluated?</h3>
+<p>Trace the full path: user input, planner decisions, tool calls, retrieval spans, model request/response, safety decisions, output, score, feedback, and cost. Langfuse and Phoenix focus on LLM traces, datasets, scores, annotations, and evaluation workflows. TruLens focuses on feedback functions, groundedness, relevance, and application evaluation. MLflow provides experiment tracking, model registry, artifacts, and broader ML lifecycle integration.</p>
+<h3 id="l10-how-do-experiment-lineage-and-model-lifecycle-fit-into-llmops">L10: How Do Experiment Lineage And Model Lifecycle Fit Into LLMOps?</h3>
+<p>LLMOps connects prompts, datasets, model versions, retrieval data, evaluation results, and deployment events. Without lineage, quality regressions become guesswork. With lineage, a team can compare prompt changes, model changes, retrieval changes, and fine-tuned artifacts as controlled system variants.</p>
+<div class="mermaid">flowchart LR
+  Prompt[Prompt version] --&gt; Run[Evaluation run]
+  Dataset[Dataset version] --&gt; Run
+  Model[Model or adapter version] --&gt; Run
+  Retrieval[Retrieval config] --&gt; Run
+  Run --&gt; Scores[Scores and traces]
+  Scores --&gt; Decision{Promote?}
+  Decision --&gt;|Yes| Deploy[Deployment]
+  Decision --&gt;|No| Iterate[Revise architecture]</div>
+<h2 id="phase-6-tools-platform-governance">Phase 6: Tools, Platform, Governance</h2>
+<h3 id="l11-how-should-tools-and-mcp-servers-be-governed">L11: How Should Tools And MCP Servers Be Governed?</h3>
+<p>Tools turn language output into side effects. MCP servers and platform gateways make those side effects reusable, but they also create permission, audit, sandbox, credential, and data exfiltration risks. Tool design must include input schema, allowed operations, error handling, rate limits, user confirmation, logging, and rollback strategy.</p>
+<p>Primary repositories: MCP servers, Open WebUI, AutoGen, OpenAI Agents Python.</p>
+<h3 id="l12-what-does-production-readiness-review-look-like">L12: What Does Production Readiness Review Look Like?</h3>
+<p>Review the full system, not a single library. The checklist should cover ownership, runtime capacity, cost, security, data governance, retrieval correctness, model artifact provenance, evaluation gates, observability, disaster recovery, and rollback.</p>
+<h2 id="final-review-questions">Final Review Questions</h2>
+<ul>
+<li>Which layer owns the core product risk?</li>
+<li>Which decision is reversible and which is expensive to change?</li>
+<li>Where does untrusted input enter the system?</li>
+<li>What is the measurable definition of answer quality?</li>
+<li>Which traces prove that the system behaved correctly?</li>
+<li>Which failure mode is most likely to trigger an incident?</li>
+<li>What must be true before a model, adapter, prompt, or retrieval change can be promoted?</li>
+</ul>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

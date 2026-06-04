@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AutoGen Architecture | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/01-ai-app-agent-architecture/autogen/README.en.md">View source</a>
+      <h1 id="autogen-architecture">AutoGen Architecture</h1>
+<h2 id="executive-summary">Executive Summary</h2>
+<p>AutoGen is a framework for multi-agent AI applications that can act autonomously or collaborate with humans. In this checkout, the root <code>README.md</code> is explicit that AutoGen is in maintenance mode and that new users are directed to Microsoft Agent Framework. For existing AutoGen users, the repository remains valuable because it contains the layered architecture of AutoGen: a low-level event-driven Core API, a higher-level AgentChat API, Extensions for model clients/tools/runtimes/memory/code execution, developer tools such as Studio and Bench, .NET sources, protobuf contracts, design docs, and samples.</p>
+<p>The Python workspace in <code>python/pyproject.toml</code> includes packages under <code>python/packages/*</code>. <code>autogen-core</code>, <code>autogen-agentchat</code>, and <code>autogen-ext</code> are version <code>0.7.5</code>. <code>autogen-core</code> provides foundational interfaces and runtime implementation; <code>autogen-agentchat</code> builds agent and team chat APIs on top of core; <code>autogen-ext</code> packages integrations such as OpenAI, Azure, Anthropic, Ollama, llama.cpp, Semantic Kernel, MCP, Docker/Jupyter/local code execution, Redis/disk cache, Chroma/mem0 memory, web/file/video surfers, and gRPC runtimes.</p>
+<h2 id="problem-solved">Problem Solved</h2>
+<p>AutoGen solves the orchestration problem for systems with multiple conversable agents. The repository supports two levels of design: a pub-sub and RPC runtime where agents receive events on topics, and an AgentChat facade where developers build assistants, user proxies, code executor agents, group chats, selectors, swarms, handoffs, and teams. It also addresses practical integration concerns: model clients, tool schemas, workbenches, code execution, distributed workers, persistence-oriented memory, UI samples, benchmark tooling, and responsible AI guidance.</p>
+<h2 id="ai-stack-role">AI Stack Role</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Layer</th><th>Repository role</th><th>Grounding in repo</th></tr></thead>
+<tbody>
+<tr><td>Event runtime</td><td>Agent IDs, topics, subscriptions, routed agents, single-threaded runtime</td><td><code>python/packages/autogen-core/src/autogen_core/</code></td></tr>
+<tr><td>Chat abstraction</td><td>AssistantAgent, BaseChatAgent, teams, termination conditions, UI console</td><td><code>python/packages/autogen-agentchat/src/autogen_agentchat/</code></td></tr>
+<tr><td>Integrations</td><td>Model clients, tools, code executors, MCP, memory, gRPC runtime</td><td><code>python/packages/autogen-ext/src/autogen_ext/</code></td></tr>
+<tr><td>Distributed contracts</td><td>Worker protocol and CloudEvent/protobuf contracts</td><td><code>docs/design/</code>, <code>protos/</code>, <code>autogen-ext/runtimes/grpc/</code></td></tr>
+<tr><td>Responsible operation</td><td>Security policy, transparency FAQ, tests, benchmark package</td><td><code>SECURITY.md</code>, <code>TRANSPARENCY_FAQS.md</code>, <code>agbench</code>, package tests</td></tr>
+</tbody></table></div>
+<h2 id="source-tree-map">Source Tree Map</h2>
+<pre><code class="language-text">autogen/
+  README.md                         # project overview, maintenance mode, quickstarts
+  TRANSPARENCY_FAQS.md              # responsible AI risks and operational guidance
+  SECURITY.md                       # vulnerability reporting
+  docs/design/                      # programming model, topics, worker protocol, services
+  protos/                           # cloudevent.proto and agent_worker.proto
+  dotnet/                           # .NET implementation and documentation
+  python/
+    pyproject.toml                  # uv workspace, poe tasks, lint/type/test config
+    samples/                        # FastAPI, Chainlit, Streamlit, gRPC, group chat samples
+    packages/
+      autogen-core/                 # event runtime, tools, model client interfaces, telemetry
+      autogen-agentchat/            # chat agents, teams, conditions, UI
+      autogen-ext/                  # providers, code execution, MCP, memory, runtimes
+      autogen-studio/               # no-code UI/prototyping tool
+      agbench/                      # benchmark/evaluation tooling
+      pyautogen/                    # compatibility package
+      autogen-test-utils/           # test helpers
+      component-schema-gen/         # schema generation utility
+      magentic-one-cli/             # Magentic-One CLI package</code></pre>
+<h2 id="component-diagram">Component Diagram</h2>
+<div class="mermaid">flowchart TB
+  App[Application] --&gt; AgentChat[AgentChat API&lt;br/&gt;autogen-agentchat]
+  AgentChat --&gt; Core[Core runtime&lt;br/&gt;autogen-core]
+  AgentChat --&gt; Teams[Teams / group chat&lt;br/&gt;teams/_group_chat]
+  AgentChat --&gt; Conditions[Termination conditions]
+  AgentChat --&gt; ChatTools[AgentTool / TeamTool]
+  Core --&gt; Runtime[AgentRuntime / RoutedAgent / Topics]
+  Core --&gt; ModelContract[ChatCompletionClient interface]
+  Core --&gt; ToolContract[BaseTool / Workbench]
+  Core --&gt; Telemetry[OpenTelemetry helpers]
+  Ext[autogen-ext] --&gt; ModelContract
+  Ext --&gt; ToolContract
+  Ext --&gt; CodeExec[Code executors]
+  Ext --&gt; MCP[MCP workbench]
+  Ext --&gt; GRPC[gRPC worker runtime]
+  Runtime --&gt; Protos[protos/agent_worker.proto]
+  Studio[AutoGen Studio] --&gt; AgentChat
+  Bench[AutoGen Bench] --&gt; AgentChat</div>
+<h2 id="core-concepts">Core Concepts</h2>
+<ul>
+<li>Event-driven programming model: <code>docs/design/01 - Programming Model.md</code> describes publish-subscribe agents receiving CloudEvents, publishing events, calling models/tools/memory, and using orchestrator agents when workflows need control logic.</li>
+<li>Topics and subscriptions: <code>docs/design/02 - Topics.md</code> defines identifiers, subscriptions, agent instance creation, message types, and well-known topic types.</li>
+<li>Worker protocol: <code>docs/design/03 - Agent Worker Protocol.md</code> describes service and worker processes, worker registration, agent placement, activation on events or RPC requests, response routing, timeout behavior, and termination.</li>
+<li><code>AgentRuntime</code>: protocol in <code>autogen_core/_agent_runtime.py</code>; <code>SingleThreadedAgentRuntime</code> in <code>_single_threaded_agent_runtime.py</code> provides local runtime mechanics.</li>
+<li><code>RoutedAgent</code>: class and decorators in <code>_routed_agent.py</code> map message handlers, event handlers, and RPC handlers to typed messages.</li>
+<li><code>ChatCompletionClient</code>: model-client interface in <code>autogen_core/models/_model_client.py</code>, implemented by extension clients such as <code>OpenAIChatCompletionClient</code>.</li>
+<li><code>AssistantAgent</code>: high-level chat agent in <code>autogen_agentchat/agents/_assistant_agent.py</code>.</li>
+<li>Teams: <code>autogen_agentchat/teams/_group_chat/</code> implements base group chat, round-robin, selector, swarm, sequential routed agent, and Magentic-One group chat variants.</li>
+<li>Workbench and tools: <code>autogen_core/tools/</code> and <code>autogen_ext/tools/</code> provide schemas, function tools, static workbench, MCP, HTTP, Azure AI Search, GraphRAG, LangChain, and code execution tools.</li>
+</ul>
+<h2 id="internal-architecture">Internal Architecture</h2>
+<p>AutoGen is intentionally layered. Core has no dependency on AgentChat; it defines the runtime, routing, identities, subscriptions, queues, serialization, component configuration, tool contracts, model context, memory interfaces, model clients, and telemetry. AgentChat uses Core to provide human-friendly abstractions such as <code>AssistantAgent</code>, <code>UserProxyAgent</code>, <code>CodeExecutorAgent</code>, <code>SocietyOfMindAgent</code>, and teams. Extensions implement concrete infrastructure around those abstractions.</p>
+<p><code>autogen-ext</code> is the integration layer. Its <code>models/</code> tree includes OpenAI, Azure AI, Anthropic, Ollama, llama.cpp, replay, cache, and Semantic Kernel adapters. Its <code>tools/</code> tree includes MCP transports, HTTP tools, Azure AI Search, GraphRAG, LangChain, code execution, and Semantic Kernel adapters. Its <code>code_executors/</code> tree includes local, Docker, Docker Jupyter, Jupyter, and Azure container execution. Its <code>runtimes/grpc/</code> tree implements distributed worker runtime support based on generated protobufs.</p>
+<h2 id="runtime-and-data-flow">Runtime and Data Flow</h2>
+<div class="mermaid">sequenceDiagram
+  participant U as User/App
+  participant A as AssistantAgent
+  participant C as ChatCompletionClient
+  participant W as Workbench/Tools
+  participant R as Core Runtime
+  participant T as Topic/Team
+  participant O as Observability
+
+  U-&gt;&gt;A: task or chat message
+  A-&gt;&gt;R: publish/send message through runtime
+  R-&gt;&gt;T: route by agent id, topic, or team policy
+  T-&gt;&gt;A: deliver message/event
+  A-&gt;&gt;C: create model completion with context and tools
+  C--&gt;&gt;A: model response or function/tool calls
+  alt tool call
+    A-&gt;&gt;W: execute tool via workbench
+    W--&gt;&gt;A: tool result
+    A-&gt;&gt;C: continue with tool result
+  else team handoff/next speaker
+    A-&gt;&gt;T: emit team event
+  else final response
+    A--&gt;&gt;U: TaskResult / streamed messages
+  end
+  R-&gt;&gt;O: logs, traces, telemetry spans</div>
+<h2 id="extension-points">Extension Points</h2>
+<ul>
+<li>Implement new event agents by subclassing <code>RoutedAgent</code> and registering message handlers with decorators in <code>_routed_agent.py</code>.</li>
+<li>Implement model clients against <code>ChatCompletionClient</code> in <code>autogen_core/models/_model_client.py</code>.</li>
+<li>Implement tools by extending <code>BaseTool</code>, <code>BaseStreamTool</code>, <code>Workbench</code>, or adapter patterns in <code>autogen_core/tools/</code>.</li>
+<li>Add AgentChat agents by implementing <code>BaseChatAgent</code> or composing existing <code>AssistantAgent</code>, <code>UserProxyAgent</code>, and <code>CodeExecutorAgent</code>.</li>
+<li>Add group-chat policies under <code>autogen_agentchat/teams/_group_chat/</code>.</li>
+<li>Add integrations under <code>autogen_ext</code> for models, tools, memory, code executors, runtimes, UI, and agents.</li>
+<li>Add distributed transport by following <code>protos/agent_worker.proto</code> and <code>autogen_ext/runtimes/grpc/</code>.</li>
+</ul>
+<h2 id="integrations">Integrations</h2>
+<p>The <code>autogen-ext</code> optional dependencies expose the intended integration surface: OpenAI, Azure AI, Anthropic, Ollama, llama.cpp, Gemini, Semantic Kernel providers, Docker, Jupyter, Docker Jupyter, Azure code execution, gRPC, MCP, HTTP tools, GraphRAG, ChromaDB, mem0, Redis, diskcache, web/file/video surfers, Magentic-One, and LangChain tools. Samples demonstrate FastAPI, Chainlit, Streamlit, gRPC worker runtime, distributed group chat, semantic router, graph RAG, chess games, async human-in-the-loop, and task-centric memory.</p>
+<h2 id="deployment-and-operations-topology">Deployment and Operations Topology</h2>
+<div class="mermaid">flowchart LR
+  subgraph LocalApp[&quot;Local or service app&quot;]
+    UI[FastAPI/Chainlit/Streamlit/CLI]
+    AgentChat[AgentChat teams]
+    CoreRuntime[SingleThreadedAgentRuntime]
+  end
+  subgraph Distributed[&quot;Distributed runtime option&quot;]
+    Host[gRPC WorkerRuntimeHost]
+    Worker1[Worker process A]
+    Worker2[Worker process B]
+    Proto[agent_worker.proto]
+  end
+  subgraph External[&quot;External systems&quot;]
+    Models[OpenAI/Azure/Anthropic/Ollama/etc.]
+    Tools[MCP/HTTP/Azure Search/GraphRAG]
+    Exec[Docker/Jupyter/Azure code execution]
+    Memory[(Redis/Chroma/mem0/canvas)]
+    Telemetry[OpenTelemetry backend]
+  end
+  UI --&gt; AgentChat --&gt; CoreRuntime
+  CoreRuntime --&gt; Models
+  AgentChat --&gt; Tools
+  AgentChat --&gt; Exec
+  AgentChat --&gt; Memory
+  CoreRuntime --&gt; Telemetry
+  CoreRuntime -. optional .-&gt; Host
+  Host --&gt; Proto
+  Host --&gt; Worker1
+  Host --&gt; Worker2</div>
+<p>The local runtime is enough for many applications and samples. Distributed deployments use gRPC worker runtime pieces and the worker protocol design, where service processes coordinate placement and communication while worker processes host agent code. Code execution should be isolated with Docker or managed execution environments, especially when agents can generate code or shell commands.</p>
+<h2 id="observability-testing-evaluation-and-failure-modes">Observability, Testing, Evaluation, and Failure Modes</h2>
+<p><code>autogen-core</code> depends on <code>opentelemetry-api</code> and includes <code>_telemetry/</code> modules for tracing configuration and propagation. <code>python/pyproject.toml</code> and package-level <code>pyproject.toml</code> files configure <code>pytest</code>, <code>pytest-asyncio</code>, <code>pytest-cov</code>, <code>pytest-xdist</code>, <code>mypy</code>, <code>pyright</code>, and <code>ruff</code>. <code>autogen-ext</code> tests cover models, tools, MCP, code executors, cache stores, memory, teams, web/file surfers, and worker runtime. <code>agbench</code> exists as a benchmark package, and samples include evaluation-oriented task-centric memory scripts.</p>
+<p>Failure modes to design for:</p>
+<ul>
+<li>worker registration, placement, or timeout failure in distributed runtime;</li>
+<li>model-client capability mismatch or provider API changes;</li>
+<li>tool schema conversion errors and unsafe tool execution;</li>
+<li>code executor environment leakage or untrusted generated code;</li>
+<li>group chat termination conditions not firing;</li>
+<li>memory store inconsistency or stale task-centric memory;</li>
+<li>sync/async lifecycle mistakes in UI frameworks;</li>
+<li>migration risk because the root README marks the project as maintenance mode.</li>
+</ul>
+<h2 id="security-and-governance-risks">Security and Governance Risks</h2>
+<p><code>TRANSPARENCY_FAQS.md</code> is explicit that AutoGen was intended for research and experimentation and should not be used downstream without detailed evaluation of robustness, safety, harm, and bias. It calls out LLM risks such as bias, lack of real-world understanding, transparency gaps, content harms, hallucination, misuse, privacy, accountability, trust, and unintended consequences. It also recommends safer code execution practices such as Docker containers, human involvement, modular agents, scoped access, and moderation or safety prompts.</p>
+<p>Production governance should include human approval for code execution and high-impact actions, Docker or managed isolation for generated code, trusted-only MCP servers, role-scoped credentials per agent, audit logs for team decisions, model/provider policy review, and migration planning toward a supported successor where appropriate.</p>
+<h2 id="lifecycle-and-decision-diagram">Lifecycle and Decision Diagram</h2>
+<div class="mermaid">stateDiagram-v2
+  [*] --&gt; ChooseLayer
+  ChooseLayer --&gt; CoreRuntime: event/RPC system
+  ChooseLayer --&gt; AgentChat: chat/team API
+  ChooseLayer --&gt; Studio: prototype UI
+  CoreRuntime --&gt; DefineAgentTypes
+  DefineAgentTypes --&gt; RegisterRuntime
+  RegisterRuntime --&gt; PublishOrSend
+  PublishOrSend --&gt; RouteMessage
+  RouteMessage --&gt; ActivateAgent: not active
+  RouteMessage --&gt; DispatchHandler: active
+  ActivateAgent --&gt; DispatchHandler
+  DispatchHandler --&gt; ModelOrTool
+  ModelOrTool --&gt; PublishOrSend: emits event/RPC
+  ModelOrTool --&gt; CompleteTask
+  AgentChat --&gt; ConfigureAgent
+  ConfigureAgent --&gt; ConfigureTeam
+  ConfigureTeam --&gt; RunTask
+  RunTask --&gt; CompleteTask
+  CompleteTask --&gt; [*]</div>
+<h2 id="configuration-deployment-and-ops-notes">Configuration, Deployment, and Ops Notes</h2>
+<ul>
+<li>Use <code>autogen-agentchat</code> plus the required <code>autogen-ext[...]</code> extras for most Python applications.</li>
+<li>Use <code>autogen-core</code> directly when you need topic routing, typed event handlers, distributed runtime, or custom orchestration semantics.</li>
+<li>Keep model configuration external; samples use <code>model_config_template.yaml</code> and environment keys.</li>
+<li>Use <code>DockerCommandLineCodeExecutor</code>, Docker Jupyter, or Azure container execution for code, not unrestricted local execution.</li>
+<li>For gRPC workers, align generated Python protobuf files with <code>protos/agent_worker.proto</code> and <code>cloudevent.proto</code>.</li>
+<li>Treat AutoGen Studio as a prototyping tool; the root README cautions that it is not a production-ready app.</li>
+<li>Plan migration for new feature development because the root README says the repo will not receive new features.</li>
+</ul>
+<h2 id="reading-guide">Reading Guide</h2>
+<ol>
+<li>Read root <code>README.md</code> to understand maintenance mode, package layers, and quickstarts.</li>
+<li>Read <code>docs/design/01 - Programming Model.md</code>, <code>02 - Topics.md</code>, and <code>03 - Agent Worker Protocol.md</code>.</li>
+<li>Read <code>python/packages/autogen-core/src/autogen_core/_agent_runtime.py</code>, <code>_routed_agent.py</code>, and <code>_single_threaded_agent_runtime.py</code>.</li>
+<li>Read <code>python/packages/autogen-agentchat/src/autogen_agentchat/agents/_assistant_agent.py</code>.</li>
+<li>Read <code>python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/</code>.</li>
+<li>Read relevant <code>autogen-ext</code> modules for model providers, MCP, code execution, memory, or gRPC.</li>
+<li>Read <code>TRANSPARENCY_FAQS.md</code> before production or user-impacting deployments.</li>
+</ol>
+<h2 id="learning-path">Learning Path</h2>
+<ol>
+<li>Run the conceptual hello-world pattern from the root README with <code>AssistantAgent</code>.</li>
+<li>Add a function or workbench tool.</li>
+<li>Convert a specialist agent into an <code>AgentTool</code>.</li>
+<li>Build a team with round-robin or selector group chat.</li>
+<li>Add termination conditions and human-in-the-loop behavior.</li>
+<li>Add a code executor with isolation.</li>
+<li>Explore <code>autogen-core</code> routed agents and topics.</li>
+<li>Prototype gRPC worker runtime only after the local runtime behavior is well understood.</li>
+</ol>
+<h2 id="production-readiness-checklist">Production Readiness Checklist</h2>
+<p>AutoGen needs an extra readiness gate because the root <code>README.md</code> marks the project as maintenance mode. For existing users, the safest production posture is to be explicit about which layer is still business-critical and which layer is only a migration bridge.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Area</th><th>Repository anchor</th><th>Architecture check</th></tr></thead>
+<tbody>
+<tr><td>Maintenance posture</td><td><code>README.md</code>, <code>TRANSPARENCY_FAQS.md</code></td><td>Record why AutoGen remains acceptable for the workload and define the migration path to a supported successor for new feature work.</td></tr>
+<tr><td>Layer selection</td><td><code>python/packages/autogen-core/</code>, <code>autogen-agentchat/</code>, <code>autogen-ext/</code></td><td>Use Core for event/RPC semantics, AgentChat for team chat, and Extensions only for integrations that are pinned and tested.</td></tr>
+<tr><td>Code execution isolation</td><td><code>python/packages/autogen-ext/src/autogen_ext/code_executors/</code></td><td>Prefer Docker, Docker Jupyter, Jupyter, or Azure container execution over unrestricted local execution; scope mounts and credentials.</td></tr>
+<tr><td>Distributed runtime</td><td><code>docs/design/03 - Agent Worker Protocol.md</code>, <code>protos/agent_worker.proto</code></td><td>Test worker registration, placement, timeout, restart, and protocol compatibility before multi-process deployment.</td></tr>
+<tr><td>Team termination</td><td><code>python/packages/autogen-agentchat/src/autogen_agentchat/teams/</code></td><td>Verify termination conditions, max rounds, speaker selection, handoffs, and human-in-the-loop paths.</td></tr>
+<tr><td>Observability</td><td><code>autogen_core/_telemetry/</code>, package tests, <code>agbench</code></td><td>Export OpenTelemetry spans, collect task outcomes, and benchmark team behavior rather than trusting transcripts.</td></tr>
+</tbody></table></div>
+<div class="mermaid">flowchart LR
+  Core[autogen-core] --&gt; Runtime[AgentRuntime, RoutedAgent, topics]
+  Core --&gt; Contracts[ChatCompletionClient, tools, memory, serialization]
+  AgentChat[autogen-agentchat] --&gt; Core
+  AgentChat --&gt; Agents[AssistantAgent, UserProxyAgent, CodeExecutorAgent]
+  AgentChat --&gt; Teams[RoundRobin, Selector, Swarm, Magentic-One]
+  Ext[autogen-ext] --&gt; Contracts
+  Ext --&gt; Models[OpenAI, Azure, Anthropic, Ollama, llama.cpp]
+  Ext --&gt; Tools[MCP, HTTP, Azure Search, LangChain, GraphRAG]
+  Ext --&gt; Executors[Docker, Jupyter, local, Azure containers]
+  Ext --&gt; GRPC[gRPC worker runtime]
+  Protos[protos/agent_worker.proto] --&gt; GRPC</div>
+<h2 id="operational-runbook-and-failure-triage">Operational Runbook And Failure Triage</h2>
+<p>For production incidents, distinguish local AgentChat failures from Core runtime routing failures and extension failures. A transcript-only review is not enough; the incident should be correlated with topic routing, model-client calls, tool/workbench execution, code executor logs, and telemetry spans.</p>
+<div class="mermaid">flowchart TD
+  Incident[AutoGen incident] --&gt; Type{Failure type}
+  Type --&gt; Runtime[Core runtime route or topic]
+  Type --&gt; Team[AgentChat team policy]
+  Type --&gt; Model[Model client behavior]
+  Type --&gt; Tool[Tool or workbench execution]
+  Type --&gt; Code[Code executor isolation]
+  Type --&gt; Worker[gRPC worker runtime]
+  Type --&gt; Governance[Responsible AI or maintenance risk]
+  Runtime --&gt; CoreFiles[autogen_core runtime and routed_agent files]
+  Team --&gt; TeamFiles[autogen_agentchat teams/_group_chat]
+  Model --&gt; ModelFiles[autogen_ext/models providers]
+  Tool --&gt; ToolFiles[autogen_core/tools and autogen_ext/tools]
+  Code --&gt; ExecFiles[autogen_ext/code_executors]
+  Worker --&gt; ProtoFiles[docs/design worker protocol and protos]
+  Governance --&gt; Review[TRANSPARENCY_FAQS.md and migration plan]
+  CoreFiles --&gt; Fix[Remediate and regression test]
+  TeamFiles --&gt; Fix
+  ModelFiles --&gt; Fix
+  ToolFiles --&gt; Fix
+  ExecFiles --&gt; Fix
+  ProtoFiles --&gt; Fix
+  Review --&gt; Fix</div>
+<p>The senior reading path should not stop at <code>AssistantAgent</code>. Read the design docs in <code>docs/design/</code>, then the Core runtime, then AgentChat teams, then only the specific <code>autogen-ext</code> modules used by the deployment. This prevents an application team from treating all extensions as equally mature or safe.</p>
+<div class="mermaid">sequenceDiagram
+  participant UI as App or UI
+  participant Team as AgentChat team
+  participant Core as Core runtime
+  participant Model as autogen-ext model client
+  participant Workbench as Tools or workbench
+  participant Exec as Code executor
+  participant Telemetry as OpenTelemetry
+
+  UI-&gt;&gt;Team: task, messages, cancellation token
+  Team-&gt;&gt;Core: publish or send routed messages
+  Core-&gt;&gt;Model: model completion request
+  Model--&gt;&gt;Core: content, tool call, or error
+  Core-&gt;&gt;Workbench: execute requested tool
+  Workbench-&gt;&gt;Exec: optional code execution
+  Exec--&gt;&gt;Workbench: isolated result
+  Workbench--&gt;&gt;Core: tool result
+  Core-&gt;&gt;Telemetry: spans and events
+  Core--&gt;&gt;Team: next speaker, handoff, or final event
+  Team--&gt;&gt;UI: TaskResult or streamed messages</div>
+<h2 id="senior-architect-review-notes">Senior Architect Review Notes</h2>
+<p>The most important architectural fact about this clone is not only its multi-agent design; it is the maintenance signal in the root <code>README.md</code>. Existing deployments can still learn from and operate the repository, but new platform commitments should separate &quot;stable enough for current workload&quot; from &quot;strategic foundation for future features.&quot; Record that decision explicitly before building new capabilities on top of <code>autogen-agentchat</code> or <code>autogen-ext</code>.</p>
+<p>For code review, start with Core rather than the chat facade. <code>python/packages/autogen-core/src/autogen_core/_agent_runtime.py</code>, <code>_routed_agent.py</code>, <code>_single_threaded_agent_runtime.py</code>, and the design docs under <code>docs/design/</code> explain how identities, topics, subscriptions, handlers, serialization, and runtime lifecycle behave. AgentChat is easier to use, but production incidents often reduce to Core routing, cancellation, timeout, or handler semantics.</p>
+<p>Extension modules should be imported deliberately. <code>autogen-ext</code> contains model clients, tools, memory providers, code executors, MCP integration, web/file/video surfers, and gRPC runtime pieces. Those capabilities do not share one risk profile. A Docker code executor, an MCP workbench, a Redis cache, and a model client all require different credentials, network access, logs, and failure playbooks. Treat the package boundary as a catalog, not as a blanket approval.</p>
+<p>For teams and group chats, require termination tests. Selector, round-robin, swarm, sequential routed agents, and Magentic-One style teams can all loop, stall, or produce plausible but low-value discussion if max rounds, termination conditions, and human handoff rules are weak. The source under <code>autogen_agentchat/teams/_group_chat/</code> should be read together with integration tests and samples before a team topology is reused in production.</p>
+<h2 id="glossary">Glossary</h2>
+<ul>
+<li>AgentRuntime: core protocol for registering agents, sending messages, publishing events, and lifecycle control.</li>
+<li>RoutedAgent: base agent that dispatches typed messages to decorated handlers.</li>
+<li>Topic: event routing address used by pub-sub.</li>
+<li>Agent ID: tuple-like identity using namespace and name concepts from the design docs.</li>
+<li>AssistantAgent: high-level chat agent that calls a model and tools.</li>
+<li>Team: AgentChat orchestration construct for multi-agent collaboration.</li>
+<li>Workbench: abstraction that exposes a set of tools.</li>
+<li>ChatCompletionClient: model-client interface used by agents.</li>
+<li>Worker runtime: distributed runtime where workers host agent code and a service coordinates routing.</li>
+<li>Magentic-One: sample/extension multi-agent team using AgentChat and Extensions.</li>
+</ul>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

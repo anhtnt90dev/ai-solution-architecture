@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RAG Data Contract | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../learn/en/index.html">English</a>
+        <a href="../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../learn/en/curriculum.html">Curriculum</a>
+        <a href="index.html">Toolkit</a>
+        <a href="../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../learn/en/index.html">English course</a>
+      <a href="../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../learn/en/curriculum.html">Curriculum</a>
+      <a href="../learn/en/projects.html">Projects</a>
+      <a href="index.html">Architecture toolkit</a>
+      <a href="../capstone/index.html">Capstone</a>
+      <a href="../assessments/index.html">Assessments</a>
+      <a href="../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/templates/rag-data-contract.md">View source</a>
+      <h1 id="rag-data-contract">RAG Data Contract</h1>
+<p>Use this template before building ingestion or retrieval. RAG failures are usually data architecture failures, not only prompt failures.</p>
+<h2 id="scope">Scope</h2>
+<p>Product/workflow:</p>
+<p>Users:</p>
+<p>Retrieval use cases:</p>
+<p>Out-of-scope data:</p>
+<h2 id="document-contract">Document Contract</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Field</th><th>Description</th><th>Required</th><th>Example</th></tr></thead>
+<tbody>
+<tr><td>document_id</td><td>Stable source document ID</td><td>Yes</td><td></td></tr>
+<tr><td>source_uri</td><td>Source system/path</td><td>Yes</td><td></td></tr>
+<tr><td>owner</td><td>Business or system owner</td><td>Yes</td><td></td></tr>
+<tr><td>access_policy</td><td>ACL/role/tenant metadata</td><td>Yes</td><td></td></tr>
+<tr><td>version</td><td>Source document version</td><td>Yes</td><td></td></tr>
+<tr><td>effective_date</td><td>Date content becomes valid</td><td>Optional</td><td></td></tr>
+<tr><td>retention_policy</td><td>Deletion/archival rule</td><td>Yes</td><td></td></tr>
+</tbody></table></div>
+<h2 id="chunk-contract">Chunk Contract</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Field</th><th>Description</th><th>Required</th><th>Example</th></tr></thead>
+<tbody>
+<tr><td>chunk_id</td><td>Stable chunk ID</td><td>Yes</td><td></td></tr>
+<tr><td>document_id</td><td>Parent document ID</td><td>Yes</td><td></td></tr>
+<tr><td>chunk_text</td><td>Text sent to embedding model</td><td>Yes</td><td></td></tr>
+<tr><td>chunk_order</td><td>Position in document</td><td>Yes</td><td></td></tr>
+<tr><td>section_title</td><td>Heading or logical section</td><td>Optional</td><td></td></tr>
+<tr><td>token_count</td><td>Token length</td><td>Yes</td><td></td></tr>
+<tr><td>embedding_model</td><td>Embedding model ID</td><td>Yes</td><td></td></tr>
+<tr><td>embedding_version</td><td>Embedding config version</td><td>Yes</td><td></td></tr>
+</tbody></table></div>
+<h2 id="query-contract">Query Contract</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Element</th><th>Decision</th></tr></thead>
+<tbody>
+<tr><td>Query rewrite policy</td><td></td></tr>
+<tr><td>Top-k</td><td></td></tr>
+<tr><td>Hybrid search</td><td></td></tr>
+<tr><td>Metadata filters</td><td></td></tr>
+<tr><td>Reranker</td><td></td></tr>
+<tr><td>Citation format</td><td></td></tr>
+<tr><td>Low-confidence threshold</td><td></td></tr>
+<tr><td>Access control enforcement point</td><td></td></tr>
+</tbody></table></div>
+<h2 id="lifecycle">Lifecycle</h2>
+<div class="mermaid">flowchart LR
+  Source[Source system] --&gt; Extract[Extract]
+  Extract --&gt; Normalize[Normalize and classify]
+  Normalize --&gt; Chunk[Chunk and enrich metadata]
+  Chunk --&gt; Embed[Embed]
+  Embed --&gt; Index[Index in vector DB]
+  Index --&gt; Query[Retrieve]
+  Query --&gt; Cite[Cite and evaluate]
+  Source --&gt; Delete[Deletion signal]
+  Delete --&gt; Tombstone[Tombstone and purge]</div>
+<h2 id="retrieval-evaluation">Retrieval Evaluation</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Test</th><th>Purpose</th><th>Pass Criteria</th></tr></thead>
+<tbody>
+<tr><td>Golden query set</td><td>Measures retrieval relevance</td><td></td></tr>
+<tr><td>Citation audit</td><td>Checks evidence is cited correctly</td><td></td></tr>
+<tr><td>Permission test</td><td>Ensures user sees only allowed chunks</td><td></td></tr>
+<tr><td>Freshness test</td><td>Ensures updates and deletes propagate</td><td></td></tr>
+<tr><td>Drift test</td><td>Detects embedding/chunking regression</td><td></td></tr>
+</tbody></table></div>
+<h2 id="readiness-checklist">Readiness Checklist</h2>
+<ul>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Embedding model and version are recorded.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Metadata schema supports filtering and governance.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Deletion workflow is tested.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Tenant/access control is enforced before generation.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Retrieval quality is evaluated independently from answer quality.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Low-confidence behavior is defined.</li>
+</ul>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

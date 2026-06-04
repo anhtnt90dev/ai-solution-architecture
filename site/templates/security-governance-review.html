@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Security And Governance Review | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../learn/en/index.html">English</a>
+        <a href="../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../learn/en/curriculum.html">Curriculum</a>
+        <a href="index.html">Toolkit</a>
+        <a href="../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../learn/en/index.html">English course</a>
+      <a href="../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../learn/en/curriculum.html">Curriculum</a>
+      <a href="../learn/en/projects.html">Projects</a>
+      <a href="index.html">Architecture toolkit</a>
+      <a href="../capstone/index.html">Capstone</a>
+      <a href="../assessments/index.html">Assessments</a>
+      <a href="../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/templates/security-governance-review.md">View source</a>
+      <h1 id="security-and-governance-review">Security And Governance Review</h1>
+<p>Use this template for systems with agents, tools, retrieval, model artifacts, or LLMOps traces.</p>
+<h2 id="scope">Scope</h2>
+<p>System:</p>
+<p>Reviewer:</p>
+<p>Date:</p>
+<p>Data classification:</p>
+<h2 id="threat-model">Threat Model</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Entry Point</th><th>Untrusted Input?</th><th>Risk</th><th>Control</th></tr></thead>
+<tbody>
+<tr><td>User prompt</td><td></td><td>Prompt injection / data leakage</td><td></td></tr>
+<tr><td>Retrieved documents</td><td></td><td>Indirect prompt injection</td><td></td></tr>
+<tr><td>Tool inputs</td><td></td><td>Unauthorized action</td><td></td></tr>
+<tr><td>Model artifacts</td><td></td><td>Unsafe code/artifact</td><td></td></tr>
+<tr><td>Traces/logs</td><td></td><td>PII/secrets exposure</td><td></td></tr>
+<tr><td>Admin UI</td><td></td><td>Privilege escalation</td><td></td></tr>
+</tbody></table></div>
+<h2 id="tool-governance">Tool Governance</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Tool</th><th>Allowed Users</th><th>Allowed Actions</th><th>Approval Required</th><th>Audit Event</th></tr></thead>
+<tbody>
+<tr><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h2 id="data-governance">Data Governance</h2>
+<ul>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Data sources are approved.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; PII policy is defined.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Retention policy is defined.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Tenant isolation is tested.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Retrieval access control is tested.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Traces redact sensitive values.</li>
+</ul>
+<h2 id="model-and-artifact-governance">Model And Artifact Governance</h2>
+<ul>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Model source is trusted.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Remote code policy is defined.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Adapter/checkpoint format is approved.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Artifact checksum/provenance is recorded.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Rollback artifact exists.</li>
+</ul>
+<h2 id="control-map">Control Map</h2>
+<div class="mermaid">flowchart LR
+  Input[User and document input] --&gt; Policy[Policy checks]
+  Policy --&gt; Agent[Agent/workflow]
+  Agent --&gt; Retrieval[Retrieval ACL]
+  Agent --&gt; Tool[Tool permission gate]
+  Agent --&gt; Model[Model runtime]
+  Tool --&gt; Audit[Audit log]
+  Retrieval --&gt; Audit
+  Model --&gt; Trace[Redacted trace]
+  Audit --&gt; Review[Governance review]</div>
+<h2 id="decision">Decision</h2>
+<p>Decision: Approved / Approved with conditions / Blocked</p>
+<p>Conditions:</p>
+<p>-</p>
+<p>Review date:</p>
+<h2 id="review-method">Review Method</h2>
+<p>Review the system from every untrusted input boundary. User prompts are untrusted. Retrieved documents are untrusted because they can contain indirect prompt injection. Tool outputs are untrusted because upstream systems can fail or return manipulated content. Model artifacts are untrusted until provenance and loading behavior are verified. Traces and logs are sensitive because they can contain prompts, retrieved content, tool arguments, identifiers, and model outputs.</p>
+<p>For each boundary, identify the control that prevents accidental or malicious escalation. Controls can include retrieval access checks, tool allowlists, approval workflows, argument validation, rate limits, output filtering, secret redaction, audit logging, tenant isolation, artifact checksums, and restricted runtime permissions. A control is only credible when it has an owner and a way to verify it.</p>
+<h2 id="high-risk-questions">High-Risk Questions</h2>
+<ul>
+<li>Can a user or retrieved document cause the agent to call a tool outside the intended scope?</li>
+<li>Can retrieved content override system instructions or leak data from another tenant?</li>
+<li>Are secrets ever included in prompts, tool outputs, traces, screenshots, or debug logs?</li>
+<li>Can a model artifact execute remote code or load untrusted files during startup?</li>
+<li>Are administrative actions separated from ordinary user actions?</li>
+<li>Can the team reconstruct who approved or executed a high-impact tool call?</li>
+<li>Are retention, deletion, and redaction policies applied consistently across traces, vector stores, logs, and analytics exports?</li>
+</ul>
+<h2 id="approval-standard">Approval Standard</h2>
+<p>Approve only when the review can point to concrete controls, not only policy statements. Approve with conditions when a control is missing but the risk is bounded and a mitigation owner exists. Block when the system can exfiltrate data, execute unsafe tools, bypass tenant isolation, expose secrets, or produce high-impact actions without traceable approval.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

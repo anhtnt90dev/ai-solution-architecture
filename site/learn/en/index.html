@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Learn AI Solution Architecture | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="index.html">English</a>
+        <a href="../vi/index.html">Tiếng Việt</a>
+        <a href="curriculum.html">Curriculum</a>
+        <a href="../../templates/index.html">Toolkit</a>
+        <a href="../../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="index.html">English course</a>
+      <a href="../vi/index.html">Trang tiếng Việt</a>
+      <a href="curriculum.html">Curriculum</a>
+      <a href="projects.html">Projects</a>
+      <a href="../../templates/index.html">Architecture toolkit</a>
+      <a href="../../capstone/index.html">Capstone</a>
+      <a href="../../assessments/index.html">Assessments</a>
+      <a href="../../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/learn-ai-solution-architecture/docs/en/README.md">View source</a>
+      <h1 id="learn-ai-solution-architecture">Learn AI Solution Architecture</h1>
+<p>This course turns the repository-by-repository architecture notes into one coherent knowledge system. It is for senior developers, solution architects, staff engineers, and technical leads who need to design AI systems that survive production constraints.</p>
+<p>The key idea: a real AI solution is not &quot;an LLM plus an app.&quot; It is a layered system where agent orchestration, model runtime, retrieval data, adaptation strategy, evaluation, observability, tools, security, and operations all affect each other.</p>
+<h2 id="what-you-will-be-able-to-do">What You Will Be Able To Do</h2>
+<p>After working through this course, you should be able to:</p>
+<ul>
+<li>Map an AI product idea into the right architectural layers.</li>
+<li>Choose between agent loops, workflow graphs, multi-agent systems, and retrieval engines.</li>
+<li>Pick an inference runtime based on latency, throughput, memory, quantization, deployment, and compatibility constraints.</li>
+<li>Decide whether to use prompting, RAG, adapters, fine-tuning, or distributed training.</li>
+<li>Design a vector data plane with ingestion, search, filters, tenancy, durability, and failure recovery.</li>
+<li>Add tracing, evaluation, feedback, lineage, and prompt/model governance.</li>
+<li>Govern tool execution, MCP servers, self-hosted UI gateways, and admin surfaces.</li>
+<li>Run a production readiness review that covers security, observability, failure modes, and operational ownership.</li>
+</ul>
+<h2 id="the-knowledge-model">The Knowledge Model</h2>
+<div class="mermaid">flowchart TB
+  Product[Product and user workflow] --&gt; App[Application / agent architecture]
+  App --&gt; Runtime[Inference runtime]
+  App --&gt; Retrieval[RAG and vector data]
+  App --&gt; Tools[Tools, MCP, platform UI]
+  Runtime --&gt; Model[Model artifact and tokenizer]
+  Training[Training and adaptation] --&gt; Model
+  Retrieval --&gt; Knowledge[Documents, chunks, metadata, embeddings]
+  App --&gt; Eval[Evaluation and feedback]
+  Runtime --&gt; Eval
+  Retrieval --&gt; Eval
+  Eval --&gt; Ops[LLMOps and production operations]
+  Tools --&gt; Ops
+  Ops --&gt; Governance[Security and governance]</div>
+<p>Architecture work happens at the boundaries:</p>
+<ul>
+<li><strong>Application to runtime</strong>: Can the app tolerate streaming, batching, retries, backpressure, and model-specific prompt formats?</li>
+<li><strong>Application to retrieval</strong>: Does the orchestration layer know when retrieval is required, how to cite evidence, and how to detect low-confidence context?</li>
+<li><strong>Runtime to model artifact</strong>: Can the serving layer load, quantize, shard, schedule, and monitor the chosen model?</li>
+<li><strong>Training to serving</strong>: Are adapters, checkpoints, tokenizer changes, and compatibility constraints controlled?</li>
+<li><strong>Application to observability</strong>: Are traces, tool calls, retrieval spans, model outputs, scores, and user feedback captured as one lineage?</li>
+<li><strong>Tools to governance</strong>: Are permissions, audit logs, sandboxing, secrets, and allowed actions explicit?</li>
+</ul>
+<h2 id="course-structure">Course Structure</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Page</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td><a href="curriculum.html">Curriculum</a></td><td>Twelve conceptual lessons that build a complete mental model.</td></tr>
+<tr><td><a href="projects.html">Projects</a></td><td>Six hands-on architecture projects, ending in a capstone.</td></tr>
+<tr><td><a href="reference-atlas.html">Repository atlas</a></td><td>A comparison map for all 17 repositories and their roles.</td></tr>
+<tr><td><a href="glossary.html">Glossary</a></td><td>Shared vocabulary for architecture reviews and design discussions.</td></tr>
+</tbody></table></div>
+<h2 id="source-deep-dives">Source Deep Dives</h2>
+<p>The underlying reference notes live in <a href="../../deep-dives/index.html"><code>repo-architecture-docs</code></a>. Each repository has an English and Vietnamese architecture document with source tree maps, diagrams, extension points, security risks, operational guidance, failure modes, production readiness checklists, and glossary entries.</p>
+<p>Use this course layer when you need the end-to-end system view. Use the source deep dives when you need implementation-level repository detail.</p>
+<h2 id="domain-map">Domain Map</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Domain</th><th>Deep-Dive Docs</th><th>Architecture Responsibility</th></tr></thead>
+<tbody>
+<tr><td>Agent applications</td><td><a href="../../deep-dives/01-ai-app-agent-architecture/index.html">Group 01</a></td><td>Planning, tool use, workflow control, memory, human escalation, multi-agent coordination</td></tr>
+<tr><td>Inference serving</td><td><a href="../../deep-dives/02-model-serving-inference/index.html">Group 02</a></td><td>Loading, scheduling, batching, quantization, local/distributed serving, token streaming</td></tr>
+<tr><td>Training and adaptation</td><td><a href="../../deep-dives/03-fine-tuning-training/index.html">Group 03</a></td><td>Adapter strategy, optimizer state, distributed scaling, checkpoint governance</td></tr>
+<tr><td>RAG and vector data</td><td><a href="../../deep-dives/04-rag-vector-database/index.html">Group 04</a></td><td>Embeddings, indexing, metadata, tenancy, durability, hybrid retrieval</td></tr>
+<tr><td>LLMOps and evaluation</td><td><a href="../../deep-dives/05-observability-evaluation-llmops/index.html">Group 05</a></td><td>Tracing, evaluation, experiment tracking, feedback, lineage, model/prompt governance</td></tr>
+<tr><td>Tooling and platform</td><td><a href="../../deep-dives/06-tooling-mcp-ai-platform/index.html">Group 06</a></td><td>MCP servers, tool gateways, self-hosted chat UI, admin controls, provider routing</td></tr>
+</tbody></table></div>
+<h2 id="how-to-study">How To Study</h2>
+<ol>
+<li>Start with the <a href="curriculum.html">curriculum</a> and read the lesson summaries in order.</li>
+<li>For each lesson, open the matching repository deep dives and inspect the diagrams.</li>
+<li>Capture decisions in a design log: selected layer, alternatives rejected, failure modes, validation plan.</li>
+<li>Run the matching project from <a href="projects.html">projects</a>.</li>
+<li>Return to the <a href="reference-atlas.html">repository atlas</a> whenever you need to compare tools.</li>
+<li>Finish with the capstone production readiness review.</li>
+</ol>
+<h2 id="the-central-pattern">The Central Pattern</h2>
+<pre><code class="language-text">AI SOLUTION ARCHITECTURE
+========================
+User workflow
+  -&gt; AI application boundary
+  -&gt; agent / workflow / retrieval decisions
+  -&gt; model runtime and data plane
+  -&gt; evaluation and feedback loop
+  -&gt; operations and governance
+
+The model supplies capability.
+The architecture supplies reliability.
+The evaluation loop supplies evidence.
+The governance layer supplies control.</code></pre>
+<h2 id="what-this-course-is-not">What This Course Is Not</h2>
+<p>This is not a prompt engineering checklist, a benchmark leaderboard, or a catalog of every AI library. It is an architecture course built from real repository structures. The expected output is better design judgment: knowing which layer owns which problem, which trade-off matters, and which production failure should be rehearsed before launch.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

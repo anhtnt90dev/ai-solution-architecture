@@ -10,10 +10,11 @@
 - Capstone and assessment starter material.
 - Share kit and social preview asset.
 - Client-side landing page search across major entry points.
+- Static HTML pages for course, toolkit, capstone, assessments, and repository deep dives.
 
 ## v0.2.0 - Expanded Interactive Learning Portal
 
-- Render more course pages as a navigable site with sidebar navigation.
+- Improve the static documentation site with richer sidebar context and previous/next navigation.
 - Add richer search across lessons, templates, projects, glossary, and repository deep dives.
 - Add visual screenshots, rendered diagram previews, and learning progress cues.
 - Add bilingual landing pages for the toolkit, capstone, and assessment pack.

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Answer Key | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../learn/en/index.html">English</a>
+        <a href="../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../templates/index.html">Toolkit</a>
+        <a href="../../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../learn/en/index.html">English course</a>
+      <a href="../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../learn/en/projects.html">Projects</a>
+      <a href="../../templates/index.html">Architecture toolkit</a>
+      <a href="../../capstone/index.html">Capstone</a>
+      <a href="../index.html">Assessments</a>
+      <a href="../../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/assessments/en/answer-key.md">View source</a>
+      <h1 id="answer-key">Answer Key</h1>
+<p>This answer key is not a single correct architecture. It defines what strong answers should include.</p>
+<h2 id="strong-answer-characteristics">Strong Answer Characteristics</h2>
+<ul>
+<li>Separates product workflow, agent/workflow control, model runtime, retrieval data plane, LLMOps/evaluation, and governance.</li>
+<li>Explains boundaries using operational ownership, not library preference.</li>
+<li>Makes decisions with measurable evidence.</li>
+<li>Includes failure modes and rollback.</li>
+<li>Treats tool calls and retrieval as security-sensitive surfaces.</li>
+</ul>
+<h2 id="expected-points">Expected Points</h2>
+<h3 id="layering">Layering</h3>
+<p>Strong answers identify at least six layers and avoid assigning all responsibility to the LLM. The runtime executes model calls; the retrieval layer owns data contracts and access control; the LLMOps layer owns traces, scores, datasets, and lineage.</p>
+<h3 id="runtime">Runtime</h3>
+<p>Strong decision matrices include latency, throughput, cost, data policy, model compatibility, streaming, observability, rollback, and operational burden. Hosted API may be acceptable for v1 if security/data policy allows it. vLLM is stronger for high-throughput self-hosted GPU serving. llama.cpp is stronger for local/edge/quantized constraints.</p>
+<h3 id="rag">RAG</h3>
+<p>Strong data contracts include document ID, chunk ID, source URI, owner, ACL/tenant metadata, embedding model/version, chunk order, retention/deletion policy, query filters, top-k, reranker policy, and citation format.</p>
+<h3 id="evaluation">Evaluation</h3>
+<p>Strong answers include traces for user input, retrieval spans, tool spans, model spans, final output, scores, feedback, cost, latency, prompt version, model version, and retrieval config. Promotion gates compare baseline vs candidate and include human review for high-risk cases.</p>
+<h3 id="security">Security</h3>
+<p>Strong answers include prompt injection, indirect injection from documents, over-permissioned tools, secret exposure in traces, provider data policy, model artifact trust, tenant isolation, and admin UI risk.</p>
+<h3 id="production-readiness">Production Readiness</h3>
+<p>Strong release checklists include ownership, capacity, health checks, alerts, rollback, incident runbook, data deletion, evaluation pass, security signoff, and audit logging.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

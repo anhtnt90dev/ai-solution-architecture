@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TruLens Architecture Notes | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/05-observability-evaluation-llmops/trulens/README.en.md">View source</a>
+      <h1 id="trulens-architecture-notes">TruLens Architecture Notes</h1>
+<h2 id="executive-summary">Executive summary</h2>
+<p>TruLens is a Python-first library and dashboard ecosystem for systematically tracing, evaluating, and comparing LLM applications. The README emphasizes fine-grained stack-agnostic instrumentation, OpenTelemetry-based tracing, feedback functions, RAG evaluation, agentic evaluations, batch and inline evaluation, MCP span support, and a Selector API. Unlike server-first platforms, TruLens is primarily embedded into the application or notebook that is being evaluated, then logs records, spans, feedback definitions, feedback results, datasets, and runs to a local or external database that the dashboard can read.</p>
+<p>The root <code>pyproject.toml</code> identifies <code>trulens</code> version <code>2.8.1</code>, Python <code>^3.10</code>, MIT license, and a modular package layout. The top-level package depends on <code>trulens-core</code>, <code>trulens-feedback</code>, <code>trulens-dashboard</code>, <code>trulens-otel-semconv</code>, and a deprecated compatibility package <code>trulens_eval</code>. Development groups reveal the real architecture: app integrations under <code>src/apps/</code>, providers under <code>src/providers/</code>, connectors under <code>src/connectors/</code>, core under <code>src/core/</code>, feedback under <code>src/feedback/</code>, dashboard under <code>src/dashboard/</code>, semantic conventions under <code>src/otel/semconv/</code>, and tests under <code>tests/</code>.</p>
+<h2 id="problem-solved">Problem solved</h2>
+<p>TruLens solves the &quot;is my LLM app actually good&quot; problem close to the developer workflow. It instruments application calls, captures records or OpenTelemetry spans, lets teams define feedback functions over selected parts of a trace, runs those feedbacks inline, deferred, or in batch, and provides a dashboard to compare app versions and records. This is especially useful for RAG and agent systems where answer quality depends on retrieval relevance, groundedness, tool behavior, reasoning consistency, safety, and cost.</p>
+<h2 id="ai-stack-role">AI stack role</h2>
+<p>TruLens is best understood as an evaluation and instrumentation SDK with an optional UI:</p>
+<ul>
+<li>It sits inside Python application code, notebooks, or evaluation jobs.</li>
+<li>It wraps frameworks such as LangChain, LangGraph, LlamaIndex, custom Python apps, and virtual/existing traces.</li>
+<li>It calls LLM providers to compute feedback through provider packages.</li>
+<li>It stores evaluation data in SQLite, SQLAlchemy-compatible databases, Postgres, or Snowflake-backed connectors.</li>
+<li>It can export or interoperate through OpenTelemetry semantic conventions.</li>
+<li>It complements server-first observability tools by giving developers a programmable evaluation layer.</li>
+</ul>
+<h2 id="source-tree-map">Source tree map</h2>
+<p>Repository evidence:</p>
+<ul>
+<li><code>README.md</code> introduces TruLens for systematic LLM experiment tracking and evaluation, OpenTelemetry-based tracing, agentic evaluators, inline/batch evaluation, MCP span support, and the Selector API.</li>
+<li><code>pyproject.toml</code> defines the aggregate <code>trulens</code> package and workspace dependency groups for apps, providers, connectors, dashboard, feedback, core, and Snowflake.</li>
+<li><code>src/core/trulens/core/session.py</code> defines <code>TruSession</code>, the main entry point for logging app prompts/outputs/metadata, feedback functions, and dashboards. It defaults to <code>default.sqlite</code> but accepts a SQLAlchemy-compatible <code>database_url</code> through connectors.</li>
+<li><code>src/core/trulens/core/app.py</code> defines the base <code>App</code> recorder, app metadata, feedbacks, instrumented methods, recording contexts, pending feedback queues, and run support.</li>
+<li><code>src/core/trulens/core/instruments.py</code> and <code>src/core/trulens/core/otel/instrument.py</code> implement instrumentation callbacks and the OpenTelemetry <code>instrument</code> decorator.</li>
+<li><code>src/core/trulens/core/schema/</code> defines app, record, feedback, event, dataset, groundtruth, and selection schemas.</li>
+<li><code>src/core/trulens/core/database/</code> contains database abstractions, SQLAlchemy implementation, ORM definitions, and Alembic migrations for records, events, ground truth, app versions, and runs.</li>
+<li><code>src/core/trulens/core/feedback/</code> and <code>src/core/trulens/core/metric/</code> define <code>Feedback</code>, <code>Metric</code>, selectors, providers, and endpoint abstractions.</li>
+<li><code>src/feedback/trulens/feedback/computer.py</code> computes feedback by selecting inputs from span/record graphs, running feedback functions, tracking provider costs, and recording feedback computation spans.</li>
+<li><code>src/feedback/trulens/feedback/templates/</code> contains safety, RAG, quality, and agent prompt templates.</li>
+<li><code>src/apps/langchain/</code>, <code>src/apps/langgraph/</code>, <code>src/apps/llamaindex/</code>, <code>src/apps/gepa/</code>, and <code>src/core/trulens/apps/</code> provide framework-specific and generic wrappers such as <code>TruChain</code>, <code>TruLlama</code>, <code>TruBasicApp</code>, <code>TruApp</code>, and <code>TruVirtual</code>.</li>
+<li><code>src/providers/</code> contains provider packages for OpenAI, LiteLLM, Google, Bedrock, Cortex, Hugging Face, and LangChain.</li>
+<li><code>src/connectors/snowflake/</code> provides Snowflake connector, Snowflake event table support, server-side evaluation artifacts, and Streamlit-in-Snowflake dashboard artifacts.</li>
+<li><code>src/dashboard/</code> defines <code>trulens-dashboard</code>, based on Streamlit, Plotly, pandas, and Jupyter dependencies.</li>
+<li><code>docs/blog/posts/trulens_otel.md</code> and release posts document the OpenTelemetry direction, Postgres support, dashboard updates, and Run API improvements.</li>
+<li><code>tests/</code> contains unit, integration, e2e, legacy, load, util, and docs notebook tests.</li>
+</ul>
+<h2 id="core-concepts">Core concepts</h2>
+<ul>
+<li><strong>TruSession</strong>: singleton-style entry point that owns the database connector, feedback evaluator lifecycle, dashboard process, and optional OpenTelemetry exporter.</li>
+<li><strong>App recorder</strong>: wrapper around a target app that instruments calls and records behavior.</li>
+<li><strong>Record</strong>: captured application invocation, historically stored as a structured record and increasingly represented through OTEL spans/events.</li>
+<li><strong>Span</strong>: OpenTelemetry unit of work with TruLens semantic attributes for app, record, input, output, retrieval, tool, MCP, and feedback computation.</li>
+<li><strong>Feedback or Metric</strong>: evaluator function with selectors that extract inputs from records/spans and produce a score or score plus metadata.</li>
+<li><strong>Selector</strong>: declarative mapping from record/span attributes to feedback function arguments.</li>
+<li><strong>Provider</strong>: LLM or embedding backend used to compute feedback.</li>
+<li><strong>Run API</strong>: batch evaluation path over datasets or tables with separate invocation and metric worker concurrency.</li>
+<li><strong>Dashboard</strong>: Streamlit UI for comparing apps, records, traces, and feedback scores.</li>
+</ul>
+<h2 id="internal-architecture">Internal architecture</h2>
+<div class="mermaid">graph TB
+  App[User LLM app] --&gt; Wrapper[TruApp, TruChain, TruLlama, TruBasicApp, TruVirtual]
+  Wrapper --&gt; Instrument[Instrumentation callbacks and OTEL decorator]
+  Instrument --&gt; Session[TruSession]
+  Session --&gt; DBConnector[DBConnector]
+  DBConnector --&gt; DB[(SQLite, Postgres, Snowflake, SQLAlchemy DB)]
+  Wrapper --&gt; FeedbackQueue[Inline or deferred feedback queue]
+  FeedbackQueue --&gt; Computer[feedback.computer]
+  Computer --&gt; Selectors[Selector and Metric inputs]
+  Computer --&gt; Providers[OpenAI, LiteLLM, Bedrock, Cortex, Google, HF]
+  Computer --&gt; DBConnector
+  Session --&gt; Dashboard[Streamlit dashboard]
+  Session --&gt; OTel[Optional OTEL exporter]</div>
+<p>The architecture is library-first. <code>TruSession</code> is the process-level coordinator, not a remote server. <code>App</code> in <code>src/core/trulens/core/app.py</code> wraps the target app, attaches instrumentation, manages context variables for recording, tracks pending feedback results, and can connect to run-level DAO support. Framework packages subclass or adapt this base for LangChain, LangGraph, LlamaIndex, basic functions, custom objects, virtual traces, and GEPA optimization workflows.</p>
+<p>Feedback computation is separate from recording. <code>src/feedback/trulens/feedback/computer.py</code> builds record graphs from events, maps <code>record_id</code> to roots, uses selectors to produce feedback inputs, validates ambiguity, calls feedback functions, tracks provider costs, and records evaluation spans through <code>OtelFeedbackComputationRecordingContext</code>. This separation lets TruLens run feedback inline with the app, in a background/deferred evaluator, or in offline batch runs.</p>
+<h2 id="runtime-and-data-flow">Runtime and data flow</h2>
+<div class="mermaid">sequenceDiagram
+  participant User as Developer or eval job
+  participant App as LLM app
+  participant Tru as TruLens wrapper
+  participant DB as Database connector
+  participant Provider as LLM provider
+  participant Dash as Dashboard
+
+  User-&gt;&gt;Tru: Create TruSession and wrapped app
+  User-&gt;&gt;Tru: Define Feedback or Metric with Selectors
+  User-&gt;&gt;App: Invoke application
+  App-&gt;&gt;Tru: Instrumented calls produce records or spans
+  Tru-&gt;&gt;DB: Persist app, record, event, run metadata
+  Tru-&gt;&gt;Provider: Run feedback function when needed
+  Provider--&gt;&gt;Tru: Return score and metadata
+  Tru-&gt;&gt;DB: Persist feedback result and cost metadata
+  Dash-&gt;&gt;DB: Read apps, records, traces, feedbacks</div>
+<p>The common local workflow starts with <code>TruSession</code>, a framework wrapper, and one or more feedbacks. During app invocation, instrumentation captures the main method and selected internal calls. Feedbacks may run immediately, in the app thread, deferred by evaluator threads/processes, or later via batch run configuration. The dashboard reads from the same database; it does not require an external collector service.</p>
+<h2 id="deployment-and-operations-topology">Deployment and operations topology</h2>
+<div class="mermaid">graph LR
+  subgraph Runtime
+    Notebook[Jupyter or script]
+    Service[Instrumented Python service]
+    Batch[Offline eval job]
+  end
+  subgraph TruLens
+    Core[trulens-core]
+    Feedback[trulens-feedback]
+    Providers[provider packages]
+    Dashboard[trulens-dashboard Streamlit]
+  end
+  subgraph Storage
+    SQLite[(default.sqlite)]
+    Postgres[(PostgreSQL)]
+    Snowflake[(Snowflake event tables)]
+  end
+  subgraph External
+    LLM[LLM providers]
+    OTLP[OTLP backend]
+  end
+  Notebook --&gt; Core
+  Service --&gt; Core
+  Batch --&gt; Core
+  Core --&gt; Feedback
+  Feedback --&gt; Providers
+  Providers --&gt; LLM
+  Core --&gt; SQLite
+  Core --&gt; Postgres
+  Core --&gt; Snowflake
+  Dashboard --&gt; SQLite
+  Dashboard --&gt; Postgres
+  Dashboard --&gt; Snowflake
+  Core --&gt; OTLP</div>
+<p>TruLens deployment is usually packaging and database selection, not standing up a central web service. Local and notebook workflows can use <code>default.sqlite</code>. Shared teams can use a SQLAlchemy URL, Postgres, or Snowflake connectors. The dashboard is a Streamlit process started from a session or imported through <code>trulens.dashboard.run</code>. Snowflake deployments can use connector artifacts for server-side evaluation and Streamlit-in-Snowflake paths, although some SiS dashboard setup paths are marked deprecated in the connector code and release notes.</p>
+<h2 id="lifecycle-and-module-dependency-diagram">Lifecycle and module dependency diagram</h2>
+<div class="mermaid">stateDiagram-v2
+  [*] --&gt; WrapApp
+  WrapApp --&gt; InstrumentCalls
+  InstrumentCalls --&gt; CaptureRecord
+  CaptureRecord --&gt; SelectFeedbackInputs
+  SelectFeedbackInputs --&gt; ComputeFeedback
+  ComputeFeedback --&gt; PersistResults
+  PersistResults --&gt; CompareDashboard
+  CompareDashboard --&gt; ReviseApp
+  ReviseApp --&gt; WrapApp
+  PersistResults --&gt; BatchRun
+  BatchRun --&gt; ComputeFeedback</div>
+<p>This lifecycle maps directly to modules. App wrapping lives in <code>src/core/trulens/core/app.py</code> and <code>src/apps/</code>. Instrumentation lives in <code>src/core/trulens/core/instruments.py</code> and <code>src/core/trulens/core/otel/instrument.py</code>. Persistence lives in <code>src/core/trulens/core/database/</code> and connectors. Feedback selection and computation live in <code>src/core/trulens/core/feedback/</code>, <code>src/core/trulens/core/metric/</code>, and <code>src/feedback/trulens/feedback/computer.py</code>. Visualization lives in <code>src/dashboard/</code>.</p>
+<h2 id="extension-points">Extension points</h2>
+<ul>
+<li>Add a new app integration under <code>src/apps/&lt;framework&gt;/</code>, usually adapting the base <code>App</code> recorder.</li>
+<li>Add a custom app by using <code>TruApp</code> or method-level <code>@instrument</code> instead of writing a package.</li>
+<li>Add a new feedback metric by implementing a <code>Metric</code> or <code>Feedback</code> with selectors.</li>
+<li>Add prompt templates under <code>src/feedback/trulens/feedback/templates/</code>.</li>
+<li>Add provider support under <code>src/providers/&lt;provider&gt;/</code> with provider and endpoint implementations.</li>
+<li>Add database or warehouse integration under <code>src/connectors/</code>.</li>
+<li>Add OTEL semantic attributes in <code>src/otel/semconv/</code> when introducing new span concepts.</li>
+<li>Add dashboard behavior in <code>src/dashboard/trulens/dashboard/</code> when the UI needs new views.</li>
+</ul>
+<h2 id="integrations">Integrations</h2>
+<p>TruLens integrates with LangChain, LangGraph, LlamaIndex, custom Python apps, virtual traces, GEPA optimization, OpenAI/Azure OpenAI, LiteLLM, Google Gemini, Bedrock, Snowflake Cortex, Hugging Face, LangChain models, Snowflake connectors, MCP span semantics, and OpenTelemetry-compatible tracing backends. The deprecated <code>trulens_eval</code> package remains as a compatibility bridge while newer imports live under <code>trulens.core</code>, <code>trulens.feedback</code>, <code>trulens.dashboard</code>, <code>trulens.apps</code>, <code>trulens.providers</code>, and <code>trulens.connectors</code>.</p>
+<h2 id="configuration-deployment-and-operations">Configuration, deployment, and operations</h2>
+<p>Important configuration choices:</p>
+<ul>
+<li>Database connector: default SQLite, SQLAlchemy URL, Postgres, or Snowflake connector.</li>
+<li>Feedback mode: inline, app-thread, deferred, or batch.</li>
+<li>Provider credentials: OpenAI, LiteLLM, Bedrock, Cortex, Google, Hugging Face, or LangChain providers.</li>
+<li>OpenTelemetry: enabled by default in current docs/blog guidance, with environment controls such as <code>TRULENS_OTEL_TRACING</code> mentioned in documentation.</li>
+<li>Dashboard: local Streamlit process, notebook display, or Snowflake-oriented deployment.</li>
+<li>Concurrency: Run API options such as invocation and metric worker counts, plus deferred evaluator retry intervals from <code>TruSession</code>.</li>
+</ul>
+<p>Operations are mostly application operations: make sure instrumentation does not add unacceptable latency, feedback calls respect provider rate limits and cost budgets, database migrations run before dashboard reads, and evaluation jobs are reproducible by app version, prompt version, dataset, and metric version.</p>
+<h2 id="observability-testing-evaluation-and-failure-modes">Observability, testing, evaluation, and failure modes</h2>
+<p>TruLens tests are organized under <code>tests/docs_notebooks</code>, <code>tests/e2e</code>, <code>tests/integration</code>, <code>tests/unit</code>, <code>tests/load</code>, <code>tests/legacy</code>, and utility folders. The root <code>pyproject.toml</code> configures pytest markers for required-only, optional, Snowflake, and Hugging Face tests. The repository also includes <code>docker/test-database.yaml</code> for database testing with Postgres and MySQL.</p>
+<p>Failure modes:</p>
+<ul>
+<li><strong>Missed instrumentation</strong>: if the main method or nested framework calls are not wrapped, records appear incomplete.</li>
+<li><strong>Selector ambiguity</strong>: selectors can match multiple spans or no spans, producing ambiguous feedback inputs.</li>
+<li><strong>Provider instability</strong>: LLM judge calls can fail, rate limit, drift, or become expensive.</li>
+<li><strong>Deferred evaluator stalls</strong>: <code>TruSession</code> includes retry intervals for running or failed feedback jobs because background work can stall.</li>
+<li><strong>Database mismatch</strong>: dashboard and evaluator code require schema migrations compatible with the package version.</li>
+<li><strong>Dashboard performance</strong>: large record tables can require query limits, aggregation, and database tuning.</li>
+<li><strong>OTEL transition complexity</strong>: old record-based and newer span/event-based paths can coexist during migration.</li>
+</ul>
+<h2 id="security-and-governance-risks">Security and governance risks</h2>
+<p>TruLens often sees raw prompts, retrieved context, tool arguments, model outputs, user identifiers, and evaluator reasoning. Feedback functions may send selected parts of that data to external LLM providers. Teams should review selectors carefully, redact sensitive fields, control provider credentials, restrict dashboard access, set database retention, and keep Snowflake/Postgres credentials least-privilege.</p>
+<p>Governance should treat feedback definitions as versioned evaluation policy. A groundedness score from one provider, model, or prompt template is not automatically comparable to another. Dataset specifications, app versions, prompt versions, and metric definitions should be logged together.</p>
+<h2 id="reading-guide">Reading guide</h2>
+<ol>
+<li>Read <code>README.md</code> for the product workflow and quick examples.</li>
+<li>Read <code>pyproject.toml</code> to understand the modular package layout.</li>
+<li>Read <code>src/core/trulens/core/session.py</code> for <code>TruSession</code>.</li>
+<li>Read <code>src/core/trulens/core/app.py</code> for app recording behavior.</li>
+<li>Read <code>src/core/trulens/core/otel/instrument.py</code> for OpenTelemetry instrumentation.</li>
+<li>Read <code>src/core/trulens/core/schema/</code> and <code>src/core/trulens/core/database/</code> for persistence.</li>
+<li>Read <code>src/feedback/trulens/feedback/computer.py</code> and templates for feedback execution.</li>
+<li>Read one framework package under <code>src/apps/</code> and one provider package under <code>src/providers/</code>.</li>
+<li>Read <code>src/dashboard/</code> and docs/blog posts for dashboard and operational direction.</li>
+</ol>
+<h2 id="learning-path">Learning path</h2>
+<ol>
+<li>Wrap a simple function with <code>TruBasicApp</code> or <code>@instrument</code>.</li>
+<li>Add one feedback metric with a simple selector.</li>
+<li>Move to a RAG triad feedback set: context relevance, groundedness, answer relevance.</li>
+<li>Run the dashboard against local SQLite.</li>
+<li>Try a framework wrapper such as LangChain or LlamaIndex.</li>
+<li>Move storage to Postgres or Snowflake for shared evaluation.</li>
+<li>Add batch runs and concurrency controls for regression testing.</li>
+</ol>
+<h2 id="glossary">Glossary</h2>
+<ul>
+<li><strong>Feedback function</strong>: evaluator callable that returns a score or score plus metadata.</li>
+<li><strong>Selector</strong>: expression that chooses record/span fields for evaluator inputs.</li>
+<li><strong>RAG Triad</strong>: context relevance, groundedness, and answer relevance evaluation pattern.</li>
+<li><strong>TruSession</strong>: coordinator for database, dashboard, feedback evaluator, and OTEL exporter.</li>
+<li><strong>TruApp</strong>: generic wrapper for custom apps.</li>
+<li><strong>TruVirtual</strong>: wrapper for existing captured data without a live app object.</li>
+<li><strong>OTEL semantic conventions</strong>: attribute names and span types used for interoperable telemetry.</li>
+<li><strong>Deferred feedback</strong>: evaluation mode where feedback work happens after the app call.</li>
+</ul>
+<h2 id="repository-grounded-deep-dive">Repository-Grounded Deep Dive</h2>
+<p>TruLens is a feedback-computation and instrumentation framework more than a centralized trace warehouse. The repository expresses this through packages under <code>github-repos/05-observability-evaluation-llmops/trulens/src/core/</code>, <code>src/feedback/</code>, <code>src/providers/</code>, <code>src/dashboard/</code>, <code>src/connectors/</code>, and <code>src/otel/semconv/</code>. The core package contains app wrappers, sessions, database abstractions, selectors, schema objects, and instrumentation. The feedback package contains evaluator prompts, output schemas, LLM provider abstractions, RAG/quality/safety templates, and feedback computers. Provider packages integrate model APIs, while connectors and dashboard code make results visible and shareable.</p>
+<div class="mermaid">flowchart LR
+  App[&quot;User LLM or RAG app&quot;] --&gt; Wrapper[&quot;TruApp wrappers src/core/trulens/apps&quot;]
+  Wrapper --&gt; Instr[&quot;instrumentation src/core/trulens/core/instruments.py&quot;]
+  Instr --&gt; Record[&quot;records and spans core schema&quot;]
+  Record --&gt; DB[&quot;database layer src/core/trulens/core/database&quot;]
+  Record --&gt; Feedback[&quot;feedback definitions and selectors&quot;]
+  Feedback --&gt; Providers[&quot;providers openai, cortex, google, langchain&quot;]
+  Providers --&gt; Scores[&quot;feedback results&quot;]
+  Scores --&gt; DB
+  DB --&gt; Dashboard[&quot;dashboard and React record viewers&quot;]
+  DB --&gt; Connectors[&quot;Snowflake and other connectors&quot;]</div>
+<p>The key design issue is that feedback functions have their own runtime behavior. A feedback can be synchronous, deferred, batched, LLM-backed, embedding-backed, or ground-truth-backed. It may select context chunks, generated answers, tool outputs, or full records. That makes selector correctness and evaluator cost as important as trace capture. The relevant files are <code>src/core/trulens/core/feedback/selector.py</code>, <code>src/core/trulens/core/feedback/feedback.py</code>, <code>src/feedback/trulens/feedback/templates/rag.py</code>, <code>src/feedback/trulens/feedback/llm_provider.py</code>, and <code>src/feedback/trulens/feedback/groundtruth.py</code>.</p>
+<div class="mermaid">stateDiagram-v2
+  [*] --&gt; Instrumented
+  Instrumented --&gt; Recorded: app call captured
+  Recorded --&gt; Selected: selector extracts inputs
+  Selected --&gt; Evaluating: feedback function runs
+  Evaluating --&gt; Persisted: score and metadata stored
+  Evaluating --&gt; Failed: provider or parser error
+  Failed --&gt; Retried: retry or deferred worker
+  Retried --&gt; Persisted
+  Persisted --&gt; Dashboarded: leaderboard or record viewer</div>
+<div class="mermaid">flowchart TD
+  Risk[&quot;Production risk&quot;] --&gt; Selector[&quot;selector drift&quot;]
+  Risk --&gt; Provider[&quot;LLM provider dependency&quot;]
+  Risk --&gt; DB[&quot;database migration or connector&quot;]
+  Risk --&gt; Cost[&quot;batch evaluation cost&quot;]
+  Risk --&gt; Privacy[&quot;captured prompt/context data&quot;]
+  Risk --&gt; Concurrency[&quot;deferred feedback concurrency&quot;]
+  Selector --&gt; S1[&quot;scores computed on wrong field&quot;]
+  Provider --&gt; P1[&quot;judge prompt or model changes score&quot;]
+  DB --&gt; D1[&quot;dashboard cannot compare records&quot;]
+  Cost --&gt; C1[&quot;regression job exceeds budget&quot;]
+  Privacy --&gt; R1[&quot;records include sensitive retrieval context&quot;]
+  Concurrency --&gt; F1[&quot;feedback backlog delays release gate&quot;]</div>
+<h3 id="production-readiness-checklist">Production Readiness Checklist</h3>
+<ul>
+<li>Version feedback definitions, selectors, evaluator prompts, provider model names, and output schemas together. A score is only meaningful if all of these are stable.</li>
+<li>Test selectors against real records, including missing context, streaming outputs, tool calls, and multi-step agent traces.</li>
+<li>Put cost and concurrency limits around LLM-backed feedback, especially batch and deferred evaluations.</li>
+<li>Choose storage deliberately: local SQLite is useful for development, while Postgres or Snowflake-backed workflows need migration and access-control review.</li>
+<li>Review <code>src/otel/semconv/</code> and experimental OTEL tracing before integrating TruLens with a broader observability platform.</li>
+<li>Include dashboard and connector behavior in validation. A feedback result that persists but cannot be compared in the dashboard is not operationally useful.</li>
+<li>Use <code>tests/e2e/</code>, <code>tests/integration/</code>, and examples under <code>examples/quickstart/</code> and <code>examples/experimental/</code> as scenario coverage references.</li>
+</ul>
+<h3 id="senior-architect-reading-path">Senior Architect Reading Path</h3>
+<p>Start in <code>src/core/trulens/apps/</code> and <code>src/core/trulens/core/instruments.py</code> to understand capture. Move to <code>src/core/trulens/core/schema/</code> and <code>src/core/trulens/core/database/</code> for persisted objects. Then read <code>src/core/trulens/core/feedback/</code> and <code>src/feedback/trulens/feedback/</code> for evaluator definition and execution. After that, inspect <code>src/providers/</code>, <code>src/connectors/snowflake/</code>, <code>src/dashboard/</code>, and <code>src/otel/semconv/</code> to understand production integration surfaces.</p>
+<h3 id="operational-scenarios-to-rehearse">Operational Scenarios to Rehearse</h3>
+<p>Rehearse TruLens by proving score meaning, not only score creation. Capture a RAG call, inspect the record tree, and manually confirm selectors pick the intended context and answer fields. Run the same feedback set with a changed judge model or prompt and compare distributions before accepting the new evaluator version. Finally, run deferred feedback with provider throttling and verify backlog, retry behavior, persisted metadata, dashboard comparison, and release-gate decisions.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenAI Agents Python Architecture | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/01-ai-app-agent-architecture/openai-agents-python/README.en.md">View source</a>
+      <h1 id="openai-agents-python-architecture">OpenAI Agents Python Architecture</h1>
+<h2 id="executive-summary">Executive Summary</h2>
+<p><code>openai-agents-python</code> is a Python SDK for building agentic and multi-agent workflows. The repository is organized around a small public API in <code>src/agents</code> and a larger set of runtime subsystems for model calls, tool execution, handoffs, sessions, guardrails, tracing, realtime/voice, MCP, and sandboxed long-running work. The local <code>README.md</code> positions it as a lightweight but powerful framework that supports the OpenAI Responses API, Chat Completions API, and non-OpenAI models through optional provider adapters.</p>
+<p>The package metadata in <code>pyproject.toml</code> identifies the distribution as <code>openai-agents</code> version <code>0.17.4</code>, requiring Python <code>&gt;=3.10</code>. Core dependencies include <code>openai</code>, <code>pydantic</code>, <code>griffelib</code>, <code>requests</code>, <code>websockets</code>, and <code>mcp</code>; optional dependency groups add voice, realtime, LiteLLM, any-llm, SQLAlchemy, encryption, Redis, Dapr, MongoDB, Docker, and several sandbox providers.</p>
+<h2 id="problem-solved">Problem Solved</h2>
+<p>The SDK solves the problem of turning model calls into governed workflows. A typical AI application needs prompt management, structured outputs, tool schemas, model-provider selection, retries, streaming, memory, safety checks, and operational traces. This repository packages those concerns into an agent runtime where an <code>Agent</code> defines instructions, tools, guardrails, handoffs, and output type, while <code>Runner</code> and <code>AgentRunner</code> coordinate the turn loop.</p>
+<h2 id="ai-stack-role">AI Stack Role</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Layer</th><th>Repository role</th><th>Grounding in repo</th></tr></thead>
+<tbody>
+<tr><td>Application orchestration</td><td>Agent loop, handoffs, nested agents, sandbox agents</td><td><code>src/agents/agent.py</code>, <code>src/agents/run.py</code>, <code>src/agents/sandbox/</code></td></tr>
+<tr><td>Model abstraction</td><td>OpenAI Responses, Chat Completions, multi-provider model interface</td><td><code>src/agents/models/interface.py</code>, <code>openai_responses.py</code>, <code>openai_chatcompletions.py</code>, <code>multi_provider.py</code></td></tr>
+<tr><td>Tooling</td><td>Function tools, hosted tools, shell/apply-patch tools, MCP, computer use</td><td><code>src/agents/tool.py</code>, <code>src/agents/mcp/</code>, <code>docs/tools.md</code></td></tr>
+<tr><td>Governance</td><td>Input/output/tool guardrails, approval flows, sensitive trace controls</td><td><code>src/agents/guardrail.py</code>, <code>src/agents/tool_guardrails.py</code>, <code>docs/guardrails.md</code></td></tr>
+<tr><td>Operations</td><td>Tracing, usage, retry, sessions, streaming, sandbox runtime</td><td><code>src/agents/tracing/</code>, <code>usage.py</code>, <code>retry.py</code>, <code>memory/</code>, <code>run_internal/</code></td></tr>
+</tbody></table></div>
+<h2 id="source-tree-map">Source Tree Map</h2>
+<pre><code class="language-text">openai-agents-python/
+  README.md                    # product overview and quickstart
+  pyproject.toml               # package metadata, extras, test/lint/type config
+  mkdocs.yml                   # docs site configuration
+  docs/                        # user guides for agents, running, tools, MCP, tracing
+  examples/
+    basic/                     # hello world, streaming, media, retry examples
+    agent_patterns/            # routing, guardrails, HITL, agents-as-tools
+    memory/                    # SQLite, SQLAlchemy, Redis, MongoDB, Dapr sessions
+    mcp/                       # stdio, SSE, streamable HTTP MCP examples
+    tools/                     # hosted tools, shell, codex, apply_patch examples
+    voice/                     # static and streamed voice examples
+  src/agents/
+    agent.py                   # Agent, AgentBase, tool aggregation, agent-as-tool helpers
+    run.py                     # Runner facade and AgentRunner implementation
+    run_internal/              # turn loop, model retry, tool execution, streaming
+    models/                    # model/provider abstractions and OpenAI adapters
+    tool.py                    # function tools, hosted tools, shell, MCP, approvals
+    guardrail.py               # input/output guardrails and tripwire decorators
+    memory/                    # session interfaces and built-in session implementations
+    mcp/                       # MCP server manager, server transports, tool conversion
+    sandbox/                   # filesystem/runtime sandbox agent support
+    realtime/                  # realtime agents and sessions
+    voice/                     # speech pipeline, STT/TTS model providers
+    tracing/                   # trace/span providers and processors
+  tests/                       # unit and behavior tests</code></pre>
+<h2 id="component-diagram">Component Diagram</h2>
+<div class="mermaid">flowchart TB
+  App[Application code] --&gt; Runner[Runner / AgentRunner&lt;br/&gt;src/agents/run.py]
+  Runner --&gt; Agent[Agent&lt;br/&gt;src/agents/agent.py]
+  Agent --&gt; Tools[Tools&lt;br/&gt;src/agents/tool.py]
+  Agent --&gt; Guardrails[Guardrails&lt;br/&gt;src/agents/guardrail.py]
+  Agent --&gt; Handoffs[Handoffs&lt;br/&gt;src/agents/handoffs/]
+  Runner --&gt; RunInternal[Run internals&lt;br/&gt;turn_preparation, run_loop, turn_resolution]
+  RunInternal --&gt; Models[Model interface/provider&lt;br/&gt;src/agents/models/]
+  RunInternal --&gt; Sessions[Sessions&lt;br/&gt;src/agents/memory/]
+  RunInternal --&gt; Tracing[Tracing&lt;br/&gt;src/agents/tracing/]
+  Tools --&gt; MCP[MCP servers&lt;br/&gt;src/agents/mcp/]
+  Tools --&gt; Hosted[Hosted tools&lt;br/&gt;file search, web search, code interpreter]
+  Tools --&gt; Sandbox[Sandbox runtime&lt;br/&gt;src/agents/sandbox/]
+  Models --&gt; OpenAI[OpenAI APIs]
+  Models --&gt; Other[LiteLLM / any-llm providers]</div>
+<h2 id="core-concepts">Core Concepts</h2>
+<ul>
+<li><code>Agent</code>: the unit of behavior. <code>src/agents/agent.py</code> defines <code>AgentBase</code> and <code>Agent</code>, including name, instructions, tools, MCP servers, handoffs, guardrails, lifecycle hooks, output type, and model settings.</li>
+<li><code>Runner</code>: the public execution facade. <code>src/agents/run.py</code> exposes <code>Runner.run</code>, <code>Runner.run_sync</code>, and streaming variants. The method docstring describes the loop: call the agent, stop on final output, hand off when requested, otherwise execute tools and run again.</li>
+<li><code>RunConfig</code>: global run settings in <code>src/agents/run_config.py</code>, including model provider overrides, tracing controls, tool execution policy, sandbox settings, and limits.</li>
+<li><code>Model</code> and <code>ModelProvider</code>: abstract model boundaries in <code>src/agents/models/interface.py</code>. OpenAI-specific implementations live beside provider adapters.</li>
+<li><code>Tool</code>: a broad union in <code>src/agents/tool.py</code> covering function tools, file search, web search, computer use, MCP, code interpreter, image generation, local shell, hosted shell, apply-patch, custom tools, and tool search.</li>
+<li><code>Guardrail</code>: input and output tripwire functions in <code>src/agents/guardrail.py</code>; tool guardrails are separated in <code>src/agents/tool_guardrails.py</code>.</li>
+<li><code>Session</code>: conversation history abstraction under <code>src/agents/memory/</code>, with examples for SQLite, OpenAI conversation state, compaction, Redis, SQLAlchemy, MongoDB, Dapr, and encrypted sessions.</li>
+<li><code>SandboxAgent</code>: a preconfigured long-horizon worker architecture under <code>src/agents/sandbox/</code>, surfaced in the <code>README.md</code> quickstart and examples.</li>
+</ul>
+<h2 id="internal-architecture">Internal Architecture</h2>
+<p>The public runtime starts in <code>Runner</code>, but the implementation is deliberately decomposed in <code>src/agents/run_internal/</code>. <code>turn_preparation.py</code> resolves model, tools, handoffs, output schema, and model input filters. <code>run_loop.py</code> exposes the coordination helpers that <code>run.py</code> imports. <code>turn_resolution.py</code> interprets model responses into final outputs, tool runs, handoffs, interruptions, or another turn. <code>tool_execution.py</code> executes function tools, computer actions, local shell calls, hosted shell calls, apply-patch calls, and computer tools. <code>session_persistence.py</code> prepares input from session history and saves run results back.</p>
+<p>The SDK uses strong schemas throughout. <code>function_schema.py</code>, <code>strict_schema.py</code>, <code>agent_output.py</code>, and Pydantic-based tool definitions are used to validate tool inputs and structured outputs. The runtime raises domain errors such as max-turn, guardrail tripwire, model behavior, and tool timeout errors rather than leaving all failure handling to application code.</p>
+<h2 id="runtime-and-data-flow">Runtime and Data Flow</h2>
+<div class="mermaid">sequenceDiagram
+  participant U as User/App
+  participant R as Runner
+  participant A as Agent
+  participant G as Guardrails
+  participant M as ModelProvider
+  participant T as Tools/MCP
+  participant S as Session/Trace
+
+  U-&gt;&gt;R: input, context, RunConfig, optional Session
+  R-&gt;&gt;S: prepare prior conversation and start trace
+  R-&gt;&gt;G: run input guardrails on first agent
+  R-&gt;&gt;A: resolve instructions, tools, handoffs, output schema
+  A-&gt;&gt;M: model call with messages and tool schemas
+  M--&gt;&gt;A: response, tool calls, handoff, or final output
+  alt tool calls
+    A-&gt;&gt;T: execute tool calls and approvals
+    T--&gt;&gt;A: tool results
+    A-&gt;&gt;M: next model turn with tool results
+  else handoff
+    A--&gt;&gt;R: switch active agent
+  else final output
+    A--&gt;&gt;R: validated output
+  end
+  R-&gt;&gt;G: run output guardrails
+  R-&gt;&gt;S: persist items, usage, spans
+  R--&gt;&gt;U: RunResult or RunResultStreaming</div>
+<h2 id="extension-points">Extension Points</h2>
+<ul>
+<li>Add a function tool with <code>function_tool</code> in <code>src/agents/tool.py</code>; the SDK builds JSON schemas from Python signatures and docstrings.</li>
+<li>Implement a custom <code>Model</code> or <code>ModelProvider</code> using <code>src/agents/models/interface.py</code>, or use optional LiteLLM and any-llm adapters in <code>src/agents/extensions/models/</code>.</li>
+<li>Add lifecycle behavior with <code>RunHooksBase</code> and <code>AgentHooksBase</code> in <code>src/agents/lifecycle.py</code>.</li>
+<li>Add MCP servers through <code>src/agents/mcp/server.py</code> and <code>MCPServerManager</code> in <code>src/agents/mcp/manager.py</code>.</li>
+<li>Customize session storage by implementing <code>src/agents/memory/session.py</code>.</li>
+<li>Add tracing processors via <code>src/agents/tracing/processor_interface.py</code> and <code>processors.py</code>.</li>
+<li>Extend sandbox capability and provider behavior under <code>src/agents/sandbox/capabilities/</code>, <code>src/agents/sandbox/sandboxes/</code>, and <code>src/agents/extensions/sandbox/</code>.</li>
+</ul>
+<h2 id="integrations">Integrations</h2>
+<p>The <code>pyproject.toml</code> optional extras show the intended integration surface: <code>voice</code>, <code>realtime</code>, <code>litellm</code>, <code>any-llm</code>, <code>sqlalchemy</code>, <code>encrypt</code>, <code>redis</code>, <code>dapr</code>, <code>mongodb</code>, <code>docker</code>, <code>blaxel</code>, <code>daytona</code>, <code>cloudflare</code>, <code>e2b</code>, <code>modal</code>, <code>runloop</code>, <code>vercel</code>, <code>s3</code>, and <code>temporal</code>. The examples directory gives concrete patterns for MCP transports, memory providers, shell and hosted tools, human-in-the-loop, and voice.</p>
+<h2 id="deployment-and-operations-topology">Deployment and Operations Topology</h2>
+<div class="mermaid">flowchart LR
+  subgraph Runtime[&quot;App runtime&quot;]
+    API[FastAPI / service / worker]
+    SDK[openai-agents SDK]
+    LocalTools[Local function tools]
+  end
+  subgraph External[&quot;External services&quot;]
+    OAI[OpenAI Responses / Chat Completions]
+    MCP[MCP servers]
+    DB[(Session store&lt;br/&gt;SQLite/Redis/SQLAlchemy/MongoDB/Dapr)]
+    Trace[OpenAI tracing or custom processors]
+    Sandbox[Sandbox provider&lt;br/&gt;local/Docker/E2B/Modal/etc.]
+  end
+  API --&gt; SDK
+  SDK --&gt; OAI
+  SDK --&gt; LocalTools
+  SDK --&gt; MCP
+  SDK --&gt; DB
+  SDK --&gt; Trace
+  SDK --&gt; Sandbox</div>
+<p>Operationally, treat the SDK as an application library, not as a standalone server. Deploy it inside API services, background workers, notebooks, CLIs, or durable workflow systems. For production systems, pin optional extras deliberately, keep tool-side effects behind approvals, export traces only with sensitive-data policy reviewed, and isolate sandbox execution from the main application process.</p>
+<h2 id="observability-testing-evaluation-and-failure-modes">Observability, Testing, Evaluation, and Failure Modes</h2>
+<p>Tracing is a first-class subsystem under <code>src/agents/tracing/</code>. <code>docs/tracing.md</code> covers traces, spans, default tracing, custom processors, sensitive data, and integrations for non-OpenAI models. Usage accounting is represented in <code>src/agents/usage.py</code> and attached to run results and spans by the runner internals.</p>
+<p>The repository uses <code>pytest</code>, <code>pytest-asyncio</code>, <code>pytest-xdist</code>, <code>coverage</code>, <code>ruff</code>, <code>mypy</code>, and <code>pyright</code> as declared in <code>pyproject.toml</code>. Examples under <code>examples/agent_patterns/</code> act as executable design references for guardrails, routing, deterministic flows, human-in-the-loop, and nested agents.</p>
+<p>Key failure modes to design for:</p>
+<ul>
+<li>model behavior not matching expected structured output;</li>
+<li>tool JSON parsing or schema validation errors;</li>
+<li>tool timeouts and side-effect failures;</li>
+<li>guardrail tripwires;</li>
+<li>max-turn exhaustion;</li>
+<li>MCP server lifecycle failures;</li>
+<li>session persistence race conditions or partial writes;</li>
+<li>sandbox filesystem or network-policy misconfiguration;</li>
+<li>tracing leakage of sensitive input or output.</li>
+</ul>
+<h2 id="security-and-governance-risks">Security and Governance Risks</h2>
+<p>The main risks are tool authority, MCP trust, sandbox escape or over-permission, data retention in sessions and traces, and accidental execution of model-proposed commands. <code>docs/mcp.md</code> explicitly distinguishes hosted MCP, streamable HTTP, SSE, stdio, server managers, approval flows, filtering, caching, and tracing. <code>docs/tools.md</code> covers hosted tools, local runtime tools, function tools, agents-as-tools, and approval gates. Production deployments should keep high-risk tools disabled by default, require approval for shell/apply-patch/computer actions, prefix MCP tool names when multiple servers are active, and redact or disable sensitive trace capture when needed.</p>
+<h2 id="lifecycle-and-decision-diagram">Lifecycle and Decision Diagram</h2>
+<div class="mermaid">stateDiagram-v2
+  [*] --&gt; PrepareInput
+  PrepareInput --&gt; InputGuardrails
+  InputGuardrails --&gt; ModelTurn: pass
+  InputGuardrails --&gt; Tripwire: fail
+  ModelTurn --&gt; FinalOutput: output schema matched
+  ModelTurn --&gt; ToolExecution: tool calls
+  ModelTurn --&gt; Handoff: handoff selected
+  ToolExecution --&gt; Approval: approval required
+  Approval --&gt; ToolExecution: approved
+  Approval --&gt; ModelTurn: rejected result
+  ToolExecution --&gt; ModelTurn: tool results
+  Handoff --&gt; ModelTurn: new active agent
+  FinalOutput --&gt; OutputGuardrails
+  OutputGuardrails --&gt; PersistAndTrace: pass
+  OutputGuardrails --&gt; Tripwire: fail
+  PersistAndTrace --&gt; [*]
+  Tripwire --&gt; [*]</div>
+<h2 id="configuration-deployment-and-ops-notes">Configuration, Deployment, and Ops Notes</h2>
+<ul>
+<li>Environment: set provider credentials such as <code>OPENAI_API_KEY</code> outside code. The README quickstart calls this out for sandbox examples.</li>
+<li>Installation: use <code>openai-agents</code> for core, and extras only when needed, for example <code>openai-agents[voice]</code>, <code>openai-agents[redis]</code>, or <code>openai-agents[litellm]</code>.</li>
+<li>Type discipline: the project is typed (<code>py.typed</code>) and uses strict mypy/pyright settings; downstream code should preserve type hints for tools and outputs.</li>
+<li>Sessions: choose a session backend based on durability, tenancy, and encryption requirements. The examples demonstrate SQLite, SQLAlchemy, Redis, MongoDB, Dapr, OpenAI session, compaction, and encrypted sessions.</li>
+<li>Sandbox: isolate workspace mounts and network policy. Sandbox provider extras have materially different operational risk and cost profiles.</li>
+<li>Streaming: use <code>RunResultStreaming</code> and stream events when low latency or nested tool visibility is required.</li>
+</ul>
+<h2 id="reading-guide">Reading Guide</h2>
+<ol>
+<li>Start with <code>README.md</code>, <code>docs/quickstart.md</code>, and <code>docs/agents.md</code>.</li>
+<li>Read <code>src/agents/agent.py</code> and <code>src/agents/run.py</code> to understand the public API.</li>
+<li>Read <code>src/agents/run_internal/turn_preparation.py</code>, <code>turn_resolution.py</code>, and <code>tool_execution.py</code> to understand the runtime.</li>
+<li>Read <code>docs/tools.md</code>, <code>docs/mcp.md</code>, <code>docs/guardrails.md</code>, and <code>docs/running_agents.md</code>.</li>
+<li>For production, read <code>docs/tracing.md</code>, <code>docs/sessions/*</code>, and the relevant examples under <code>examples/memory/</code>, <code>examples/tools/</code>, and <code>examples/agent_patterns/</code>.</li>
+</ol>
+<h2 id="learning-path">Learning Path</h2>
+<ol>
+<li>Build a single <code>Agent</code> with a function tool.</li>
+<li>Add structured output and output guardrails.</li>
+<li>Add a session backend and inspect run history.</li>
+<li>Convert a specialist agent into a tool, then compare that with a handoff.</li>
+<li>Add MCP with static or dynamic tool filtering.</li>
+<li>Add tracing and usage monitoring.</li>
+<li>Prototype sandboxed long-horizon work with local or Docker sandbox before using remote providers.</li>
+</ol>
+<h2 id="production-readiness-checklist">Production Readiness Checklist</h2>
+<p>Use this checklist when moving from examples under <code>examples/</code> into a service or worker that imports <code>src/agents</code>.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Area</th><th>Repository anchor</th><th>Architecture check</th></tr></thead>
+<tbody>
+<tr><td>Agent loop limits</td><td><code>src/agents/run.py</code>, <code>src/agents/run_config.py</code>, <code>src/agents/exceptions.py</code></td><td>Set max turns, timeout policy, retry behavior, and clear handling for <code>MaxTurnsExceeded</code>, model behavior errors, and tool failures.</td></tr>
+<tr><td>Tool authority</td><td><code>src/agents/tool.py</code>, <code>src/agents/tool_guardrails.py</code>, <code>docs/tools.md</code></td><td>Separate read-only tools, side-effecting tools, local shell tools, hosted tools, and <code>apply_patch</code> tools; require approval for high-impact actions.</td></tr>
+<tr><td>MCP trust boundary</td><td><code>src/agents/mcp/</code>, <code>docs/mcp.md</code>, <code>examples/mcp/</code></td><td>Pin trusted servers, prefix tool names, filter tool catalogs, and treat server startup/lifecycle errors as runtime incidents.</td></tr>
+<tr><td>Session durability</td><td><code>src/agents/memory/</code>, <code>examples/memory/</code></td><td>Select SQLite/SQLAlchemy/Redis/MongoDB/Dapr/OpenAI session storage based on tenant isolation, encryption, and replay requirements.</td></tr>
+<tr><td>Trace safety</td><td><code>src/agents/tracing/</code>, <code>docs/tracing.md</code></td><td>Decide whether traces may contain prompts, tool arguments, outputs, and usage data; redact or disable sensitive capture where required.</td></tr>
+<tr><td>Sandbox isolation</td><td><code>src/agents/sandbox/</code>, <code>docs/sandbox_agents.md</code>, <code>examples/tools/</code></td><td>Keep filesystem mounts, network policy, credentials, and provider-specific sandbox cost limits outside the main app trust boundary.</td></tr>
+</tbody></table></div>
+<div class="mermaid">flowchart LR
+  PublicAPI[Agent, Runner, RunConfig] --&gt; TurnPrep[run_internal/turn_preparation.py]
+  TurnPrep --&gt; ModelPlane[models/interface.py and provider adapters]
+  TurnPrep --&gt; ToolPlane[tool.py and tool_guardrails.py]
+  ToolPlane --&gt; MCPPlane[mcp/server.py and manager.py]
+  ToolPlane --&gt; SandboxPlane[sandbox capabilities and providers]
+  TurnPrep --&gt; SessionPlane[memory/session.py and backends]
+  ModelPlane --&gt; TurnResolution[run_internal/turn_resolution.py]
+  ToolPlane --&gt; ToolExecution[run_internal/tool_execution.py]
+  SessionPlane --&gt; Persistence[run_internal/session_persistence.py]
+  TurnResolution --&gt; Result[result.py and stream_events.py]
+  Persistence --&gt; TracePlane[tracing processors and spans]</div>
+<h2 id="operational-runbook-and-failure-triage">Operational Runbook And Failure Triage</h2>
+<p>The most useful production runbook is organized around the turn loop. A failure is usually not &quot;the agent failed&quot;; it is a specific stage failing: input preparation, guardrail evaluation, model call, tool execution, handoff resolution, session persistence, or tracing export. The files under <code>src/agents/run_internal/</code> make that decomposition visible and are the right starting point for incident analysis.</p>
+<div class="mermaid">flowchart TD
+  Incident[Unexpected run result or outage] --&gt; Classify{Where did it fail?}
+  Classify --&gt; Input[Input or session replay]
+  Classify --&gt; Guardrail[Guardrail tripwire]
+  Classify --&gt; Model[Model call or schema output]
+  Classify --&gt; Tool[Tool, MCP, or sandbox action]
+  Classify --&gt; Handoff[Handoff or agent-as-tool routing]
+  Classify --&gt; Trace[Tracing or persistence]
+  Input --&gt; CheckSession[memory backends and session_persistence.py]
+  Guardrail --&gt; CheckGuard[guardrail.py and tool_guardrails.py]
+  Model --&gt; CheckModel[models adapters, strict_schema.py, agent_output.py]
+  Tool --&gt; CheckTool[tool_execution.py, mcp/, sandbox/]
+  Handoff --&gt; CheckHandoff[handoffs/ and agent.py tool aggregation]
+  Trace --&gt; CheckTrace[tracing/ processors and usage.py]
+  CheckSession --&gt; Fix[Patch policy, config, or implementation]
+  CheckGuard --&gt; Fix
+  CheckModel --&gt; Fix
+  CheckTool --&gt; Fix
+  CheckHandoff --&gt; Fix
+  CheckTrace --&gt; Fix</div>
+<p>For senior architects, the key design decision is whether this SDK remains a synchronous application library or becomes part of a durable workflow system. If tool calls can mutate external systems, wrap <code>Runner.run</code> calls with idempotency keys, approval state, compensating actions, and durable audit records. If the agent is used for long-running sandbox work, store state outside the process and define what happens when a sandbox provider, MCP server, or model provider is unavailable mid-turn.</p>
+<div class="mermaid">sequenceDiagram
+  participant App as Service or worker
+  participant Policy as Policy and approval layer
+  participant Runner as Runner.run
+  participant Tools as Tools and MCP
+  participant Store as Session and audit store
+  participant Trace as Trace processor
+
+  App-&gt;&gt;Policy: classify user, tenant, tools, data scope
+  Policy-&gt;&gt;Store: create run record and idempotency key
+  Policy-&gt;&gt;Runner: run with RunConfig and session
+  Runner-&gt;&gt;Tools: request approved tool execution
+  Tools--&gt;&gt;Policy: approval needed or result
+  Policy--&gt;&gt;Runner: approved, rejected, or sanitized result
+  Runner-&gt;&gt;Store: persist conversation items and usage
+  Runner-&gt;&gt;Trace: export spans under redaction policy
+  Runner--&gt;&gt;App: final output or typed exception</div>
+<h2 id="senior-architect-review-notes">Senior Architect Review Notes</h2>
+<p>Review <code>openai-agents-python</code> as a runtime library with explicit trust boundaries rather than as a prompt helper. The public API in <code>src/agents/agent.py</code>, <code>src/agents/run.py</code>, and <code>src/agents/run_config.py</code> is small, but the blast radius comes from the subsystems it can invoke: <code>src/agents/tool.py</code>, <code>src/agents/mcp/</code>, <code>src/agents/sandbox/</code>, <code>src/agents/memory/</code>, and <code>src/agents/tracing/</code>. In an architecture review, ask which of those subsystems are enabled for each tenant and which are disabled at import, config, or policy time.</p>
+<p>Pay special attention to schema ownership. <code>src/agents/function_schema.py</code>, <code>strict_schema.py</code>, <code>agent_output.py</code>, and the model adapters in <code>src/agents/models/</code> collectively define how Python types, JSON schemas, model responses, and tool arguments are converted. If an application uses function tools that call financial, security, deployment, or data-modifying systems, schema validation is necessary but not sufficient; the application still needs authorization and business-rule validation outside the model turn.</p>
+<p>Treat <code>Session</code> and <code>Trace</code> as separate governance domains. Session storage under <code>src/agents/memory/</code> is part of product state, while spans under <code>src/agents/tracing/</code> are operational telemetry. They may have different retention periods, tenant access rules, encryption requirements, and incident response obligations. The examples under <code>examples/memory/</code> are useful starting points, but production systems should document replay, deletion, and redaction behavior before agents are exposed to real user data.</p>
+<h2 id="glossary">Glossary</h2>
+<ul>
+<li>Agent: a configured model actor with instructions, tools, guardrails, handoffs, and output contract.</li>
+<li>Runner: the component that executes the agent loop.</li>
+<li>Turn: one model invocation plus any resulting tool planning and execution.</li>
+<li>Handoff: transfer of control from one agent to another.</li>
+<li>Agent as tool: nested agent execution exposed as a tool call.</li>
+<li>Guardrail: validation logic that can trip a workflow before or after model execution.</li>
+<li>MCP: Model Context Protocol, used to expose external tools and prompts to agents.</li>
+<li>Session: persistent conversation history between runs.</li>
+<li>Trace: structured execution telemetry made of traces and spans.</li>
+<li>Sandbox Agent: an agent configured to operate over a controlled filesystem/runtime.</li>
+</ul>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

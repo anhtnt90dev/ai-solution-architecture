@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kiến trúc LangChain | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/01-ai-app-agent-architecture/langchain/README.vi.md">View source</a>
+      <h1 id="ki-n-tr-c-langchain">Kiến trúc LangChain</h1>
+<h2 id="t-m-t-t-i-u-h-nh">Tóm tắt điều hành</h2>
+<p>Checkout LangChain này là monorepo Python cho phát triển agent và ứng dụng LLM. <code>README.md</code> ở root gọi LangChain là &quot;the agent engineering platform&quot; và mô tả nó là framework để xây dựng agent, ứng dụng LLM, component tương tác được với nhau và tích hợp bên thứ ba. Ranh giới kiến trúc thực tế nằm trong <code>libs/</code>: <code>core</code> chứa interface nền tảng, <code>langchain_v1</code> chứa package <code>langchain</code> hiện tại và API agent, <code>langchain</code> chứa <code>langchain-classic</code>, <code>text-splitters</code> tách riêng logic chunking tài liệu, <code>partners</code> chứa package provider, và <code>standard-tests</code> chứa test conformance cho integration.</p>
+<p>Metadata package xác nhận cách tách này. <code>libs/langchain_v1/pyproject.toml</code> phát hành <code>langchain</code> phiên bản <code>1.3.2</code>, phụ thuộc <code>langchain-core&gt;=1.4.0,&lt;2.0.0</code>, <code>langgraph&gt;=1.2.4,&lt;1.3.0</code> và <code>pydantic</code>. <code>libs/core/pyproject.toml</code> phát hành <code>langchain-core</code> phiên bản <code>1.4.0</code>, phụ thuộc <code>langsmith</code>, <code>tenacity</code>, <code>jsonpatch</code>, <code>PyYAML</code>, <code>pydantic</code> và <code>langchain-protocol</code>. <code>libs/langchain/pyproject.toml</code> phát hành <code>langchain-classic</code> phiên bản <code>1.0.7</code>.</p>
+<h2 id="v-n-c-gi-i-quy-t">Vấn đề được giải quyết</h2>
+<p>LangChain giải quyết bài toán tích hợp và composition cho ứng dụng LLM. Nó cung cấp interface ổn định cho chat model, message, prompt, tool, embedding, retriever, vector store, output parser, callback và workflow dạng runnable. Trong package v1, <code>create_agent</code> xây agent loop dựa trên LangGraph để người dùng kết hợp model, tool, middleware, structured output, checkpointer, store, interrupt, cache và stream transformer mà không cần tự viết toàn bộ graph plumbing.</p>
+<h2 id="vai-tr-trong-ai-stack">Vai trò trong AI Stack</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Lớp</th><th>Vai trò của repository</th><th>Căn cứ trong repo</th></tr></thead>
+<tbody>
+<tr><td>Điều phối agent</td><td><code>create_agent</code> tạo compiled <code>StateGraph</code> với vòng lặp model và tool</td><td><code>libs/langchain_v1/langchain/agents/factory.py</code></td></tr>
+<tr><td>Hợp đồng lõi</td><td>Runnable, BaseChatModel, BaseTool, BaseRetriever, callbacks, messages</td><td><code>libs/core/langchain_core/</code></td></tr>
+<tr><td>Trừu tượng provider</td><td>Package partner tùy chọn và suy luận provider qua <code>init_chat_model</code></td><td><code>libs/partners/</code>, <code>libs/langchain_v1/langchain/chat_models/base.py</code></td></tr>
+<tr><td>Mẫu ứng dụng classic</td><td>Chains, legacy agents, memory, vectorstores, retrievers, evaluation</td><td><code>libs/langchain/langchain_classic/</code></td></tr>
+<tr><td>Chuẩn kiểm thử</td><td>Test conformance cho chat model, tool, retriever, store</td><td><code>libs/standard-tests/</code></td></tr>
+</tbody></table></div>
+<h2 id="b-n-c-y-ngu-n">Bản đồ cây nguồn</h2>
+<pre><code class="language-text">langchain/
+  README.md                         # tổng quan root và hệ sinh thái
+  libs/
+    README.md                       # hướng dẫn các package trong monorepo
+    core/
+      langchain_core/               # Runnable, messages, models, tools, retrievers
+      pyproject.toml                # metadata package langchain-core
+    langchain_v1/
+      langchain/
+        agents/                     # create_agent, middleware, structured output
+        chat_models/                # init_chat_model provider factory
+        embeddings/                 # helper khởi tạo embedding
+        tools/                      # ToolNode bridge cho agent execution
+      pyproject.toml                # metadata package langchain
+    langchain/
+      langchain_classic/            # classic chains, agents, vectorstores, memory
+      pyproject.toml                # metadata package langchain-classic
+    partners/
+      openai, anthropic, groq, xai, qdrant, chroma, ...
+    text-splitters/
+      langchain_text_splitters/     # character, markdown, html, json, python splitters
+    standard-tests/
+      langchain_tests/              # test chuẩn cho integrations</code></pre>
+<h2 id="s-th-nh-ph-n">Sơ đồ thành phần</h2>
+<div class="mermaid">flowchart TB
+  App[Ung dung] --&gt; LC[langchain package&lt;br/&gt;libs/langchain_v1]
+  LC --&gt; AgentFactory[create_agent&lt;br/&gt;agents/factory.py]
+  AgentFactory --&gt; LangGraph[LangGraph StateGraph]
+  AgentFactory --&gt; Middleware[AgentMiddleware&lt;br/&gt;middleware/types.py]
+  AgentFactory --&gt; ToolNode[ToolNode&lt;br/&gt;tools/tool_node.py]
+  LC --&gt; InitModel[init_chat_model&lt;br/&gt;chat_models/base.py]
+  InitModel --&gt; Partners[Provider packages&lt;br/&gt;libs/partners]
+  ToolNode --&gt; CoreTools[BaseTool&lt;br/&gt;langchain_core.tools]
+  LC --&gt; Core[langchain-core&lt;br/&gt;Runnable, messages, callbacks]
+  Core --&gt; LangSmith[LangSmith tracing/evals]
+  Classic[langchain-classic] --&gt; Core
+  TextSplitters[text-splitters] --&gt; Core
+  StandardTests[standard-tests] --&gt; Partners</div>
+<h2 id="kh-i-ni-m-l-i">Khái niệm lõi</h2>
+<ul>
+<li><code>Runnable</code>: đơn vị composition trung tâm trong <code>libs/core/langchain_core/runnables/base.py</code>. Nó hỗ trợ <code>invoke</code>, <code>ainvoke</code>, <code>batch</code>, <code>stream</code>, composition graph với <code>RunnableSequence</code> và <code>RunnableParallel</code>, retry, listener, config và schema.</li>
+<li><code>BaseChatModel</code>: hợp đồng chat model trong <code>libs/core/langchain_core/language_models/chat_models.py</code>. Các package provider implement hoặc adapt vào interface này.</li>
+<li>Messages: <code>langchain_core.messages</code> định nghĩa AI, human, system, tool, function và content-block message, cộng với provider block translator.</li>
+<li>Tools: <code>langchain_core.tools</code> định nghĩa tool conversion, rendering, structured tool, retriever tool và base tool contract.</li>
+<li><code>create_agent</code>: agent factory v1 trong <code>libs/langchain_v1/langchain/agents/factory.py</code>. Nó trả về compiled <code>StateGraph</code>; docstring mô tả vòng lặp model tạo tool call, tools node chạy tool, model được gọi lại cho tới khi không còn tool call.</li>
+<li>Middleware: <code>AgentMiddleware</code> trong <code>libs/langchain_v1/langchain/agents/middleware/types.py</code> cung cấp <code>before_agent</code>, <code>before_model</code>, <code>after_model</code>, <code>wrap_model_call</code>, <code>wrap_tool_call</code>, dynamic prompt, state schema, tool và stream transformer.</li>
+<li>Structured output: <code>ToolStrategy</code>, <code>ProviderStrategy</code> và <code>AutoStrategy</code> nằm trong <code>libs/langchain_v1/langchain/agents/structured_output.py</code>.</li>
+<li>Classic APIs: <code>libs/langchain/langchain_classic/</code> giữ module chain, agent, memory, retriever, vectorstore, graph, evaluation, utility và prompt kiểu cũ.</li>
+</ul>
+<h2 id="ki-n-tr-c-n-i-b">Kiến trúc nội bộ</h2>
+<p>LangChain tách hợp đồng ổn định khỏi orchestration. <code>langchain-core</code> sở hữu interface cấp thấp để integration implement. Package <code>langchain</code> v1 dùng các interface đó và import <code>langgraph</code> để compile agent thành state graph có thể chạy. Package classic giữ các pattern ứng dụng cũ hơn nhưng phụ thuộc vào core và text splitters.</p>
+<p>Agent factory xây nhiều lớp: khởi tạo chat model nếu đầu vào là string model identifier; chuẩn hóa tool và built-in provider tool; tạo structured-output tool khi có schema; chain các wrapper middleware; dựng graph node cho model execution, tools và middleware hooks; sau đó compile graph với checkpointer, store, interrupts, cache, debug flag, name và stream transformers tùy chọn.</p>
+<h2 id="lu-ng-runtime-v-d-li-u">Luồng runtime và dữ liệu</h2>
+<div class="mermaid">sequenceDiagram
+  participant U as User/App
+  participant G as CompiledStateGraph
+  participant M as Middleware
+  participant L as ChatModel
+  participant T as ToolNode
+  participant S as Checkpointer/Store
+  participant LS as LangSmith/Callbacks
+
+  U-&gt;&gt;G: invoke/stream voi messages
+  G-&gt;&gt;S: nap thread state neu co
+  G-&gt;&gt;M: before_agent / before_model
+  M-&gt;&gt;L: model request voi messages, tools, response format
+  L--&gt;&gt;M: AIMessage va tool_calls tuy chon
+  M-&gt;&gt;G: after_model state updates
+  alt co tool_calls
+    G-&gt;&gt;T: thuc thi tool calls
+    T--&gt;&gt;G: ToolMessage results
+    G-&gt;&gt;L: luot model tiep voi tool results
+  else khong co tool calls
+    G--&gt;&gt;U: final messages va structured_response tuy chon
+  end
+  G-&gt;&gt;S: persist checkpoint/store data
+  G-&gt;&gt;LS: callbacks, traces, stream events</div>
+<h2 id="i-m-m-r-ng">Điểm mở rộng</h2>
+<ul>
+<li>Implement <code>BaseChatModel</code>, <code>BaseTool</code>, <code>Embeddings</code>, <code>BaseRetriever</code> hoặc interface vector store trong <code>langchain-core</code>.</li>
+<li>Phát hành package provider dưới <code>libs/partners/</code>, theo contract test trong <code>libs/standard-tests/</code>.</li>
+<li>Thêm agent middleware bằng cách subclass <code>AgentMiddleware</code> hoặc dùng decorator <code>before_model</code>, <code>after_model</code>, <code>wrap_model_call</code>, <code>wrap_tool_call</code> và <code>dynamic_prompt</code>.</li>
+<li>Thêm structured output qua Pydantic schema, <code>ToolStrategy</code>, <code>ProviderStrategy</code> hoặc <code>AutoStrategy</code>.</li>
+<li>Compose chain và data flow bằng <code>RunnableSequence</code>, <code>RunnableParallel</code>, <code>RunnableLambda</code> và <code>RunnableBinding</code>.</li>
+<li>Dùng <code>checkpointer</code> cho state theo thread và <code>store</code> cho persistence đa thread trong <code>create_agent</code>.</li>
+</ul>
+<h2 id="t-ch-h-p">Tích hợp</h2>
+<p><code>libs/partners/</code> gồm các package provider như <code>anthropic</code>, <code>chroma</code>, <code>deepseek</code>, <code>exa</code>, <code>fireworks</code>, <code>groq</code>, <code>huggingface</code>, <code>mistralai</code>, <code>nomic</code>, <code>ollama</code>, <code>openai</code>, <code>openrouter</code>, <code>perplexity</code>, <code>qdrant</code> và <code>xai</code>. <code>libs/langchain_v1/pyproject.toml</code> expose optional extras cho nhiều provider đó. <code>libs/langchain_classic/vectorstores/</code> cũng có nhiều adapter vector store legacy, còn <code>langchain_core.messages.block_translators/</code> chứa logic chuyển content block theo provider.</p>
+<h2 id="s-tri-n-khai-v-v-n-h-nh">Sơ đồ triển khai và vận hành</h2>
+<div class="mermaid">flowchart LR
+  subgraph AppRuntime[&quot;Runtime ung dung&quot;]
+    API[API / worker / notebook]
+    Agent[Compiled agent graph]
+    Tools[Local tools va retrievers]
+  end
+  subgraph LangChainPackages[&quot;LangChain packages&quot;]
+    Core[langchain-core]
+    V1[langchain]
+    Classic[langchain-classic]
+    Tests[langchain-tests]
+  end
+  subgraph External[&quot;Dich vu ben ngoai&quot;]
+    Models[Model providers]
+    VDB[(Vector stores)]
+    State[(Checkpointer / Store)]
+    Smith[LangSmith observability]
+  end
+  API --&gt; Agent
+  Agent --&gt; V1
+  V1 --&gt; Core
+  Classic --&gt; Core
+  Tools --&gt; Core
+  Agent --&gt; Models
+  Tools --&gt; VDB
+  Agent --&gt; State
+  Core --&gt; Smith
+  Tests -. CI conformance .-&gt; Core</div>
+<p>LangChain được deploy bên trong host application. Hệ thống production nên cô lập side effect của tool, khai báo package provider rõ ràng, cấu hình checkpointer/store cho agent dài hạn hoặc có state, và gửi callback/trace tới LangSmith hoặc sink tracing khác. Vì agent v1 compile thành graph LangGraph, quyết định triển khai thường đi cùng quyết định LangGraph: durable execution, interrupt, human review và state management là các lựa chọn topology rõ ràng.</p>
+<h2 id="observability-testing-evaluation-v-failure-modes">Observability, testing, evaluation và failure modes</h2>
+<p>Observability đi qua <code>langchain_core.callbacks</code>, <code>langchain_core.tracers</code> và phụ thuộc <code>langsmith</code> trong <code>langchain-core</code>. <code>Runnable</code> config hỗ trợ tags và metadata cho tracing. Root README hướng developer tới LangSmith cho debugging, observability, evaluation và deployment workflow.</p>
+<p>Testing không chỉ là unit test thông thường. <code>libs/standard-tests/README.md</code> mô tả <code>langchain-tests</code>, package chứa standard test base classes cho integration. Ví dụ một chat model integration nên có unit và integration test class kế thừa <code>ChatModelUnitTests</code> và <code>ChatModelIntegrationTests</code>. Monorepo cũng dùng <code>ruff</code>, <code>mypy</code>, <code>pytest</code>, <code>pytest-asyncio</code>, <code>pytest-socket</code>, <code>pytest-xdist</code>, <code>syrupy</code> và benchmark tooling theo metadata package.</p>
+<p>Các failure mode cần chú ý:</p>
+<ul>
+<li>thiếu package provider khi truyền model identifier vào <code>init_chat_model</code>;</li>
+<li>model provider không hỗ trợ tool calling hoặc structured output như kỳ vọng;</li>
+<li>mismatch sync/async trong middleware, được nêu rõ trong error text của <code>AgentMiddleware</code>;</li>
+<li>schema tool lệch hoặc trùng tên tool;</li>
+<li>latency và rate limit ở vector store, retriever hoặc embedding provider;</li>
+<li>checkpoint/store không tương thích khi graph thay đổi version;</li>
+<li>callback hoặc tracing làm lộ message nhạy cảm;</li>
+<li>rủi ro deprecation và migration của classic API.</li>
+</ul>
+<h2 id="r-i-ro-b-o-m-t-v-governance">Rủi ro bảo mật và governance</h2>
+<p>LangChain làm việc tích hợp tool trở nên dễ dàng, nên governance phải được đặt thành policy của ứng dụng. Rủi ro gồm prompt injection qua nội dung retrieved, misuse tool, data exfiltration qua model provider, document loader không tin cậy, SSRF hoặc HTTP utility không an toàn, và vô tình lưu secret trong trace. Thư mục <code>langchain_core/_security/</code> cho thấy core có code policy về transport và SSRF. Production nên kết hợp input validation, tool allowlist, credential có scope hẹp, retrieval filtering, trace redaction, network egress control và test conformance cho integration.</p>
+<h2 id="s-lifecycle-v-ph-thu-c-module">Sơ đồ lifecycle và phụ thuộc module</h2>
+<div class="mermaid">stateDiagram-v2
+  [*] --&gt; SelectPackage
+  SelectPackage --&gt; CoreContract: implement interface
+  SelectPackage --&gt; V1Agent: build agent
+  SelectPackage --&gt; ClassicFlow: legacy chain/retriever
+  CoreContract --&gt; PartnerIntegration
+  PartnerIntegration --&gt; StandardTests
+  StandardTests --&gt; PublishProvider: pass
+  V1Agent --&gt; CompileGraph
+  CompileGraph --&gt; InvokeOrStream
+  InvokeOrStream --&gt; ToolLoop: tool calls
+  ToolLoop --&gt; InvokeOrStream
+  InvokeOrStream --&gt; FinalState: no tool calls
+  ClassicFlow --&gt; CoreContract
+  FinalState --&gt; [*]</div>
+<h2 id="c-u-h-nh-tri-n-khai-v-ghi-ch-ops">Cấu hình, triển khai và ghi chú ops</h2>
+<ul>
+<li>Cài <code>langchain</code> cho API v1 và thêm package provider rõ ràng, ví dụ OpenAI, Anthropic, Ollama, Groq hoặc Qdrant.</li>
+<li>Dùng <code>langchain-core</code> khi xây integration tái sử dụng hoặc custom contract.</li>
+<li>Dùng <code>langchain-tests</code> trong CI khi phát hành provider hoặc vector store package.</li>
+<li>Tách riêng <code>langchain-classic</code> khi duy trì chain cũ hoặc migration.</li>
+<li>Dùng checkpointer/store cho agent state bền vững, đặc biệt khi bật interrupt hoặc human-in-the-loop.</li>
+<li>Xem <code>debug=True</code> và callback trace là dữ liệu nhạy cảm trong môi trường regulated.</li>
+</ul>
+<h2 id="h-ng-d-n-c-m-ngu-n">Hướng dẫn đọc mã nguồn</h2>
+<ol>
+<li>Đọc <code>README.md</code> ở root, sau đó <code>libs/README.md</code>.</li>
+<li>Đọc <code>libs/core/langchain_core/runnables/base.py</code> và <code>language_models/chat_models.py</code>.</li>
+<li>Đọc <code>libs/langchain_v1/langchain/chat_models/base.py</code> để hiểu khởi tạo model.</li>
+<li>Đọc <code>libs/langchain_v1/langchain/agents/factory.py</code> và <code>agents/middleware/types.py</code>.</li>
+<li>Đọc <code>libs/langchain_v1/langchain/agents/structured_output.py</code>.</li>
+<li>Với integration, đọc package tương ứng dưới <code>libs/partners/</code> và <code>libs/standard-tests/README.md</code>.</li>
+<li>Với migration hoặc app cũ, xem <code>libs/langchain/langchain_classic/</code>.</li>
+</ol>
+<h2 id="l-tr-nh-h-c">Lộ trình học</h2>
+<ol>
+<li>Tạo model bằng <code>init_chat_model</code>.</li>
+<li>Compose một <code>RunnableSequence</code> nhỏ.</li>
+<li>Chuyển Python callable thành tool và gọi qua <code>create_agent</code>.</li>
+<li>Thêm middleware cho prompt shaping, retry, fallback hoặc PII handling.</li>
+<li>Thêm structured output với Pydantic schema.</li>
+<li>Thêm checkpointer/store và stream compiled graph.</li>
+<li>Validate custom integration bằng <code>langchain-tests</code>.</li>
+</ol>
+<h2 id="checklist-s-n-s-ng-production">Checklist sẵn sàng production</h2>
+<p>Sẵn sàng production với LangChain chủ yếu là kiểm soát ranh giới giữa <code>libs/core</code>, package agent v1 trong <code>libs/langchain_v1</code>, các provider trong <code>libs/partners</code> và mã legacy dưới <code>libs/langchain/langchain_classic</code>.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Khu vực</th><th>Neo theo repository</th><th>Kiểm tra kiến trúc</th></tr></thead>
+<tbody>
+<tr><td>Chọn package</td><td><code>libs/langchain_v1/pyproject.toml</code>, <code>libs/core/pyproject.toml</code>, <code>libs/langchain/pyproject.toml</code></td><td>Xác định service dùng v1 <code>langchain</code>, reusable <code>langchain-core</code> hay <code>langchain-classic</code>; không trộn legacy chains vào agent graph mới nếu chưa có kế hoạch migration.</td></tr>
+<tr><td>Provider dependency</td><td><code>libs/partners/</code>, <code>libs/langchain_v1/langchain/chat_models/base.py</code></td><td>Chỉ cài và pin provider thật sự dùng; kiểm tra capability cho tool, JSON mode, streaming và structured output.</td></tr>
+<tr><td>Trạng thái agent</td><td><code>libs/langchain_v1/langchain/agents/factory.py</code></td><td>Chọn checkpointer và store trước khi triển khai agent dài hơi, interrupt hoặc human review.</td></tr>
+<tr><td>An toàn tool</td><td><code>libs/core/langchain_core/tools/</code>, <code>libs/langchain_v1/langchain/tools/tool_node.py</code></td><td>Áp dụng allowlist tool, validate schema, scope credential và kiểm soát lỗi từ <code>ToolNode</code>.</td></tr>
+<tr><td>Governance bằng middleware</td><td><code>libs/langchain_v1/langchain/agents/middleware/</code></td><td>Dùng middleware cho PII scrubbing, định hình prompt, retry và policy; test cả sync và async.</td></tr>
+<tr><td>Chất lượng integration</td><td><code>libs/standard-tests/</code></td><td>Dùng <code>langchain-tests</code> cho provider, retriever, tool hoặc vector store trước khi đưa vào CI.</td></tr>
+</tbody></table></div>
+<div class="mermaid">flowchart LR
+  Core[libs/core/langchain_core] --&gt; Contracts[Runnable, BaseChatModel, BaseTool, Retriever]
+  Contracts --&gt; V1[libs/langchain_v1/langchain]
+  V1 --&gt; AgentFactory[agents/factory.py create_agent]
+  AgentFactory --&gt; LangGraph[Compiled StateGraph]
+  AgentFactory --&gt; Middleware[agents/middleware]
+  AgentFactory --&gt; ToolNode[tools/tool_node.py]
+  Contracts --&gt; Partners[libs/partners provider packages]
+  Contracts --&gt; TextSplit[libs/text-splitters]
+  Contracts --&gt; Classic[libs/langchain/langchain_classic]
+  Partners --&gt; StdTests[libs/standard-tests/langchain_tests]
+  Classic --&gt; Migration[Ranh gioi migration legacy]</div>
+<h2 id="runbook-v-n-h-nh-v-ph-n-lo-i-l-i">Runbook vận hành và phân loại lỗi</h2>
+<p>Khi một agent run lỗi, hãy xác định trước lỗi đến từ contract của graph, provider model, tool execution hay persistence. <code>create_agent</code> che bớt chi tiết dựng graph để dễ dùng, nên debugging production cần trace từ <code>langchain_core.callbacks</code>, <code>langchain_core.tracers</code>, LangSmith hoặc callback sink tương đương.</p>
+<div class="mermaid">flowchart TD
+  Incident[Incident cua Agent hoac Runnable] --&gt; Boundary{Ranh gioi}
+  Boundary --&gt; Package[Sai package hoac version]
+  Boundary --&gt; Provider[Capability hoac dependency provider]
+  Boundary --&gt; Tool[Tool schema hoac side effect]
+  Boundary --&gt; State[Checkpointer/store mismatch]
+  Boundary --&gt; Middleware[Middleware sync/async hoac policy]
+  Boundary --&gt; Trace[Callback hoac trace leakage]
+  Package --&gt; InspectPkg[pyproject files va libs layout]
+  Provider --&gt; InspectProvider[partners package va init_chat_model]
+  Tool --&gt; InspectTool[langchain_core.tools va ToolNode]
+  State --&gt; InspectState[create_agent checkpointer/store args]
+  Middleware --&gt; InspectMW[agents/middleware/types.py]
+  Trace --&gt; InspectTrace[callbacks, tracers, LangSmith config]
+  InspectPkg --&gt; Remediate[Pin, migrate, test hoac isolate]
+  InspectProvider --&gt; Remediate
+  InspectTool --&gt; Remediate
+  InspectState --&gt; Remediate
+  InspectMW --&gt; Remediate
+  InspectTrace --&gt; Remediate</div>
+<p>Kiến trúc sư cấp cao nên đọc LangChain trước hết như một thư viện contract, sau đó mới như framework agent. Ranh giới ứng dụng ổn định nên phụ thuộc vào interface của <code>langchain-core</code> và provider package vượt qua standard tests. Đường v1 <code>create_agent</code> phù hợp khi cần LangGraph durability, middleware, tools và structured output; <code>langchain-classic</code> nên được xem là bề mặt tương thích cũ, nhất là với chains, memory, vector stores và evaluation modules.</p>
+<div class="mermaid">sequenceDiagram
+  participant App as Ung dung
+  participant Core as langchain-core contracts
+  participant Agent as create_agent StateGraph
+  participant Provider as Partner chat model
+  participant Tool as ToolNode va tools
+  participant Store as Checkpointer/store
+  participant Obs as Callbacks/tracers
+
+  App-&gt;&gt;Core: dinh nghia messages, tools, Runnable config
+  App-&gt;&gt;Agent: compile model, tools, middleware, store
+  Agent-&gt;&gt;Store: load thread state
+  Agent-&gt;&gt;Provider: invoke model voi tool schemas
+  Provider--&gt;&gt;Agent: AIMessage co tool calls hoac final text
+  Agent-&gt;&gt;Tool: execute validated tool calls
+  Tool--&gt;&gt;Agent: ToolMessage results
+  Agent-&gt;&gt;Store: persist state
+  Agent-&gt;&gt;Obs: emit run, tags, metadata, events
+  Agent--&gt;&gt;App: final state hoac structured_response</div>
+<h2 id="ghi-ch-review-cho-ki-n-tr-c-s-c-p-cao">Ghi chú review cho kiến trúc sư cấp cao</h2>
+<p>Hãy đọc repository này như một hệ thống contract nhiều lớp. <code>libs/core/langchain_core</code> nên là mental model ổn định nhất: messages, runnables, tools, retrievers, callbacks, tracers và model interfaces. Package v1 trong <code>libs/langchain_v1/langchain</code> compose các contract đó thành agent graph, còn <code>libs/partners</code> hiện thực các cạnh provider-specific. Một production application nên để business code phụ thuộc vào contract nhỏ nhất cần dùng, thay vì import module legacy rộng theo thói quen.</p>
+<p>Quyết định rủi ro nhất không phải là có dùng agent hay không, mà là state và authority nằm ở đâu. <code>libs/langchain_v1/langchain/agents/factory.py</code> có thể nhận checkpointers, stores, middleware, tools, caches, interrupts và stream transformers. Mỗi thành phần đó là một operational boundary. Checkpointer kiểm soát replay và resumability, store kiểm soát cross-thread memory, middleware kiểm soát policy và prompt shape, còn tools kiểm soát side effect bên ngoài. Hãy xem chúng là các quyết định kiến trúc riêng, không chỉ là optional keyword arguments.</p>
+<p>Provider integration nên được đánh giá bằng conformance, không phải độ phổ biến. Package <code>libs/standard-tests/</code> tồn tại vì chat model, retriever, vector store và tool đều có thể tuyên bố tương thích nhưng khác nhau ở streaming, tool calls, async behavior, error semantics hoặc structured output. Trước khi một custom provider package hoặc partner module trở thành platform standard, cần yêu cầu standard tests, tài liệu capability của provider và incident plan cho API drift.</p>
+<p>Cuối cùng, hãy cô lập <code>libs/langchain/langchain_classic</code> trong các dự án modernization. Nó vẫn có giá trị cho chains, memory, vector stores và evaluation utilities hiện hữu, nhưng workload agent mới cần có lý do rõ ràng nếu đi từ v1 graph orchestration sang classic abstractions. Ranh giới đó nên xuất hiện rõ trong code ownership và dependency review.</p>
+<p>Với platform team, hãy định nghĩa ownership theo package boundary. Team sở hữu reusable integrations nên duy trì code dựa trên contract của <code>libs/core/langchain_core</code> và <code>libs/standard-tests</code>; team sở hữu user workflows nên sở hữu cấu hình agent trong <code>libs/langchain_v1</code>, middleware, checkpointers và stores; team sở hữu legacy migration nên quản lý usage và kế hoạch loại bỏ <code>libs/langchain/langchain_classic</code>. Cách tách này ngăn một feature ứng dụng âm thầm thay đổi provider compatibility, graph state behavior và legacy chain behavior cùng lúc.</p>
+<p>Trong design review, cần yêu cầu capability matrix cho từng model provider. Một provider package dưới <code>libs/partners</code> có thể hỗ trợ chat thông thường nhưng không hỗ trợ đáng tin cậy cho tool calling, JSON schema responses, token streaming, multimodal content blocks hoặc error typing nhất quán. Nếu agent factory nhận string model identifier và suy luận provider qua <code>init_chat_model</code>, việc suy luận đó phải có test và deployment configuration, không nên là bất ngờ runtime.</p>
+<h2 id="thu-t-ng">Thuật ngữ</h2>
+<ul>
+<li>Runnable: đơn vị có thể compose, invoke, batch, stream và expose schema.</li>
+<li>BaseChatModel: interface chat model lõi được implement bởi provider packages.</li>
+<li>ToolNode: graph node thực thi tool call do model phát ra.</li>
+<li>AgentMiddleware: hệ thống hook và wrapper quanh agent, model và tool execution.</li>
+<li>StateGraph: graph LangGraph được <code>create_agent</code> compile.</li>
+<li>Checkpointer: persistence theo thread cho graph state.</li>
+<li>Store: persistence đa thread cho dữ liệu ứng dụng hoặc agent.</li>
+<li>Structured output: response model dựa trên schema, dùng provider-native hoặc tool-call strategy.</li>
+<li>LangSmith: nền tảng observability, debugging và evaluation tích hợp qua callbacks/tracers.</li>
+</ul>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

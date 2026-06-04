@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kiến trúc DeepSpeed | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/03-fine-tuning-training/DeepSpeed/README.vi.md">View source</a>
+      <h1 id="ki-n-tr-c-deepspeed">Kiến trúc DeepSpeed</h1>
+<h2 id="ph-m-vi-v-d-ki-n-repository">Phạm vi và dữ kiện repository</h2>
+<p>Tài liệu này dựa trên bản clone cục bộ tại <code>github-repos/03-fine-tuning-training/DeepSpeed</code>, đã được rà soát ở commit <code>3e486febfcfc3c843a9066619697344d2cb7b9ec</code> ngày 2026-06-01. <code>version.txt</code> ghi <code>0.19.2</code>. Metadata trong <code>setup.py</code> đặt tên package là <code>deepspeed</code>, dùng license Apache-2.0, cài Python package chính và các script như <code>deepspeed</code>, <code>ds</code>, <code>ds_report</code>, <code>ds_bench</code>, <code>ds_elastic</code>, <code>ds_nvme_tune</code>, <code>ds_io</code>, đồng thời hỗ trợ Python 3.8 đến 3.12.</p>
+<p>Bản clone cục bộ có 696 file Python dưới <code>deepspeed</code>, 295 file test, 334 file tài liệu và 193 file native/kernel dưới <code>csrc</code>. Runtime dependency trong <code>requirements/requirements.txt</code> gồm PyTorch 2.0+, pydantic 2+, hjson, ninja, numpy, packaging, psutil, py-cpuinfo, einops, msgpack và tqdm. Các requirement tùy chọn bao phủ inference, sparse attention, sparse pruning, autotuning, Triton, DeepCompile, readthedocs, development tooling và one-bit MPI.</p>
+<p>Chỉ dẫn cục bộ trong <code>AGENTS.md</code> và <code>CLAUDE.md</code> nhấn mạnh signed commit, formatting, pre-commit verification cho file thay đổi và dùng <code>deepspeed.comm</code> thay vì import trực tiếp <code>torch.distributed</code>. Tác vụ này chỉ đọc source repo và ghi tài liệu bên ngoài repo đó.</p>
+<h2 id="t-m-t-t-i-u-h-nh">Tóm tắt điều hành</h2>
+<p>DeepSpeed là thư viện distributed training, inference và tối ưu hệ thống cho mô hình deep learning lớn. Abstraction trung tâm là <code>DeepSpeedEngine</code>, được tạo bởi <code>deepspeed.initialize(...)</code> trong <code>deepspeed/__init__.py</code>. Engine bọc user model, optimizer, scheduler, dataloader, precision policy, communication backend, checkpointing, timers, monitoring và các tính năng tùy chọn như ZeRO, pipeline parallelism, tensor parallelism, MoE, activation checkpointing, offload và DeepCompile.</p>
+<p>Kiến trúc DeepSpeed rộng hơn một optimizer đơn lẻ:</p>
+<ul>
+<li><code>deepspeed/runtime/engine.py</code> triển khai lifecycle training engine: forward, backward, step, checkpointing, timers, data loading, precision, optimizer wrapping, monitoring và routing tính năng.</li>
+<li><code>deepspeed/runtime/config.py</code> cùng các module config chuyên biệt parse và validate cấu hình JSON/HJSON của DeepSpeed.</li>
+<li><code>deepspeed/runtime/zero/*</code> triển khai các stage ZeRO, parameter partitioning, offload, optimizer state handling, hành vi kiểu ZeRO-Infinity, MiCS, Muon support và utility riêng cho ZeRO.</li>
+<li><code>deepspeed/launcher/*</code> và <code>bin/*</code> launch job multi-process và multi-node.</li>
+<li><code>accelerator/*</code> abstract hóa CUDA, CPU, XPU, NPU, HPU, MLU, MPS và SDAA.</li>
+<li><code>deepspeed/comm/*</code> cung cấp API communication tương thích torch.distributed với logging và backend selection của DeepSpeed.</li>
+<li><code>op_builder/*</code>, <code>deepspeed/ops/*</code> và <code>csrc/*</code> quản lý native kernel tùy chọn và extension JIT/precompiled.</li>
+<li><code>deepspeed/monitor</code>, <code>deepspeed/profiling</code>, <code>deepspeed/inference</code>, <code>deepspeed/pipe</code>, <code>deepspeed/moe</code>, <code>deepspeed/sequence</code>, <code>deepspeed/compile</code> và <code>deepspeed/autotuning</code> bổ sung tính năng vận hành và hệ thống quanh runtime lõi.</li>
+</ul>
+<p>Lựa chọn kiến trúc chính là người dùng giữ phần lớn code PyTorch model như cũ, còn distributed systems behavior được ủy quyền cho engine và config. Điều này giảm độ phức tạp của application code, nhưng khiến config correctness, môi trường launch cluster, checkpoint discipline, tương thích native op và xử lý lỗi distributed trở nên rất quan trọng.</p>
+<h2 id="b-i-to-n-c-gi-i-quy-t">Bài toán được giải quyết</h2>
+<p>Training và serving mô hình frontier-scale bị giới hạn bởi GPU memory, băng thông interconnect, kích thước optimizer state, activation memory, volume checkpoint và độ phức tạp orchestration cluster. DeepSpeed xử lý các giới hạn này bằng:</p>
+<ul>
+<li>ZeRO optimizer stages partition optimizer states, gradients và parameters.</li>
+<li>Đường offload CPU/NVMe cho optimizer state và parameter.</li>
+<li>Mixed precision và low-precision optimizer states.</li>
+<li>Kết hợp pipeline, tensor, expert, sequence và data parallelism.</li>
+<li>Custom fused kernels và transformer/inference kernels.</li>
+<li>Launching, hostfile parsing, multi-node execution và elastic job support.</li>
+<li>Monitoring, profiling, autotuning và environment reporting.</li>
+<li>Checkpointing utilities, bao gồm khôi phục partition ZeRO và tài liệu universal checkpointing.</li>
+</ul>
+<p>Trong stack fine-tuning/training, DeepSpeed là lớp hệ thống cho phép PEFT, Transformers, TRL, Megatron-style model và custom PyTorch model chạy ở quy mô lớn hơn vòng lặp training single-process.</p>
+<h2 id="vai-tr-trong-ai-stack">Vai trò trong AI stack</h2>
+<p>DeepSpeed nằm dưới model library và trên primitive phần cứng/distributed:</p>
+<ul>
+<li><strong>Lớp model:</strong> PyTorch <code>nn.Module</code>, Hugging Face Transformers, Megatron-style model, MoE layer, pipeline module, đường <code>LoRAOptimizedLinear</code>.</li>
+<li><strong>Lớp runtime:</strong> <code>DeepSpeedEngine</code>, <code>PipelineEngine</code>, <code>InferenceEngine</code>, ZeRO optimizer, activation checkpointing, data pipeline, tích hợp scheduler/optimizer.</li>
+<li><strong>Lớp distributed:</strong> <code>deepspeed.comm</code>, process group, launcher backend, accelerator abstraction, nhóm tensor/pipeline/expert/data parallel.</li>
+<li><strong>Lớp hệ thống:</strong> native ops, JIT/precompiled kernels, offload, NVMe/AIO, GDS, timers, profiling, monitoring, checkpoint engines.</li>
+<li><strong>Lớp vận hành:</strong> launcher <code>deepspeed</code>, hostfile, environment export, <code>ds_report</code>, CI/test matrix, hướng dẫn Docker/ROCm/Windows.</li>
+</ul>
+<p>DeepSpeed không phải experiment tracker, dataset library hay model registry. Nó cung cấp runtime và nền tảng vận hành để các lớp đó gọi vào.</p>
+<h2 id="b-n-source-tree">Bản đồ source tree</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Đường dẫn</th><th>Trách nhiệm</th></tr></thead>
+<tbody>
+<tr><td><code>README.md</code></td><td>Tổng quan dự án, tin mới, tích hợp, cài đặt, environment report, publication và hướng dẫn contribution.</td></tr>
+<tr><td><code>version.txt</code></td><td>Phiên bản package cơ sở, <code>0.19.2</code> trong clone này.</td></tr>
+<tr><td><code>setup.py</code></td><td>Metadata build, scripts, dependency extras, hành vi precompile op, thông tin git/version lúc build, nhánh packaging Windows.</td></tr>
+<tr><td><code>requirements/*</code></td><td>Dependency runtime và tùy chọn.</td></tr>
+<tr><td><code>deepspeed/__init__.py</code></td><td>Public API, <code>initialize</code>, <code>init_inference</code>, distributed initialization, chọn engine, export runtime class.</td></tr>
+<tr><td><code>deepspeed/runtime/engine.py</code></td><td>Training engine lõi: wrap model, forward/backward/step, optimizer/scheduler, checkpoint, timers, monitor, tích hợp ZeRO.</td></tr>
+<tr><td><code>deepspeed/runtime/config.py</code></td><td>Parser config cấp cao và routing tính năng cho precision, communication, monitoring, profiling, autotuning, checkpointing, tensor parallelism, data efficiency và compile.</td></tr>
+<tr><td><code>deepspeed/runtime/zero/*</code></td><td>ZeRO stages, parameter partitioning, offload, optimizer state, partition coordinator, MiCS, tiled linear, Muon và config.</td></tr>
+<tr><td><code>deepspeed/runtime/pipe/*</code></td><td>Pipeline parallel module và engine.</td></tr>
+<tr><td><code>deepspeed/moe/*</code></td><td>Mixture-of-Experts layers, gating, sharded MoE và expert utilities.</td></tr>
+<tr><td><code>deepspeed/sequence/*</code></td><td>Sequence parallel và AutoSP components.</td></tr>
+<tr><td><code>deepspeed/inference/*</code></td><td>Inference engine, kernel injection, tensor parallel inference, quantization và hành vi liên quan CUDA graph.</td></tr>
+<tr><td><code>deepspeed/launcher/*</code></td><td>Hostfile parsing, resource selection, environment propagation, launcher PDSH/OpenMPI/MVAPICH/Slurm/MPICH/IMPI.</td></tr>
+<tr><td><code>accelerator/*</code></td><td>Abstraction accelerator ở build/runtime cho CUDA, CPU, XPU, NPU, MPS, HPU, MLU và SDAA.</td></tr>
+<tr><td><code>deepspeed/comm/*</code></td><td>Wrapper communication tương thích torch.distributed, backend selection, comm logging, timed operations.</td></tr>
+<tr><td><code>op_builder/*</code></td><td>Builder build-time và runtime cho optional ops; phát hiện builder theo accelerator.</td></tr>
+<tr><td><code>deepspeed/ops/*</code>, <code>csrc/*</code></td><td>Python wrapper và source native cho fused optimizer, transformer kernel, sparse attention, AIO, GDS, quantization, random LTD, DeepCompile và op theo nền tảng.</td></tr>
+<tr><td><code>deepspeed/env_report.py</code></td><td>Triển khai <code>ds_report</code> cho trạng thái op, compatibility, torch/CUDA/HIP/NPU/system diagnostics và warning <code>/dev/shm</code>.</td></tr>
+<tr><td><code>deepspeed/monitor/*</code></td><td>Monitoring TensorBoard, W&amp;B, Comet và CSV.</td></tr>
+<tr><td><code>deepspeed/profiling/*</code></td><td>FLOPs profiler và profiling utilities.</td></tr>
+<tr><td><code>docs/_tutorials/*</code></td><td>Tutorial cho getting started, ZeRO, offload, pipeline, MoE, monitor, profiler, autotuning, DeepNVMe, Ulysses, AutoTP và nhiều chủ đề khác.</td></tr>
+<tr><td><code>tests/*</code></td><td>Test unit, runtime, ZeRO, launcher, accelerator, inference, compile, checkpoint, model, one-bit và performance.</td></tr>
+<tr><td><code>examples/sdma_allgather/*</code></td><td>Ví dụ cục bộ về SDMA allgather và ZeRO-3.</td></tr>
+</tbody></table></div>
+<h2 id="s-component">Sơ đồ component</h2>
+<div class="mermaid">flowchart TB
+    app[Code training PyTorch của người dùng]
+    launcher[deepspeed launcher / bin scripts]
+    init[deepspeed.initialize]
+    config[DeepSpeedConfig và feature configs]
+    engine[DeepSpeedEngine]
+    pipe[PipelineEngine]
+    zero[ZeRO optimizers và partitioning]
+    comm[deepspeed.comm]
+    accel[Accelerator abstraction]
+    ops[Native ops và op builders]
+    monitor[Monitor, timers, profiler]
+    ckpt[Checkpoint engines và ZeRO recovery]
+    hw[GPU, CPU, XPU, HPU, NPU, NVMe, network]
+
+    launcher --&gt; app
+    app --&gt; init
+    init --&gt; config
+    init --&gt; engine
+    init --&gt; pipe
+    engine --&gt; zero
+    engine --&gt; comm
+    engine --&gt; monitor
+    engine --&gt; ckpt
+    engine --&gt; ops
+    pipe --&gt; comm
+    zero --&gt; comm
+    zero --&gt; ops
+    comm --&gt; accel
+    ops --&gt; accel
+    accel --&gt; hw</div>
+<h2 id="kh-i-ni-m-c-t-l-i">Khái niệm cốt lõi</h2>
+<p><strong>DeepSpeedEngine:</strong> wrapper training trung tâm. Engine callable cho forward pass và cung cấp <code>backward</code>, <code>step</code>, <code>save_checkpoint</code>, <code>load_checkpoint</code>.</p>
+<p><strong>DeepSpeedConfig:</strong> biểu diễn đã parse của config JSON/HJSON. Config route setting cho batch size, optimizer, scheduler, precision, ZeRO, communication, monitoring, autotuning, tensor parallelism, checkpointing và data efficiency.</p>
+<p><strong>ZeRO:</strong> Zero Redundancy Optimizer. Stage 1 partition optimizer states, Stage 2 partition thêm gradients, Stage 3 partition thêm model parameters. <code>deepspeed/runtime/zero/config.py</code> biểu diễn bằng <code>ZeroStageEnum</code>.</p>
+<p><strong>Offload:</strong> chuyển optimizer state hoặc parameter sang CPU/NVMe để giảm áp lực GPU memory. ZeRO-2 hỗ trợ optimizer offload; ZeRO-3 hỗ trợ parameter và optimizer offload.</p>
+<p><strong>Accelerator abstraction:</strong> <code>accelerator/real_accelerator.py</code> chọn hoặc validate accelerator qua <code>DS_ACCELERATOR</code> hoặc auto-detection, rồi expose hành vi device, dtype, stream, communication và op-builder theo backend.</p>
+<p><strong>Communication wrapper:</strong> <code>deepspeed.comm</code> giữ tương thích với API kiểu torch.distributed, đồng thời thêm backend selection và communication logging của DeepSpeed.</p>
+<p><strong>Launcher:</strong> script <code>deepspeed</code> route hostfile/resource selection tới backend launcher như PDSH, OpenMPI, MVAPICH, Slurm, MPICH và IMPI.</p>
+<p><strong>Native ops:</strong> extension C++/CUDA/HIP/SYCL/platform-specific tùy chọn được build bởi <code>op_builder</code>. Chúng có thể precompiled qua environment variable khi setup hoặc JIT compile runtime nếu tương thích.</p>
+<p><strong>Pipeline parallelism:</strong> <code>PipelineModule</code> biểu diễn model như chuỗi layer; <code>PipelineEngine</code> train micro-batch qua các stage pipeline được schedule.</p>
+<p><strong>MoE:</strong> mixture-of-experts layer kết hợp expert, data, model và ZeRO parallelism bằng expert group.</p>
+<p><strong>Monitoring và profiling:</strong> Monitor backend, wall-clock timer, comm logging, FLOPs profiler, PyTorch profiler tutorial và <code>ds_report</code> cung cấp visibility vận hành.</p>
+<h2 id="ki-n-tr-c-n-i-b">Kiến trúc nội bộ</h2>
+<p>Entry point công khai là <code>deepspeed.initialize(...)</code> trong <code>deepspeed/__init__.py</code>. Hàm này log metadata version, shutdown mọi context <code>zero.Init</code> đang active, khởi tạo distributed communication qua backend của accelerator hiện tại, chuẩn hóa config input, có thể khởi tạo mesh device cho sequence/data parallelism, merge setting tensor-parallel model init, build <code>DeepSpeedConfig</code>, rồi chọn một trong ba đường engine:</p>
+<ul>
+<li><code>DeepSpeedHybridEngine</code> khi hybrid engine được bật.</li>
+<li><code>DeepSpeedEngine</code> cho training non-pipeline tiêu chuẩn.</li>
+<li><code>PipelineEngine</code> khi model là <code>PipelineModule</code>.</li>
+</ul>
+<p><code>DeepSpeedEngine.__init__</code> trong <code>runtime/engine.py</code> tiếp tục validate arguments, cấu hình distributed variables, cấu hình <code>deepspeed.comm</code>, tạo <code>MonitorMaster</code>, cấu hình distributed model, đăng ký hook dùng bởi DeepCompile, ghi nhận tên parameter, cấu hình timers, thiết lập optimizer/scheduler/data loader và nối các tính năng hệ thống tùy chọn. Class này sau đó triển khai <code>forward</code>, <code>backward</code>, <code>step</code>, <code>load_checkpoint</code> và <code>save_checkpoint</code>.</p>
+<p>Triển khai ZeRO được tách theo stage. <code>runtime/zero/stage_1_and_2.py</code> triển khai <code>DeepSpeedZeroOptimizer</code>, còn <code>runtime/zero/stage3.py</code> triển khai <code>DeepSpeedZeroOptimizer_Stage3</code>. Stage 3 điều phối gather/release parameter, gradient partitioning, offload, swapping optimizer state, bucket sizing, persistence threshold, reduce-scatter, tùy chọn quantized communication và context đặc biệt như <code>GatheredParameters</code>.</p>
+<p>Config không còn là dictionary lỏng sau khi parse. <code>runtime/config.py</code> import các module config theo feature, còn <code>runtime/zero/config.py</code> dùng pydantic model với alias và migration field deprecated. <code>tests/unit/runtime/zero/test_zero_config.py</code> kiểm chứng các field deprecated như <code>cpu_offload</code> và alias như <code>stage3_prefetch_bucket_size</code>.</p>
+<p>Native ops được phát hiện động. <code>op_builder/all_ops.py</code> import package op-builder của accelerator hiện tại, thu thập class kết thúc bằng <code>Builder</code>, tạo builder instance và expose <code>ALL_OPS</code>. <code>setup.py</code> dùng environment variable như <code>DS_BUILD_OPS</code> và build var riêng từng op để quyết định precompilation. Nếu op chưa được preinstall, <code>env_report.py</code> ghi chú rằng op tương thích có thể JIT compile runtime.</p>
+<h2 id="lu-ng-training-end-to-end">Luồng training end-to-end</h2>
+<div class="mermaid">sequenceDiagram
+    participant CLI as deepspeed CLI
+    participant Script as User script
+    participant Init as deepspeed.initialize
+    participant Config as DeepSpeedConfig
+    participant Dist as deepspeed.comm
+    participant Engine as DeepSpeedEngine
+    participant Zero as ZeRO optimizer
+    participant Mon as Monitor/Timers
+    participant Store as Checkpoint directory
+
+    CLI-&gt;&gt;Script: launch ranks với local_rank và env
+    Script-&gt;&gt;Init: model, optimizer, data, config
+    Init-&gt;&gt;Dist: init_distributed backend từ accelerator
+    Init-&gt;&gt;Config: parse config JSON/HJSON
+    Init-&gt;&gt;Engine: tạo engine hoặc pipeline engine
+    Engine-&gt;&gt;Zero: wrap optimizer nếu bật ZeRO
+    Engine-&gt;&gt;Mon: cấu hình monitor và timers
+    Script-&gt;&gt;Engine: loss = engine(batch)
+    Script-&gt;&gt;Engine: engine.backward(loss)
+    Engine-&gt;&gt;Zero: partition/reduce/offload gradients và states
+    Script-&gt;&gt;Engine: engine.step()
+    Engine-&gt;&gt;Mon: ghi timing và training metrics
+    Engine-&gt;&gt;Store: save_checkpoint trên mọi rank</div>
+<h2 id="lu-ng-runtime-v-d-li-u">Luồng runtime và dữ liệu</h2>
+<p>Vòng lặp training đơn giản nhất trong getting-started docs là:</p>
+<ol>
+<li>Gọi <code>deepspeed.initialize(...)</code>.</li>
+<li>Dùng engine trả về như model callable cho forward.</li>
+<li>Gọi <code>engine.backward(loss)</code>.</li>
+<li>Gọi <code>engine.step()</code>.</li>
+</ol>
+<p>Bên dưới, <code>engine.backward</code> xử lý gradient scaling, gradient averaging hoặc partitioning, và behavior theo optimizer. <code>engine.step</code> xử lý gradient accumulation boundary, optimizer update, learning-rate scheduler step, timers, monitor events, overflow handling và chuyển trạng thái ZeRO.</p>
+<p>Với ZeRO-3, dữ liệu parameter không luôn cư trú trên mọi device. Runtime gather parameter trước khi module compute và release hoặc partition lại sau đó. Offload path có thể chuyển parameter hoặc optimizer state giữa accelerator memory, CPU memory và NVMe. Vì vậy truy cập parameter trực tiếp theo cách thông thường có thể sai nếu không dùng context được tài liệu hóa như <code>deepspeed.zero.GatheredParameters</code>.</p>
+<p>Với pipeline parallelism, vòng lặp training thay đổi. <code>PipelineEngine</code> expose <code>train_batch</code> và <code>eval_batch</code> vì pipeline scheduling interleave forward/backward trên micro-batch. Tài liệu nêu rõ pipeline training không thể được biểu diễn như ba lời gọi cấp người dùng <code>forward</code>, <code>backward</code>, <code>step</code> giống engine tiêu chuẩn.</p>
+<p>Với inference, <code>deepspeed/inference/engine.py</code> build <code>InferenceEngine</code> quanh module và <code>DeepSpeedInferenceConfig</code>, tùy chọn thay transformer layer bằng optimized kernel, tạo tensor-parallel group, áp dụng injection policy, đổi dtype, hỗ trợ constraint CUDA graph và profile model time.</p>
+<h2 id="topology-tri-n-khai-v-v-n-h-nh">Topology triển khai và vận hành</h2>
+<div class="mermaid">flowchart LR
+    subgraph Control[Control plane]
+        hostfile[Hostfile hoặc scheduler allocation]
+        cli[deepspeed launcher]
+        env[Rank env và exported variables]
+    end
+    subgraph NodeA[Node A]
+        r0[Rank 0 engine]
+        r1[Rank 1 engine]
+        gpuA[Accelerators]
+    end
+    subgraph NodeB[Node B]
+        r2[Rank 2 engine]
+        r3[Rank 3 engine]
+        gpuB[Accelerators]
+    end
+    subgraph Shared[Dịch vụ dùng chung]
+        ckpt[Checkpoint storage]
+        logs[TensorBoard/WandB/Comet/CSV]
+        report[ds_report diagnostics]
+        nvme[CPU/NVMe offload]
+    end
+
+    hostfile --&gt; cli
+    cli --&gt; env
+    env --&gt; r0
+    env --&gt; r1
+    env --&gt; r2
+    env --&gt; r3
+    r0 &lt;--&gt; r1
+    r1 &lt;--&gt; r2
+    r2 &lt;--&gt; r3
+    r0 --&gt; gpuA
+    r1 --&gt; gpuA
+    r2 --&gt; gpuB
+    r3 --&gt; gpuB
+    r0 --&gt; ckpt
+    r1 --&gt; ckpt
+    r2 --&gt; ckpt
+    r3 --&gt; ckpt
+    r0 --&gt; logs
+    r1 --&gt; nvme
+    r2 --&gt; nvme
+    report --&gt; cli</div>
+<p>Hành vi vận hành quan trọng:</p>
+<ul>
+<li>Launcher mặc định tìm hostfile nhưng có thể giới hạn node và slot bằng <code>--num_nodes</code>, <code>--num_gpus</code>, <code>--include</code>, <code>--exclude</code>.</li>
+<li><code>--no_ssh</code> hỗ trợ môi trường như Kubernetes, nơi mỗi node launch độc lập.</li>
+<li>Environment propagation bao gồm một số prefix được chọn và <code>.deepspeed_env</code>.</li>
+<li><code>ds_report</code> nên được dùng để kiểm tra installed/compatible ops, metadata torch/CUDA/HIP/NPU và warning <code>/dev/shm</code>.</li>
+<li>Mọi rank phải tham gia <code>save_checkpoint</code>; getting-started docs cảnh báo gọi chỉ trên rank 0 có thể hang.</li>
+<li>Tương thích native op phụ thuộc vào PyTorch, CUDA/HIP/SYCL/compiler versions, ninja và hỗ trợ theo accelerator.</li>
+</ul>
+<h2 id="v-ng-i-v-s-quy-t-nh">Vòng đời và sơ đồ quyết định</h2>
+<div class="mermaid">flowchart TD
+    start[Bắt đầu với PyTorch model và mục tiêu training] --&gt; scale{Bottleneck chính?}
+    scale --&gt;|Vừa memory, cần tốc độ| fp[Mixed precision và fused ops]
+    scale --&gt;|Optimizer state quá lớn| z1[ZeRO Stage 1]
+    scale --&gt;|Gradient quá lớn| z2[ZeRO Stage 2]
+    scale --&gt;|Parameter quá lớn| z3[ZeRO Stage 3]
+    scale --&gt;|Activation memory cao| ac[Activation checkpointing hoặc pipeline]
+    scale --&gt;|Model có expert| moe[MoE và expert parallelism]
+    scale --&gt;|Sequence dài| sp[Sequence parallel / Ulysses / AutoSP]
+    scale --&gt;|Serving latency| inf[Inference kernel injection hoặc TP]
+    z1 --&gt; cfg[DeepSpeed config]
+    z2 --&gt; cfg
+    z3 --&gt; offload{Cần offload?}
+    offload --&gt;|Không| cfg
+    offload --&gt;|CPU/NVMe| cfg
+    fp --&gt; cfg
+    ac --&gt; cfg
+    moe --&gt; cfg
+    sp --&gt; cfg
+    inf --&gt; cfg
+    cfg --&gt; report[Chạy ds_report và smoke test nhỏ]
+    report --&gt; launch[Launch distributed job]
+    launch --&gt; monitor[Monitor throughput, memory, comms, loss]
+    monitor --&gt; checkpoint[Checkpoint mọi rank]</div>
+<h2 id="s-ph-thu-c-module">Sơ đồ phụ thuộc module</h2>
+<div class="mermaid">flowchart TB
+    api[deepspeed/__init__.py]
+    engine[runtime/engine.py]
+    config[runtime/config.py]
+    zero[runtime/zero/*]
+    pipe[runtime/pipe/*]
+    moe[moe/*]
+    comm[comm/*]
+    accel[accelerator/*]
+    ops[ops/* and op_builder/*]
+    csrc[csrc/*]
+    monitor[monitor/*]
+    profile[profiling/*]
+    launcher[launcher/*]
+    inference[inference/*]
+
+    api --&gt; engine
+    api --&gt; pipe
+    api --&gt; inference
+    api --&gt; config
+    engine --&gt; zero
+    engine --&gt; comm
+    engine --&gt; monitor
+    engine --&gt; profile
+    engine --&gt; ops
+    engine --&gt; moe
+    pipe --&gt; engine
+    zero --&gt; comm
+    zero --&gt; ops
+    comm --&gt; accel
+    ops --&gt; accel
+    ops --&gt; csrc
+    launcher --&gt; comm
+    inference --&gt; comm
+    inference --&gt; ops</div>
+<h2 id="i-m-m-r-ng">Điểm mở rộng</h2>
+<p>DeepSpeed có nhiều bề mặt mở rộng:</p>
+<ul>
+<li><strong>Tích hợp application:</strong> gọi <code>deepspeed.initialize</code> với model, optimizer, parameters, scheduler, data, config path/dict và optional model-parallel unit.</li>
+<li><strong>Tích hợp launcher:</strong> dùng hostfile, launcher Slurm/MPI, <code>--no_ssh</code>, chuỗi include/exclude resource, environment file và metadata rank từ scheduler.</li>
+<li><strong>Mở rộng config:</strong> thêm hoặc tune các section trong DeepSpeed config như <code>zero_optimization</code>, <code>fp16</code>, <code>bf16</code>, <code>torch_autocast</code>, <code>tensorboard</code>, <code>wandb</code>, <code>csv_monitor</code>, <code>flops_profiler</code>, <code>autotuning</code>, <code>aio</code> và checkpoint settings.</li>
+<li><strong>Custom optimizer/scheduler:</strong> truyền object hoặc callable optimizer/scheduler vào <code>initialize</code>, override construction được định nghĩa trong config.</li>
+<li><strong>Hỗ trợ accelerator:</strong> triển khai contract abstract accelerator và op builders, rồi chọn qua <code>DS_ACCELERATOR</code> hoặc auto-detection.</li>
+<li><strong>Native ops:</strong> thêm op builder dưới <code>op_builder</code>, source dưới <code>csrc</code>, Python wrapper dưới <code>deepspeed/ops</code> và compatibility checks.</li>
+<li><strong>Parallelism:</strong> dùng <code>PipelineModule</code>, MoE layers, tensor parallel config, sequence parallel settings và expert group parameters.</li>
+<li><strong>Monitoring:</strong> cấu hình monitor built-in hoặc instantiate <code>MonitorMaster(ds_config.monitor_config)</code> để ghi custom event.</li>
+<li><strong>Inference:</strong> dùng <code>init_inference</code> / <code>InferenceEngine</code> với kernel injection, injection policy, tensor parallel size, dtype, quantization và CUDA graph options.</li>
+</ul>
+<h2 id="t-ch-h-p">Tích hợp</h2>
+<p>README và docs xác định các tích hợp với:</p>
+<ul>
+<li>Hugging Face Transformers và Accelerate, thường qua config file <code>--deepspeed</code> hoặc Accelerate DeepSpeed configs.</li>
+<li>PyTorch Lightning, MosaicML Composer, Determined và MMEngine.</li>
+<li>Training Megatron-style model-parallel.</li>
+<li>Workflow PEFT và QLoRA qua Accelerate/Transformers/TRL, đặc biệt fine-tuning model lớn với ZeRO-3.</li>
+<li>TensorBoard, W&amp;B, Comet và CSV cho monitoring.</li>
+<li>PyTorch Profiler và DeepSpeed FLOPs profiler cho phân tích hiệu năng.</li>
+<li>AzureML examples, Docker/ROCm images, hướng dẫn build Windows và nhiều nhà cung cấp accelerator.</li>
+</ul>
+<h2 id="c-u-h-nh-tri-n-khai-v-v-n-h-nh">Cấu hình, triển khai và vận hành</h2>
+<p>DeepSpeed chủ yếu được cấu hình bằng JSON/HJSON. Config tối thiểu gồm batch size, optimizer, precision và ZeRO settings. Deployment lớn hơn thêm bucket sizes, offload device settings, gradient accumulation, checkpoint behavior, monitoring, communication logging, tensor parallelism và autotuning.</p>
+<p>Checklist vận hành:</p>
+<ul>
+<li>Chạy <code>ds_report</code> trước training để xác minh op compatibility và chi tiết môi trường.</li>
+<li>Validate config trên model nhỏ hoặc dataset giảm trước khi scale out.</li>
+<li>Xác nhận <code>train_batch_size</code>, <code>train_micro_batch_size_per_gpu</code> và <code>gradient_accumulation_steps</code> nhất quán.</li>
+<li>Pin PyTorch, CUDA/HIP/toolchain versions khi phụ thuộc native ops.</li>
+<li>Quyết định op nên precompiled (<code>DS_BUILD_OPS</code> và biến riêng từng op) hay JIT compiled.</li>
+<li>Chỉ đặt <code>DS_ACCELERATOR</code> khi auto-detection sai hoặc mơ hồ.</li>
+<li>Với ZeRO-3, tune <code>stage3_prefetch_bucket_size</code>, <code>stage3_param_persistence_threshold</code>, <code>stage3_max_live_parameters</code>, <code>stage3_max_reuse_distance</code> và offload settings theo tradeoff memory/communication.</li>
+<li>Với container, đảm bảo <code>/dev/shm</code> đủ lớn cho distributed communication.</li>
+<li>Đảm bảo checkpoint storage reachable và đủ hiệu năng cho mọi rank.</li>
+<li>Monitor wall-clock breakdown, throughput, GPU memory, communication timings và loss curves.</li>
+<li>Xem thay đổi DeepSpeed config là thay đổi production; thay đổi nhỏ có thể làm đổi memory residency, optimizer numerics, checkpoint shape hoặc communication volume.</li>
+</ul>
+<h2 id="observability-test-evaluation-v-failure-mode">Observability, test, evaluation và failure mode</h2>
+<p>Các bề mặt observability gồm:</p>
+<ul>
+<li><code>ds_report</code> từ <code>deepspeed/env_report.py</code>.</li>
+<li><code>MonitorMaster</code> và backend trong <code>deepspeed/monitor</code>.</li>
+<li><code>ThroughputTimer</code>, <code>SynchronizedWallClockTimer</code> và named timers trong <code>deepspeed/utils/timer.py</code>.</li>
+<li>Communication logging trong <code>deepspeed/comm/comm.py</code> và <code>deepspeed/utils/comms_logging.py</code>.</li>
+<li>FLOPs profiler trong <code>deepspeed/profiling/flops_profiler/profiler.py</code>.</li>
+<li>Workflow PyTorch profiler mô tả trong <code>docs/_tutorials/pytorch-profiler.md</code>.</li>
+<li>Memory logging qua các utility runtime như <code>see_memory_usage</code>.</li>
+</ul>
+<p>Test trong clone này bao phủ accelerator init, launcher argument/resource handling, ZeRO config, runtime behavior của ZeRO, compile integration, inference, sequence parallelism, one-bit communication, performance microbenchmarks và kịch bản model Megatron GPT-2. File đại diện gồm <code>tests/unit/runtime/zero/test_zero_config.py</code>, <code>tests/unit/launcher/*</code>, <code>tests/accelerator/test_ds_init.py</code>, <code>tests/unit/v1/zero/*</code> và <code>tests/unit/v1/compile/*</code>.</p>
+<p>Failure mode phổ biến:</p>
+<ul>
+<li>Batch-size config mismatch gây gradient accumulation sai hoặc assertion runtime.</li>
+<li>Gọi save/load checkpoint chỉ trên một rank.</li>
+<li>Native op build fail vì CUDA/HIP/compiler/PyTorch versions không khớp.</li>
+<li><code>/dev/shm</code> quá nhỏ trong container, gây bất ổn NCCL hoặc shared-memory.</li>
+<li>Hostfile, SSH hoặc scheduler rank mismatch.</li>
+<li>Dùng trực tiếp <code>torch.distributed</code> trong code DeepSpeed thay vì <code>deepspeed.comm</code>.</li>
+<li>Truy cập trực tiếp parameter ZeRO-3 mà không dùng <code>GatheredParameters</code>.</li>
+<li>Đường offload quá chậm vì băng thông CPU/NVMe không đủ.</li>
+<li>Số pipeline stage không chia hết cho tổng GPU count.</li>
+<li>Dtype không được accelerator đã chọn hỗ trợ.</li>
+<li>Latency JIT compile ở lần đầu dùng optional ops.</li>
+</ul>
+<p>Evaluation nên bao gồm chất lượng loss, samples/sec, tokens/sec, step latency, GPU memory, CPU memory, NVMe bandwidth, communication time, checkpoint time, restart success và ổn định số học qua các lựa chọn precision và ZeRO stage.</p>
+<h2 id="r-i-ro-b-o-m-t-v-governance">Rủi ro bảo mật và governance</h2>
+<p>DeepSpeed vận hành gần hạ tầng cluster và native code, nên governance phải bao phủ cả rủi ro ML lẫn hệ thống:</p>
+<ul>
+<li><strong>Supply chain native code:</strong> extension C++/CUDA/HIP được compile và load động; cần pin version và validate provenance build.</li>
+<li><strong>Truy cập cluster:</strong> hostfile, SSH, scheduler variables và environment export có thể lộ credentials hoặc launch job trên node không mong muốn.</li>
+<li><strong>Độ nhạy checkpoint:</strong> optimizer states và model weights có thể chứa tín hiệu training proprietary hoặc nhạy cảm.</li>
+<li><strong>Config drift:</strong> thay đổi JSON có thể đổi precision, optimizer, offload, checkpoint format hoặc communication behavior.</li>
+<li><strong>Data privacy:</strong> distributed logs và monitor backend có thể lộ metrics, tên dataset, prompt hoặc sample text nếu custom event không được kiểm soát.</li>
+<li><strong>Artifact trust:</strong> load checkpoint hoặc custom model code tùy ý có thể thực thi đường không tin cậy ngoài bản thân DeepSpeed.</li>
+<li><strong>Resource isolation:</strong> offload và NVMe path có thể ảnh hưởng workload khác nếu quota storage và kiểm soát I/O yếu.</li>
+<li><strong>License compliance:</strong> model, dataset và native dependency phía downstream có thể có nghĩa vụ ngoài license Apache-2.0 của DeepSpeed.</li>
+</ul>
+<h2 id="h-ng-d-n-c-source">Hướng dẫn đọc source</h2>
+<p>Thứ tự đọc khuyến nghị:</p>
+<ol>
+<li><code>README.md</code> để hiểu phạm vi dự án, cài đặt, accelerator hỗ trợ, tích hợp và <code>ds_report</code>.</li>
+<li><code>docs/_tutorials/getting-started.md</code> cho lifecycle engine tối thiểu.</li>
+<li><code>deepspeed/__init__.py</code> cho <code>initialize</code> và chọn engine.</li>
+<li><code>deepspeed/runtime/engine.py</code> cho nội bộ training runtime.</li>
+<li><code>deepspeed/runtime/config.py</code> và <code>deepspeed/runtime/zero/config.py</code> cho ngữ nghĩa config.</li>
+<li><code>docs/_tutorials/zero.md</code>, <code>zero-offload.md</code> và <code>zeropp.md</code> cho ZeRO stages và offload.</li>
+<li><code>deepspeed/runtime/zero/stage_1_and_2.py</code>, <code>stage3.py</code> và <code>partition_parameters.py</code> cho implementation ZeRO.</li>
+<li><code>deepspeed/launcher/runner.py</code> cho hành vi launch multi-node.</li>
+<li><code>accelerator/real_accelerator.py</code> và <code>deepspeed/comm/comm.py</code> cho backend selection và communication.</li>
+<li><code>op_builder/all_ops.py</code>, <code>op_builder/builder.py</code> và <code>deepspeed/env_report.py</code> cho lifecycle native op.</li>
+<li><code>docs/_tutorials/monitor.md</code>, <code>pytorch-profiler.md</code> và <code>flops-profiler.md</code> cho observability.</li>
+<li>Test dưới <code>tests/unit/runtime/zero</code>, <code>tests/unit/launcher</code> và <code>tests/accelerator</code> cho behavior mong đợi.</li>
+</ol>
+<h2 id="l-tr-nh-h-c">Lộ trình học</h2>
+<p>Cho application developer:</p>
+<ol>
+<li>Wrap một PyTorch model nhỏ bằng <code>deepspeed.initialize</code>.</li>
+<li>Dùng vòng lặp engine tiêu chuẩn: forward, <code>backward</code>, <code>step</code>.</li>
+<li>Thêm fp16 hoặc bf16 chỉ sau khi đường fp32 ổn định.</li>
+<li>Bật ZeRO Stage 1, rồi Stage 2, rồi Stage 3 khi memory pressure yêu cầu.</li>
+<li>Thêm monitoring và chạy <code>ds_report</code> trước khi scale multi-node.</li>
+<li>Thêm save/load checkpoint và test restart trên mọi rank.</li>
+<li>Chỉ đưa offload, pipeline, tensor parallelism hoặc MoE vào khi engine path đơn giản đã có bottleneck đo được.</li>
+</ol>
+<p>Cho platform engineer:</p>
+<ol>
+<li>Đọc code launcher, accelerator, comm và op-builder.</li>
+<li>Chuẩn hóa hostfile/scheduler integration và environment propagation.</li>
+<li>Pre-validate native op compatibility cho từng image cluster.</li>
+<li>Định nghĩa template config cho các kích thước model và ZeRO stage phổ biến.</li>
+<li>Thiết lập chính sách monitoring, checkpoint và restart.</li>
+<li>Chạy test đại diện và smoke job cho mỗi lần cập nhật image PyTorch/CUDA/HIP.</li>
+</ol>
+<h2 id="checklist-production-v-c-ng-distributed-training">Checklist production và cổng distributed training</h2>
+<p>Readiness của DeepSpeed phải được kiểm tra trước job lớn, vì nhiều lỗi chỉ xuất hiện khi nhiều rank, native ops, checkpoint storage và offload path cùng hoạt động. Các neo source hữu ích nhất gồm <code>deepspeed/__init__.py</code>, <code>deepspeed/runtime/engine.py</code>, <code>deepspeed/runtime/config.py</code>, <code>deepspeed/runtime/zero/*</code>, <code>deepspeed/launcher/*</code>, <code>deepspeed/comm/*</code>, <code>accelerator/real_accelerator.py</code>, <code>op_builder/*</code>, <code>deepspeed/env_report.py</code>, <code>deepspeed/monitor/*</code> và <code>tests/unit/runtime/zero/*</code>.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Khu vực readiness</th><th>Cần xác minh</th></tr></thead>
+<tbody>
+<tr><td>Environment</td><td><code>ds_report</code> xác nhận accelerator, torch/CUDA/HIP/compiler compatibility, op đã cài hoặc JIT được, và <code>/dev/shm</code> khỏe.</td></tr>
+<tr><td>Config arithmetic</td><td><code>train_batch_size</code>, <code>train_micro_batch_size_per_gpu</code>, gradient accumulation, world size, precision và ZeRO stage nhất quán.</td></tr>
+<tr><td>Launcher topology</td><td>Hostfile, scheduler allocation, rank env, include/exclude filters, SSH/no-SSH mode và exported environment phải deterministic.</td></tr>
+<tr><td>ZeRO/offload</td><td>Stage, bucket sizes, persistence thresholds, CPU/NVMe bandwidth và cách dùng <code>GatheredParameters</code> được test trên job nhỏ.</td></tr>
+<tr><td>Checkpointing</td><td>Tất cả rank cùng save/load, storage bandwidth đủ và recovery được test trước long run.</td></tr>
+<tr><td>Monitoring</td><td>Timers, throughput, comm logging, memory logs, profiler và monitor backends bật với metadata an toàn.</td></tr>
+</tbody></table></div>
+<div class="mermaid">flowchart LR
+  Env[Cluster image va ds_report] --&gt; Config[DeepSpeed JSON/HJSON config]
+  Config --&gt; Launch[launcher runner va rank env]
+  Launch --&gt; Init[deepspeed.initialize]
+  Init --&gt; Engine[DeepSpeedEngine hoac PipelineEngine]
+  Engine --&gt; Zero[ZeRO, offload, precision]
+  Engine --&gt; Comm[deepspeed.comm groups]
+  Engine --&gt; Ops[op_builder va native ops]
+  Engine --&gt; Monitor[monitor, timers, profiler]
+  Engine --&gt; Checkpoint[checkpoint engines va storage]
+  Monitor --&gt; Decision{Smoke test nho pass?}
+  Checkpoint --&gt; Decision
+  Decision --&gt;|Khong| Tune[Sua env, config, op, topology, storage]
+  Tune --&gt; Env
+  Decision --&gt;|Co| Scale[Scale nodes va chay canary steps]</div>
+<h2 id="b-n-c-l-p-l-i">Bản đồ cô lập lỗi</h2>
+<p>Lỗi distributed training rất tốn kém khi triệu chứng duy nhất là job treo. Triage nên tách launcher setup, distributed communication, ZeRO partitioning, native ops, precision/overflow, offload storage, checkpointing và monitoring.</p>
+<div class="mermaid">flowchart TD
+  Symptom[Trieu chung DeepSpeed] --&gt; Domain{Domain}
+  Domain --&gt; Launcher[Launcher, hostfile, rank env]
+  Domain --&gt; Comm[deepspeed.comm hoac backend]
+  Domain --&gt; Config[Config parse hoac batch arithmetic]
+  Domain --&gt; Zero[ZeRO partitioning hoac GatheredParameters]
+  Domain --&gt; Ops[Native op build hoac JIT]
+  Domain --&gt; Offload[CPU hoac NVMe offload bandwidth]
+  Domain --&gt; Checkpoint[Checkpoint save/load qua ranks]
+  Domain --&gt; Precision[fp16, bf16, overflow, dtype]
+  Launcher --&gt; Files1[launcher/runner.py va bin scripts]
+  Comm --&gt; Files2[comm/* va accelerator/*]
+  Config --&gt; Files3[runtime/config.py va runtime/zero/config.py]
+  Zero --&gt; Files4[runtime/zero/stage_1_and_2.py, stage3.py]
+  Ops --&gt; Files5[op_builder, csrc, env_report.py]
+  Offload --&gt; Files6[runtime/swap_tensor, nvme, aio]
+  Checkpoint --&gt; Files7[runtime/engine.py checkpoint paths]
+  Precision --&gt; Files8[runtime/fp16, bf16, amp paths]
+  Files1 --&gt; Action[Stop, inspect, reduce, patch va rerun smoke]
+  Files2 --&gt; Action
+  Files3 --&gt; Action
+  Files4 --&gt; Action
+  Files5 --&gt; Action
+  Files6 --&gt; Action
+  Files7 --&gt; Action
+  Files8 --&gt; Action</div>
+<h2 id="glossary">Glossary</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Thuật ngữ</th><th>Ý nghĩa</th></tr></thead>
+<tbody>
+<tr><td>DeepSpeedEngine</td><td>Runtime wrapper chính cho training.</td></tr>
+<tr><td>ZeRO</td><td>Họ kỹ thuật partition optimizer, gradient và parameter.</td></tr>
+<tr><td>ZeRO-1</td><td>Partition optimizer states.</td></tr>
+<tr><td>ZeRO-2</td><td>Partition optimizer states và gradients.</td></tr>
+<tr><td>ZeRO-3</td><td>Partition optimizer states, gradients và parameters.</td></tr>
+<tr><td>Offload</td><td>Chuyển optimizer hoặc parameter state sang CPU/NVMe.</td></tr>
+<tr><td><code>zero.Init</code></td><td>Context khởi tạo model tiết kiệm memory cho model lớn.</td></tr>
+<tr><td><code>GatheredParameters</code></td><td>Context truy cập an toàn parameter bị partition bởi ZeRO-3.</td></tr>
+<tr><td>PipelineModule</td><td>Biểu diễn model dạng chuỗi layer cho pipeline parallelism.</td></tr>
+<tr><td>PipelineEngine</td><td>Engine schedule pipeline micro-batches.</td></tr>
+<tr><td>MoE</td><td>Mixture of Experts, training/inference layer expert sparse.</td></tr>
+<tr><td>Accelerator</td><td>Abstraction DeepSpeed trên CUDA, CPU, XPU, NPU, HPU, MLU, MPS và SDAA.</td></tr>
+<tr><td><code>deepspeed.comm</code></td><td>Wrapper communication DeepSpeed tương thích API kiểu torch.distributed.</td></tr>
+<tr><td>Op builder</td><td>Class Python build hoặc JIT-load extension native của DeepSpeed.</td></tr>
+<tr><td><code>ds_report</code></td><td>Báo cáo environment và op compatibility.</td></tr>
+<tr><td>Wall-clock breakdown</td><td>Instrumentation timing quanh forward, backward, reduction và step.</td></tr>
+<tr><td>Autotuning</td><td>Tính năng DeepSpeed tìm kiếm lựa chọn config liên quan hiệu năng.</td></tr>
+<tr><td>Universal checkpointing</td><td>Khái niệm checkpoint portability được DeepSpeed tài liệu hóa cho distributed state.</td></tr>
+</tbody></table></div>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kiến trúc PEFT | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/03-fine-tuning-training/peft/README.vi.md">View source</a>
+      <h1 id="ki-n-tr-c-peft">Kiến trúc PEFT</h1>
+<h2 id="ph-m-vi-v-d-ki-n-repository">Phạm vi và dữ kiện repository</h2>
+<p>Tài liệu này dựa trên bản clone cục bộ tại <code>github-repos/03-fine-tuning-training/peft</code>, đã được rà soát ở commit <code>4f7ddfabbb0d03c6071e7ba922335bde26da4cf7</code> ngày 2026-06-01. Phiên bản gói trong <code>setup.py</code> và <code>src/peft/__init__.py</code> là <code>0.19.2.dev0</code>.</p>
+<p>PEFT là thư viện Python đặt dưới <code>src/peft</code>. Bản clone này có 232 file nguồn, 62 file test, 78 file tài liệu và 215 file ví dụ. Metadata trong <code>setup.py</code> yêu cầu Python 3.10+, PyTorch, Transformers, Accelerate, Safetensors, Hugging Face Hub, NumPy, packaging, psutil, PyYAML và tqdm. Các extra cho phát triển và kiểm thử bổ sung pytest, diffusers, datasets, scipy, scikit-learn, sentencepiece, protobuf, torchvision, ruff, black và tooling sinh tài liệu.</p>
+<h2 id="t-m-t-t-i-u-h-nh">Tóm tắt điều hành</h2>
+<p>PEFT, Parameter-Efficient Fine-Tuning, giải quyết bài toán chi phí khi tinh chỉnh mô hình pretrained lớn bằng cách chỉ huấn luyện một tập tham số adapter nhỏ thay vì cập nhật toàn bộ trọng số của base model. Đây không phải là một nền tảng training hoàn chỉnh; PEFT là lớp adapter và định dạng checkpoint giúp Transformers, Diffusers, Accelerate, DeepSpeed, TRL và các vòng lặp PyTorch tự viết cùng sử dụng lại backbone lớn trong khi chỉ tối ưu một phần tham số nhỏ cho từng tác vụ.</p>
+<p>Về kiến trúc, PEFT xoay quanh một số wrapper và registry quan trọng:</p>
+<ul>
+<li><code>src/peft/mapping_func.py</code> cung cấp <code>get_peft_model</code>, factory chính để bọc mô hình.</li>
+<li><code>src/peft/peft_model.py</code> định nghĩa <code>PeftModel</code> và các lớp theo tác vụ như <code>PeftModelForCausalLM</code>.</li>
+<li><code>src/peft/mapping.py</code> giữ các mapping runtime từ loại PEFT sang config class, tuner class, mixed-model class và prefix tham số.</li>
+<li><code>src/peft/tuners/tuners_utils.py</code> định nghĩa <code>BaseTuner</code> và <code>BaseTunerLayer</code>, chịu trách nhiệm tìm target module, thay layer, quản lý trạng thái adapter, merge, unload và chuyển adapter.</li>
+<li><code>src/peft/tuners/*</code> triển khai các phương pháp cụ thể như LoRA, AdaLoRA, IA3, prompt tuning, prefix tuning, LoHa, LoKr, OFT, BOFT, VeRA, XLora, trainable tokens và nhiều adapter nghiên cứu mới hơn.</li>
+<li><code>src/peft/utils/save_and_load.py</code>, <code>src/peft/config.py</code> và <code>src/peft/utils/*</code> xử lý serialize config adapter, lọc state dict, truy cập Hub, hỗ trợ quantization, hotswap adapter và các tiện ích tích hợp.</li>
+</ul>
+<p>Đánh đổi kiến trúc chính là PEFT bọc hoặc mutate base model. Cách này tương thích tốt với PyTorch và Hugging Face, nhưng làm cho việc chọn target module, kiểm soát provenance checkpoint, dtype, và sự khớp giữa adapter với base model trở thành vấn đề vận hành rất quan trọng.</p>
+<h2 id="b-i-to-n-c-gi-i-quy-t">Bài toán được giải quyết</h2>
+<p>Full fine-tuning cho LLM, diffusion model, speech model và vision-language model hiện đại thường tốn GPU memory, dung lượng optimizer state, chi phí lưu trữ và thời gian huấn luyện lại. PEFT giảm chi phí này bằng cách gắn các module trainable nhỏ hoặc prompt trainable vào base model gần như đóng băng. README của repo cho thấy hệ quả thực tế: checkpoint adapter thường chỉ ở mức MB thay vì GB, và LoRA có thể train những mô hình mà full fine-tuning sẽ vượt quá bộ nhớ GPU.</p>
+<p>PEFT giải quyết bốn nhóm vấn đề kỹ thuật:</p>
+<ul>
+<li><strong>Chi phí training:</strong> chỉ adapter weights, một số head, hoặc một số token được tính gradient.</li>
+<li><strong>Chi phí lưu trữ:</strong> <code>PeftModel.save_pretrained</code> lưu adapter weights cùng <code>adapter_config.json</code>, không lưu toàn bộ base model.</li>
+<li><strong>Tái sử dụng đa tác vụ:</strong> một base model đóng băng có thể chứa nhiều adapter có tên và chuyển đổi giữa chúng.</li>
+<li><strong>Tích hợp hệ sinh thái:</strong> adapter dùng được trong Transformers, Diffusers, Accelerate, DeepSpeed, TRL và Hugging Face Hub.</li>
+</ul>
+<h2 id="vai-tr-trong-ai-stack">Vai trò trong AI stack</h2>
+<p>PEFT nằm giữa thư viện mô hình và lớp điều phối training/inference:</p>
+<ul>
+<li>Phía trên: các loader pretrained model như <code>transformers.AutoModel*</code>, Diffusers pipeline và model custom <code>torch.nn.Module</code>.</li>
+<li>Phần lõi: config class, model wrapper, tuner registry, adapter layer và utility save/load của PEFT.</li>
+<li>Training phía dưới: Transformers <code>Trainer</code>, TRL <code>SFTTrainer</code> hoặc DPO workflow, Accelerate launcher, FSDP, DeepSpeed ZeRO và vòng lặp PyTorch tự viết.</li>
+<li>Inference phía dưới: inference với adapter chưa merge, export base model đã merge, hotswap adapter, adapter có trọng số hoặc mixed adapter, và phân phối qua Hub.</li>
+</ul>
+<p>Nên xem PEFT là lớp thích nghi mô hình và checkpoint adapter, không phải data pipeline, experiment tracker, serving gateway hay evaluation framework.</p>
+<h2 id="b-n-source-tree">Bản đồ source tree</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Đường dẫn</th><th>Trách nhiệm</th></tr></thead>
+<tbody>
+<tr><td><code>README.md</code></td><td>Tổng quan dự án, quickstart, lợi ích, tích hợp và hướng dẫn model support.</td></tr>
+<tr><td><code>setup.py</code>, <code>pyproject.toml</code></td><td>Phiên bản package, dependencies, extras, marker pytest, cấu hình ruff/pytest.</td></tr>
+<tr><td><code>src/peft/__init__.py</code></td><td>Public API export cho config, model, utility, helper và tất cả method đã đăng ký.</td></tr>
+<tr><td><code>src/peft/mapping.py</code></td><td>Registry runtime từ PEFT type sang config, tuner, mixed tuner và prefix tham số.</td></tr>
+<tr><td><code>src/peft/mapping_func.py</code></td><td>Factory <code>get_peft_model</code> và logic route sang <code>PeftModel</code>, wrapper theo tác vụ hoặc <code>PeftMixedModel</code>.</td></tr>
+<tr><td><code>src/peft/config.py</code></td><td>Base config mixin, <code>PeftConfig</code>, save/load config, tải từ Hub, metadata version, forward compatibility.</td></tr>
+<tr><td><code>src/peft/peft_model.py</code></td><td>Wrapper PEFT cấp cao, save/load adapter, add/set/disable adapter, forward path theo tác vụ, helper generation.</td></tr>
+<tr><td><code>src/peft/mixed_model.py</code></td><td>Hỗ trợ adapter hỗn hợp thông qua <code>PeftMixedModel</code>.</td></tr>
+<tr><td><code>src/peft/tuners/tuners_utils.py</code></td><td>Cơ chế chung để match module, inject adapter, thay layer, merge/unload, quản lý trainability và trạng thái adapter.</td></tr>
+<tr><td><code>src/peft/tuners/lora/*</code></td><td>LoRA config/model/layer, dispatcher cho quantized layer, hook Tensor Parallel, biến thể LoRA, utility merge.</td></tr>
+<tr><td><code>src/peft/tuners/*</code></td><td>Config, wrapper, prompt encoder và adapter layer theo từng phương pháp.</td></tr>
+<tr><td><code>src/peft/utils/save_and_load.py</code></td><td>Trích xuất state dict chỉ chứa adapter, load lại, rewrite key, xử lý lưu embedding.</td></tr>
+<tr><td><code>src/peft/utils/hotswap.py</code></td><td>Hỗ trợ hotswap adapter và kiểm tra tương thích shape/target.</td></tr>
+<tr><td><code>docs/source/_toctree.yml</code></td><td>Kiến trúc tài liệu: tutorial, method guide, developer guide, tích hợp Accelerate, API reference.</td></tr>
+<tr><td><code>docs/source/developer_guides/*</code></td><td>Định dạng checkpoint, low-level injection, custom model, quantization, merge model, mixed model, torch.compile, troubleshooting.</td></tr>
+<tr><td><code>docs/source/accelerate/*</code></td><td>Hướng dẫn tích hợp DeepSpeed và FSDP.</td></tr>
+<tr><td><code>examples/*</code></td><td>Ví dụ theo tác vụ và phương pháp: causal LM, seq2seq, SFT, diffusion, ControlNet, image classification, int8/FP4, multi-adapter.</td></tr>
+<tr><td><code>tests/*</code></td><td>Unit, integration, GPU, regression, mapping, low-level API, test theo adapter, quantization, torch.compile, training và tương thích model.</td></tr>
+</tbody></table></div>
+<h2 id="s-component">Sơ đồ component</h2>
+<div class="mermaid">flowchart TB
+    user[Code training hoặc inference]
+    hf[Transformers, Diffusers, custom torch modules]
+    factory[get_peft_model / inject_adapter_in_model]
+    wrapper[PeftModel và wrapper theo tác vụ]
+    registry[Registry PEFT trong mapping.py]
+    tuner[BaseTuner trong tuners_utils.py]
+    methods[Triển khai method trong tuners/*]
+    utils[Config, save/load, Hub, hotswap, integration]
+    train[Trainer, TRL, Accelerate, DeepSpeed, FSDP]
+    artifact[adapter_config.json + adapter_model.safetensors]
+
+    user --&gt; hf
+    user --&gt; factory
+    hf --&gt; factory
+    factory --&gt; registry
+    registry --&gt; wrapper
+    registry --&gt; tuner
+    tuner --&gt; methods
+    wrapper --&gt; utils
+    methods --&gt; utils
+    wrapper --&gt; train
+    train --&gt; artifact
+    artifact --&gt; wrapper</div>
+<h2 id="kh-i-ni-m-c-t-l-i">Khái niệm cốt lõi</h2>
+<p><strong>Base model:</strong> mô hình pretrained được thích nghi. PEFT thường đóng băng base model và thêm trạng thái adapter trainable.</p>
+<p><strong>Adapter:</strong> tập tham số trainable gắn vào model. Với LoRA, đó thường là các module low-rank <code>lora_A</code> và <code>lora_B</code>; với prompt method, đó có thể là prompt embedding hoặc prefix encoder học được.</p>
+<p><strong>PEFT config:</strong> object dựa trên dataclass như <code>LoraConfig</code>, <code>IA3Config</code> hoặc <code>PromptTuningConfig</code>. Config khai báo method type, task type, target module, module cần train thêm, rank, cách khởi tạo, dropout, inference mode và tham số riêng của method.</p>
+<p><strong>Target modules và target parameters:</strong> tên, regex, shorthand hoặc target suy ra từ state dict để quyết định adapter được inject vào đâu. <code>BaseTuner</code> và model theo method chịu trách nhiệm match.</p>
+<p><strong>Modules to save:</strong> các module không phải adapter nhưng cần train và cần có trong checkpoint adapter. Head classification và embedding sau khi resize là ví dụ phổ biến.</p>
+<p><strong>Named adapters:</strong> adapter được lưu trong module dictionary và có thể chọn bằng <code>set_adapter</code>, disable, load từ checkpoint hoặc save có chọn lọc.</p>
+<p><strong>Inference đã merge và chưa merge:</strong> một số method có thể merge delta adapter vào base weights bằng <code>merge_and_unload</code>; cách này có thể đơn giản hóa inference nhưng làm mất khả năng switch adapter và unmerge.</p>
+<p><strong>Adapter checkpoint:</strong> PEFT lưu <code>adapter_model.safetensors</code> hoặc <code>adapter_model.bin</code>, <code>adapter_config.json</code> và có thể sinh model card. Tài liệu repo khuyến nghị Safetensors vì <code>.bin</code> dựa trên pickle có rủi ro bảo mật.</p>
+<h2 id="ki-n-tr-c-n-i-b">Kiến trúc nội bộ</h2>
+<p>Public API bắt đầu từ <code>src/peft/__init__.py</code>, nơi re-export model wrapper, config class, helper utility và mọi method đăng ký dưới <code>src/peft/tuners</code>. Điều này làm API bề mặt có cảm giác phẳng, trong khi implementation vẫn được tách theo module.</p>
+<p>Luồng chính:</p>
+<ol>
+<li>Người dùng tạo base model bằng Transformers, Diffusers, timm hoặc PyTorch custom.</li>
+<li>Người dùng tạo <code>PeftConfig</code>, thường là <code>LoraConfig</code>.</li>
+<li><code>get_peft_model</code> trong <code>mapping_func.py</code> kiểm tra task type, trạng thái model và config.</li>
+<li>Factory chọn <code>PeftModel</code>, subclass theo tác vụ hoặc <code>PeftMixedModel</code>.</li>
+<li>Với method không phải prompt learning, <code>PeftModel.__init__</code> tra tuner class trong <code>PEFT_TYPE_TO_TUNER_MAPPING</code>.</li>
+<li><code>BaseTuner</code> inject adapter bằng cách duyệt base model, match target, thay layer và ghi lại module/parameter đã target.</li>
+<li>Method layer như <code>LoraLayer</code> sở hữu adapter weights và logic tính delta ở forward.</li>
+<li>Utility save/load lọc adapter parameter khỏi full model state và đọc/ghi checkpoint PEFT.</li>
+</ol>
+<p>Registry extension được thiết kế đơn giản. <code>register_peft_method</code> trong <code>src/peft/utils/peft_types.py</code> validate tên method, yêu cầu <code>PeftType</code> có enum tương ứng, gán prefix tham số duy nhất và điền các mapping trong <code>mapping.py</code>. Các package method gọi hàm này từ <code>__init__.py</code>; ví dụ <code>src/peft/tuners/lora/__init__.py</code> đăng ký <code>LORA</code> với <code>LoraConfig</code> và <code>LoraModel</code>.</p>
+<h2 id="lu-ng-end-to-end">Luồng end-to-end</h2>
+<div class="mermaid">sequenceDiagram
+    participant App as Training script
+    participant Base as Base model
+    participant Factory as get_peft_model
+    participant Registry as PEFT mappings
+    participant Tuner as BaseTuner/LoraModel
+    participant Layer as Adapter layer
+    participant Trainer as Trainer/Accelerate/DeepSpeed
+    participant Store as Adapter checkpoint
+
+    App-&gt;&gt;Base: AutoModel.from_pretrained(...)
+    App-&gt;&gt;Factory: get_peft_model(Base, LoraConfig)
+    Factory-&gt;&gt;Registry: resolve task type và PEFT type
+    Registry--&gt;&gt;Factory: PeftModel + LoraModel
+    Factory-&gt;&gt;Tuner: wrap hoặc mutate base model
+    Tuner-&gt;&gt;Layer: thay module matched bằng layer có adapter
+    Trainer-&gt;&gt;Layer: forward/backward trên adapter params
+    Trainer-&gt;&gt;Store: save_pretrained(...)
+    Store--&gt;&gt;App: adapter_config.json + adapter_model.safetensors</div>
+<h2 id="lu-ng-runtime-v-d-li-u">Luồng runtime và dữ liệu</h2>
+<p>Trong training, base model vẫn nhận cùng input tensor như trước. Điểm khác biệt là một số module được chọn đã bị thay bằng module hiểu adapter. Với LoRA, <code>LoraLayer</code> giữ base layer gốc cùng các ma trận low-rank trainable trong module dictionary theo adapter name. Ở forward path, kết quả base layer được cộng với delta adapter, kèm xử lý dtype và hook của variant khi cần.</p>
+<p>Trainability được PEFT quản lý thay vì buộc người dùng tự freeze từng tham số. Adapter parameter và <code>modules_to_save</code> được đánh dấu trainable; phần lớn base parameter vẫn frozen. <code>print_trainable_parameters</code>, <code>get_model_status</code> và <code>get_layer_status</code> giúp kiểm tra trạng thái này.</p>
+<p>Loading khác với creation. Adapter đã train nên được load bằng <code>PeftModel.from_pretrained(base_model, adapter_id)</code> hoặc <code>load_adapter</code>, không phải gọi <code>get_peft_model</code> với config mới. <code>tests/test_mapping.py</code> kiểm chứng rằng wrap lặp lại sẽ phát warning và unload trước sẽ tránh warning.</p>
+<p>Với use case cấp thấp, <code>inject_adapter_in_model</code> trong <code>mapping.py</code> mutate bất kỳ <code>torch.nn.Module</code> nào tại chỗ và trả lại instance model ban đầu thay vì <code>PeftModel</code>. <code>docs/source/developer_guides/low_level_api.md</code> và <code>tests/test_low_level_api.py</code> cho thấy đường này hữu ích cho model không thuộc Transformers, nhưng caller phải tự quản save/load nếu cần các tiện ích wrapper cấp cao.</p>
+<h2 id="topology-tri-n-khai-v-v-n-h-nh">Topology triển khai và vận hành</h2>
+<div class="mermaid">flowchart LR
+    subgraph Dev[Máy phát triển]
+        config[PeftConfig]
+        script[Training script]
+        tests[Test và example cục bộ]
+    end
+    subgraph Train[Training cluster]
+        base[Cache base model]
+        accel[Accelerate launcher]
+        ds[DeepSpeed hoặc FSDP tùy chọn]
+        peft[PeftModel có adapter]
+    end
+    subgraph Artifacts[Lưu trữ artifact]
+        hub[Hugging Face Hub hoặc object storage]
+        adapter[Checkpoint adapter]
+        card[README model card]
+    end
+    subgraph Serve[Runtime inference]
+        load[Load base + adapter]
+        switch[set_adapter / disable_adapter / hotswap]
+        merged[Model đã merge tùy chọn]
+    end
+
+    config --&gt; script
+    script --&gt; accel
+    accel --&gt; ds
+    ds --&gt; peft
+    base --&gt; peft
+    peft --&gt; adapter
+    adapter --&gt; hub
+    peft --&gt; card
+    hub --&gt; load
+    load --&gt; switch
+    switch --&gt; merged</div>
+<p>Về vận hành, PEFT nhẹ hơn DeepSpeed hoặc Accelerate, nhưng phụ thuộc mạnh vào việc phối hợp đúng model và môi trường:</p>
+<ul>
+<li>Tên và revision của base model trong <code>adapter_config.json</code> phải khớp với model dùng khi inference.</li>
+<li>Dtype adapter quan trọng: mặc định PEFT nâng adapter weight fp16/bf16 lên fp32 để ổn định training, trừ khi đặt <code>autocast_adapter_dtype=False</code>.</li>
+<li>Với training quantized, gọi helper như <code>prepare_model_for_kbit_training</code> trước khi inject adapter.</li>
+<li>Với ZeRO-3, FSDP hoặc low-memory loading, dùng các tùy chọn được tài liệu hóa như <code>low_cpu_mem_usage</code> và hướng dẫn Accelerate/DeepSpeed.</li>
+<li>Save nên dùng <code>safe_serialization=True</code> nếu không có lý do tương thích đặc biệt.</li>
+<li>Export đã merge dễ serve hơn trong runtime thuần, nhưng mất khả năng điều khiển nhiều adapter.</li>
+</ul>
+<h2 id="v-ng-i-v-s-quy-t-nh">Vòng đời và sơ đồ quyết định</h2>
+<div class="mermaid">flowchart TD
+    start[Bắt đầu từ pretrained model] --&gt; task{Cần thích nghi gì?}
+    task --&gt;|Sinh ngôn ngữ hoặc phân loại| lora[LoRA hoặc biến thể]
+    task --&gt;|Chỉ cần prompt| prompt[Prompt, prefix hoặc P-tuning]
+    task --&gt;|Scale kênh theo kiểu nhân| ia3[IA3]
+    task --&gt;|Nhiều adapter hoặc routing| mixed[PeftMixedModel, XLora, Arrow, hotswap]
+    task --&gt;|Kiến trúc mới| custom[target_modules thủ công hoặc low-level injection]
+    lora --&gt; train[Train adapter params]
+    prompt --&gt; train
+    ia3 --&gt; train
+    mixed --&gt; train
+    custom --&gt; train
+    train --&gt; eval[Đánh giá chất lượng và phần trăm tham số trainable]
+    eval --&gt; save[Lưu checkpoint adapter]
+    save --&gt; deploy{Chọn cách deploy}
+    deploy --&gt;|Cần switch adapter| unmerged[Load base + adapter]
+    deploy --&gt;|Cần artifact model thường| merge[merge_and_unload nếu hỗ trợ]
+    deploy --&gt;|Cần thay online| hot[Hotswap adapter tương thích]</div>
+<h2 id="s-ph-thu-c-module">Sơ đồ phụ thuộc module</h2>
+<div class="mermaid">flowchart TB
+    init[src/peft/__init__.py]
+    peftmodel[src/peft/peft_model.py]
+    mappingfunc[src/peft/mapping_func.py]
+    mapping[src/peft/mapping.py]
+    config[src/peft/config.py]
+    types[src/peft/utils/peft_types.py]
+    tunerutils[src/peft/tuners/tuners_utils.py]
+    lora[src/peft/tuners/lora]
+    other[src/peft/tuners/*]
+    save[src/peft/utils/save_and_load.py]
+    integrations[src/peft/utils/integrations.py]
+
+    init --&gt; mappingfunc
+    init --&gt; peftmodel
+    init --&gt; config
+    init --&gt; other
+    mappingfunc --&gt; mapping
+    mappingfunc --&gt; peftmodel
+    peftmodel --&gt; mapping
+    peftmodel --&gt; save
+    peftmodel --&gt; integrations
+    tunerutils --&gt; mapping
+    lora --&gt; tunerutils
+    other --&gt; tunerutils
+    other --&gt; types
+    types --&gt; mapping
+    config --&gt; mapping</div>
+<h2 id="i-m-m-r-ng">Điểm mở rộng</h2>
+<p>Các extension point quan trọng:</p>
+<ul>
+<li><strong>Phương pháp PEFT mới:</strong> thêm enum trong <code>src/peft/utils/peft_types.py</code>, triển khai config/model/layer dưới <code>src/peft/tuners/&lt;method&gt;</code>, rồi gọi <code>register_peft_method</code> từ package method đó.</li>
+<li><strong>Hành vi adapter layer mới:</strong> subclass hoặc mô phỏng <code>BaseTuner</code> và <code>BaseTunerLayer</code>; triển khai target detection, <code>_prepare_adapter_config</code>, <code>_create_and_replace</code> và logic layer riêng.</li>
+<li><strong>Biến thể LoRA mới:</strong> dùng pattern <code>LoraVariant</code> trong <code>src/peft/tuners/lora/layer.py</code>, nơi variant hook tham gia init, merge, unmerge và forward.</li>
+<li><strong>Custom model:</strong> khai báo rõ <code>target_modules</code>, regex target, <code>target_parameters</code> và <code>modules_to_save</code>. Developer guide cho custom model có ví dụ MLP, timm và kiến trúc Transformers mới.</li>
+<li><strong>Low-level injection:</strong> gọi <code>inject_adapter_in_model</code> cho <code>torch.nn.Module</code> bất kỳ khi wrapper <code>PeftModel</code> không phù hợp.</li>
+<li><strong>Chuyển đổi checkpoint:</strong> dùng <code>get_peft_model_state_dict</code>, <code>set_peft_model_state_dict</code> và hướng dẫn checkpoint format để map key adapter bên ngoài sang định dạng PEFT.</li>
+<li><strong>Linh hoạt khi serve:</strong> dùng <code>load_adapter</code>, <code>set_adapter</code>, <code>disable_adapter</code>, hotswap utility hoặc <code>merge_and_unload</code> tùy theo latency, memory và nhu cầu multi-adapter.</li>
+</ul>
+<h2 id="t-ch-h-p">Tích hợp</h2>
+<p>PEFT được thiết kế gắn chặt với hệ sinh thái Hugging Face:</p>
+<ul>
+<li><strong>Transformers:</strong> API adapter trực tiếp, các class <code>PeftModelFor*</code> theo tác vụ, model loading, generation, classification head và quy ước Hub.</li>
+<li><strong>Diffusers:</strong> workflow LoRA và adapter khác cho DreamBooth, ControlNet, Stable Diffusion và các ví dụ image generation.</li>
+<li><strong>Accelerate:</strong> distributed launch và device placement; tài liệu PEFT có trang FSDP và DeepSpeed trong <code>docs/source/accelerate</code>.</li>
+<li><strong>DeepSpeed:</strong> workflow LoRA và QLoRA cho model lớn với ZeRO-3, CPU offload và tích hợp <code>gather_params_ctx</code> trong các đường khởi tạo adapter.</li>
+<li><strong>TRL:</strong> workflow SFT, DPO và RLHF-style, nơi PEFT config được truyền vào trainer của TRL.</li>
+<li><strong>Thư viện quantization:</strong> bitsandbytes, GPTQ, AQLM, AWQ, HQQ, EETQ, INC, torchao và Transformer Engine xuất hiện trong các dispatcher của LoRA.</li>
+<li><strong>Hugging Face Hub:</strong> config kế thừa <code>PushToHubMixin</code>, load qua <code>hf_hub_download</code> và lưu metadata model card.</li>
+<li><strong>Safetensors:</strong> serialize adapter an toàn mặc định qua <code>safe_save_file</code>.</li>
+</ul>
+<h2 id="c-u-h-nh-tri-n-khai-v-v-n-h-nh">Cấu hình, triển khai và vận hành</h2>
+<p>Cấu hình PEFT thiên về code-first hơn YAML-first. Object config adapter là nguồn sự thật, còn <code>adapter_config.json</code> là hợp đồng runtime được lưu lại.</p>
+<p>Thực hành vận hành nên áp dụng:</p>
+<ul>
+<li>Ghi lại base model id, revision, thay đổi tokenizer, version PEFT, version dữ liệu training và lựa chọn target module.</li>
+<li>Ưu tiên <code>target_modules</code> rõ ràng với kiến trúc mới hoặc module PyTorch custom.</li>
+<li>Dùng <code>task_type</code> khi có thể để PEFT chọn wrapper theo tác vụ và train/save đúng head liên quan.</li>
+<li>Dùng <code>modules_to_save</code> cho head khởi tạo ngẫu nhiên, embedding đã resize, pooler hoặc output layer riêng của tác vụ.</li>
+<li>Dùng <code>save_embedding_layers=True</code> hoặc trainable tokens một cách chủ đích khi vocabulary tokenizer thay đổi.</li>
+<li>Giữ adapter chưa merge khi cần switch adapter, provenance hoặc composition.</li>
+<li>Chỉ merge sau khi xác nhận method và chế độ quantization hỗ trợ, đồng thời downstream serving không cần điều khiển adapter.</li>
+<li>Chạy <code>print_trainable_parameters()</code> và kiểm tra <code>targeted_module_names</code> hoặc layer status trước khi tiêu tốn GPU.</li>
+<li>Trong workflow DeepSpeed/FSDP, tuân thủ hướng dẫn Accelerate config và đảm bảo các rank save/checkpoint nhất quán.</li>
+</ul>
+<h2 id="observability-test-evaluation-v-failure-mode">Observability, test, evaluation và failure mode</h2>
+<p>Repo có test khá rộng cho adapter method và integration:</p>
+<ul>
+<li><code>tests/test_low_level_api.py</code> kiểm chứng low-level injection, state dict chỉ adapter, <code>modules_to_save</code> và tái dựng target từ state dict.</li>
+<li><code>tests/test_mapping.py</code> kiểm chứng warning khi wrap lặp lại và hành vi unload.</li>
+<li><code>tests/test_config.py</code>, <code>tests/test_auto.py</code> và <code>tests/test_hub_features.py</code> bao phủ config và luồng kiểu Hub.</li>
+<li><code>tests/test_lora_variants.py</code>, <code>tests/test_lora_conversion.py</code>, <code>tests/test_torch_compile.py</code> và nhiều file test theo method bao phủ behavior implementation.</li>
+<li><code>tests/training/*</code> có cấu hình training liên quan DeepSpeed, FSDP và tensor parallel.</li>
+</ul>
+<p>Tín hiệu quan sát gồm số tham số trainable, helper trạng thái adapter, warning khi wrap lặp hoặc config không tương thích, mismatch key checkpoint, missing/unexpected key trong state dict và log từ Trainer/Accelerate.</p>
+<p>Failure mode phổ biến:</p>
+<ul>
+<li>Load adapter đã train bằng <code>get_peft_model</code> thay vì <code>PeftModel.from_pretrained</code>.</li>
+<li><code>target_modules</code> sai, đặc biệt với kiến trúc mới hoặc module custom.</li>
+<li>Quên <code>modules_to_save</code> cho classification head hoặc embedding đã resize, dẫn đến head ngẫu nhiên khi reload.</li>
+<li>Adapter/base model mismatch vì revision base model đã đổi.</li>
+<li>Lỗi dtype với fp16 gradient hoặc tắt autocast adapter.</li>
+<li>Quantization kết hợp merge không tương thích hoặc drift số học nhỏ sau merge.</li>
+<li>Hotswap adapter có rank, target hoặc shape không tương thích.</li>
+<li>Rủi ro bảo mật từ file adapter <code>.bin</code> dựa trên pickle hoặc code Hub không tin cậy.</li>
+</ul>
+<p>Evaluation nên đo cả chất lượng tác vụ và metric hệ thống: validation loss/accuracy, điểm instruction-following, kích thước checkpoint adapter, phần trăm tham số trainable, peak GPU memory, throughput, khả năng reload tái lập và drift output giữa merged/unmerged.</p>
+<h2 id="r-i-ro-b-o-m-t-v-governance">Rủi ro bảo mật và governance</h2>
+<p>Adapter PEFT nhỏ nhưng có thể thay đổi mạnh hành vi mô hình. Governance nên xem artifact adapter là artifact mô hình, không phải bản vá vô hại.</p>
+<p>Rủi ro chính:</p>
+<ul>
+<li><strong>Artifact không tin cậy:</strong> ưu tiên Safetensors; tránh load <code>.bin</code> dựa trên pickle từ nguồn không tin cậy.</li>
+<li><strong>Base-model drift:</strong> hành vi adapter phụ thuộc vào đúng base weights, tokenizer và revision.</li>
+<li><strong>Rò rỉ dữ liệu:</strong> adapter fine-tuned vẫn có thể ghi nhớ dữ liệu nhạy cảm dù base model không đổi.</li>
+<li><strong>Vượt chính sách:</strong> adapter nhỏ có thể thay đổi hành vi an toàn hoặc domain của model lớn.</li>
+<li><strong>Không khớp license:</strong> phân phối adapter phải tuân thủ license base model và nghĩa vụ dữ liệu training.</li>
+<li><strong>Supply chain:</strong> Hub download, custom model code và thư viện quantization cần được pin version và review.</li>
+<li><strong>Tái lập:</strong> lưu training config, seed, version PEFT, dependency version và quyết định target module.</li>
+</ul>
+<h2 id="h-ng-d-n-c-source">Hướng dẫn đọc source</h2>
+<p>Nên bắt đầu theo thứ tự:</p>
+<ol>
+<li><code>README.md</code> để hiểu mục tiêu, quickstart và tích hợp hệ sinh thái.</li>
+<li><code>src/peft/mapping_func.py</code> để hiểu cách <code>get_peft_model</code> route model.</li>
+<li><code>src/peft/peft_model.py</code> cho lifecycle wrapper, save/load, switch adapter và behavior theo tác vụ.</li>
+<li><code>src/peft/tuners/tuners_utils.py</code> cho engine inject adapter dùng chung.</li>
+<li><code>src/peft/tuners/lora/config.py</code>, <code>model.py</code> và <code>layer.py</code> cho method cụ thể quan trọng nhất.</li>
+<li><code>docs/source/developer_guides/checkpoint.md</code> cho định dạng artifact và chuyển đổi.</li>
+<li><code>docs/source/developer_guides/low_level_api.md</code> và <code>custom_models.md</code> cho custom model và workflow không dùng wrapper.</li>
+<li><code>docs/source/developer_guides/troubleshooting.md</code> cho dtype, loading và lỗi task-head.</li>
+<li><code>tests/test_low_level_api.py</code>, <code>tests/test_mapping.py</code> và test theo method để xem behavior mong đợi.</li>
+</ol>
+<h2 id="l-tr-nh-h-c">Lộ trình học</h2>
+<p>Cho application developer:</p>
+<ol>
+<li>Đọc quickstart LoRA trong README và map vào một model Transformers nhỏ.</li>
+<li>Hiểu các field của <code>LoraConfig</code>: <code>r</code>, <code>lora_alpha</code>, <code>target_modules</code>, dropout, bias và <code>modules_to_save</code>.</li>
+<li>Phân biệt tạo adapter mới và load adapter đã train.</li>
+<li>Thực hành save, load, disable và merge một adapter.</li>
+<li>Chuyển sang training quantized với <code>prepare_model_for_kbit_training</code>.</li>
+<li>Chỉ thêm distributed training qua Accelerate, FSDP hoặc DeepSpeed sau khi single-process adapter path đã đúng.</li>
+</ol>
+<p>Cho contributor:</p>
+<ol>
+<li>Đọc <code>register_peft_method</code> và một package method như <code>tuners/lora</code>.</li>
+<li>Nghiên cứu target matching và replacement flow của <code>BaseTuner</code>.</li>
+<li>Nghiên cứu quy ước đặt key state dict trong checkpoint guide.</li>
+<li>Thêm hoặc sửa test trước khi đổi adapter injection, save/load hoặc dtype behavior.</li>
+<li>Kiểm tra đồng thời tài liệu method, package reference, examples và test coverage.</li>
+</ol>
+<h2 id="checklist-production-v-governance-cho-adapter">Checklist production và governance cho adapter</h2>
+<p>Sẵn sàng production với PEFT nghĩa là xem adapter như một model artifact có governance, không phải chỉ là một &quot;patch&quot; nhỏ. Các neo source quan trọng gồm <code>src/peft/mapping_func.py</code>, <code>src/peft/peft_model.py</code>, <code>src/peft/mapping.py</code>, <code>src/peft/tuners/tuners_utils.py</code>, <code>src/peft/tuners/lora/*</code>, <code>src/peft/utils/save_and_load.py</code>, <code>src/peft/utils/hotswap.py</code> và <code>docs/source/developer_guides/checkpoint.md</code>.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Khu vực readiness</th><th>Cần xác minh</th></tr></thead>
+<tbody>
+<tr><td>Contract base model</td><td><code>adapter_config.json</code> ghi base model dự kiến, nhưng production cần pin thêm revision, thay đổi tokenizer, dtype và giả định quantization.</td></tr>
+<tr><td>Chọn target</td><td><code>target_modules</code>, <code>target_parameters</code> và <code>modules_to_save</code> phải khớp architecture thật, bao gồm head hoặc resized embeddings khi cần.</td></tr>
+<tr><td>Trainability</td><td><code>print_trainable_parameters</code>, <code>get_model_status</code> và <code>get_layer_status</code> xác nhận chỉ đúng parameter được train.</td></tr>
+<tr><td>Checkpoint format</td><td>Ưu tiên <code>adapter_model.safetensors</code>, validate key prefix và tránh <code>.bin</code> pickle từ nguồn không tin cậy.</td></tr>
+<tr><td>Đường load</td><td>Dùng <code>PeftModel.from_pretrained</code> hoặc <code>load_adapter</code> cho adapter đã train; không vô tình tạo adapter mới bằng <code>get_peft_model</code>.</td></tr>
+<tr><td>Chọn serving</td><td>Quyết định unmerged, merged, mixed hoặc hotswap adapter theo latency, memory, provenance và compatibility.</td></tr>
+</tbody></table></div>
+<div class="mermaid">flowchart LR
+  Base[Base model va tokenizer] --&gt; Config[PeftConfig]
+  Config --&gt; Factory[get_peft_model hoac inject_adapter_in_model]
+  Factory --&gt; Mapping[mapping.py registries]
+  Mapping --&gt; Tuner[BaseTuner va method model]
+  Tuner --&gt; Layers[Adapter layers trong tuners/*]
+  Layers --&gt; Train[Trainer, Accelerate, DeepSpeed, FSDP]
+  Train --&gt; Save[save_and_load.py adapter state dict]
+  Save --&gt; Artifact[adapter_config.json va adapter_model.safetensors]
+  Artifact --&gt; Load[PeftModel.from_pretrained hoac load_adapter]
+  Load --&gt; Serve{Serve mode}
+  Serve --&gt; Unmerged[Base plus adapter]
+  Serve --&gt; Merged[merge_and_unload]
+  Serve --&gt; Hot[hotswap compatible adapters]</div>
+<h2 id="b-n-c-l-p-l-i">Bản đồ cô lập lỗi</h2>
+<p>Lỗi PEFT thường xuất hiện như chất lượng giảm sau khi reload, nhưng nguyên nhân gốc có thể là target matching, thiếu task head, base-model drift, dtype behavior hoặc merge không an toàn. Triage cần xem cả adapter config và trạng thái module thật, không chỉ training logs.</p>
+<div class="mermaid">flowchart TD
+  Symptom[Trieu chung PEFT] --&gt; Domain{Domain}
+  Domain --&gt; Target[Target modules hoac parameters]
+  Domain --&gt; Save[Thieu modules_to_save hoac embeddings]
+  Domain --&gt; Base[Base model hoac tokenizer drift]
+  Domain --&gt; DType[Adapter dtype hoac quantized training]
+  Domain --&gt; Load[Sai loading API]
+  Domain --&gt; Merge[Merge, unmerge hoac hotswap incompatibility]
+  Domain --&gt; Security[Artifact khong an toan hoac Hub trust]
+  Target --&gt; Files1[tuners_utils.py va method configs]
+  Save --&gt; Files2[save_and_load.py va peft_model.py]
+  Base --&gt; Files3[config.py va adapter_config.json]
+  DType --&gt; Files4[integrations.py, lora dispatchers, quant guides]
+  Load --&gt; Files5[mapping_func.py va PeftModel.from_pretrained]
+  Merge --&gt; Files6[hotswap.py, merge_utils.py, method layers]
+  Security --&gt; Files7[checkpoint guide va safetensors policy]
+  Files1 --&gt; Action[Sua config, retrain, reload hoac block artifact]
+  Files2 --&gt; Action
+  Files3 --&gt; Action
+  Files4 --&gt; Action
+  Files5 --&gt; Action
+  Files6 --&gt; Action
+  Files7 --&gt; Action</div>
+<h2 id="glossary">Glossary</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Thuật ngữ</th><th>Ý nghĩa</th></tr></thead>
+<tbody>
+<tr><td>Adapter</td><td>Tham số trainable gắn vào base model frozen hoặc gần như frozen.</td></tr>
+<tr><td>PEFT</td><td>Parameter-Efficient Fine-Tuning; họ kỹ thuật và cũng là tên thư viện này.</td></tr>
+<tr><td>LoRA</td><td>Low-Rank Adaptation; dùng ma trận low-rank để biểu diễn delta trọng số.</td></tr>
+<tr><td>IA3</td><td>Method adapter scale activation bằng vector học được.</td></tr>
+<tr><td>Prompt tuning</td><td>Học virtual prompt embedding thay vì sửa layer model.</td></tr>
+<tr><td>Prefix tuning</td><td>Học prefix key/value cho attention layer.</td></tr>
+<tr><td><code>PeftConfig</code></td><td>Base config class được lưu thành <code>adapter_config.json</code>.</td></tr>
+<tr><td><code>PeftModel</code></td><td>Wrapper cấp cao quanh base model và adapter.</td></tr>
+<tr><td><code>BaseTuner</code></td><td>Base class chung cho injection và quản lý adapter.</td></tr>
+<tr><td><code>target_modules</code></td><td>Tên module, regex hoặc shorthand chọn nơi gắn adapter.</td></tr>
+<tr><td><code>modules_to_save</code></td><td>Module không phải adapter nhưng vẫn trainable và được checkpoint.</td></tr>
+<tr><td><code>adapter_model.safetensors</code></td><td>File trọng số adapter mặc định.</td></tr>
+<tr><td><code>merge_and_unload</code></td><td>Merge delta adapter vào base weights và bỏ wrapper PEFT khi method hỗ trợ.</td></tr>
+<tr><td>Hotswap</td><td>Thay adapter weight online mà không dựng lại toàn bộ model, nếu tương thích.</td></tr>
+<tr><td>QLoRA</td><td>Fine-tuning LoRA trên base model quantized, thường dùng bitsandbytes 4-bit.</td></tr>
+<tr><td>ZeRO</td><td>Cơ chế partition optimizer state, gradient và parameter của DeepSpeed dùng cùng PEFT cho training lớn.</td></tr>
+</tbody></table></div>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

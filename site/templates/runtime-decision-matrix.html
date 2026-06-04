@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Runtime Decision Matrix | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../learn/en/index.html">English</a>
+        <a href="../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../learn/en/curriculum.html">Curriculum</a>
+        <a href="index.html">Toolkit</a>
+        <a href="../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../learn/en/index.html">English course</a>
+      <a href="../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../learn/en/curriculum.html">Curriculum</a>
+      <a href="../learn/en/projects.html">Projects</a>
+      <a href="index.html">Architecture toolkit</a>
+      <a href="../capstone/index.html">Capstone</a>
+      <a href="../assessments/index.html">Assessments</a>
+      <a href="../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/templates/runtime-decision-matrix.md">View source</a>
+      <h1 id="runtime-decision-matrix">Runtime Decision Matrix</h1>
+<p>Use this template when choosing how to serve a model.</p>
+<h2 id="candidate-runtimes">Candidate Runtimes</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Runtime</th><th>Best Fit</th><th>Watch For</th></tr></thead>
+<tbody>
+<tr><td>Hosted API</td><td>Fast product validation and managed operations</td><td>Provider lock-in, cost, data policy, rate limits</td></tr>
+<tr><td>Transformers</td><td>Compatibility, experimentation, model API baseline</td><td>Serving efficiency, memory, throughput</td></tr>
+<tr><td>vLLM</td><td>High-throughput GPU serving and OpenAI-compatible APIs</td><td>GPU memory, scheduler behavior, model support</td></tr>
+<tr><td>llama.cpp</td><td>Local, edge, CPU/GPU hybrid, quantized inference</td><td>Quantization quality, conversion, context limits</td></tr>
+<tr><td>Hybrid Gateway</td><td>Multi-provider routing and fallback</td><td>Routing policy, observability, consistency</td></tr>
+</tbody></table></div>
+<h2 id="requirements">Requirements</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Requirement</th><th>Target</th><th>Hard / Soft</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>p50 latency</td><td></td><td></td><td></td></tr>
+<tr><td>p95 latency</td><td></td><td></td><td></td></tr>
+<tr><td>Concurrent users</td><td></td><td></td><td></td></tr>
+<tr><td>Tokens per second</td><td></td><td></td><td></td></tr>
+<tr><td>Context length</td><td></td><td></td><td></td></tr>
+<tr><td>Streaming</td><td></td><td></td><td></td></tr>
+<tr><td>Deployment target</td><td></td><td></td><td></td></tr>
+<tr><td>Cost ceiling</td><td></td><td></td><td></td></tr>
+<tr><td>Data policy</td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h2 id="evaluation-matrix">Evaluation Matrix</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Criterion</th><th>Weight</th><th>Hosted API</th><th>Transformers</th><th>vLLM</th><th>llama.cpp</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Latency</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Throughput</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Memory efficiency</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Model compatibility</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Operational simplicity</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Observability</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Security posture</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Cost</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h2 id="serving-architecture">Serving Architecture</h2>
+<div class="mermaid">flowchart LR
+  Client[Application or agent] --&gt; Gateway[Provider/runtime gateway]
+  Gateway --&gt; Admission[Admission control]
+  Admission --&gt; Scheduler[Batching and scheduling]
+  Scheduler --&gt; Model[Model runtime]
+  Model --&gt; Stream[Streaming response]
+  Gateway --&gt; Metrics[Metrics, traces, logs]
+  Metrics --&gt; Gate[Release and rollback gate]</div>
+<h2 id="promotion-gate">Promotion Gate</h2>
+<ul>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Load test includes expected prompt lengths and output lengths.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Streaming behavior is tested.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Model artifact provenance is recorded.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Rollback target is available.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Cost and quota alarms are configured.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; p95/p99 latency is acceptable.</li>
+<li>&lt;input type=&quot;checkbox&quot; disabled&gt; Error handling is tested for provider/runtime failures.</li>
+</ul>
+<h2 id="scoring-guidance">Scoring Guidance</h2>
+<p>Score each runtime against the real workload rather than against generic popularity. A hosted API can be the best decision for early product validation when managed reliability and fast iteration matter more than low-level control. vLLM can be the best decision when GPU throughput, continuous batching, and OpenAI-compatible serving are important. Transformers can be the best baseline for experimentation and model compatibility. llama.cpp can be strong for local, edge, constrained, or quantized deployments. A hybrid gateway can be valuable when the system needs routing, fallback, policy enforcement, or provider abstraction.</p>
+<p>Weights should reflect the product stage. During discovery, operational simplicity and iteration speed may dominate. During scale-up, throughput, cost per token, latency distribution, and quota planning become more important. For regulated systems, data policy, auditability, provider contract terms, and deployment residency can outweigh raw speed.</p>
+<h2 id="benchmark-plan">Benchmark Plan</h2>
+<p>Run benchmarks with production-shaped prompts. Include short requests, long-context requests, retrieval-augmented prompts, streaming responses, tool-call prompts, and worst-case completion lengths. Capture cold start behavior, steady-state throughput, memory pressure, queue time, token generation rate, error rate, and retry behavior. If the runtime is GPU-based, record GPU model, memory size, tensor parallel settings, batch configuration, context length, quantization format, and scheduler parameters.</p>
+<p>Do not promote a runtime from synthetic throughput alone. A serving decision is only defensible when quality, latency, cost, observability, security, and rollback have all been checked. The winner should be the runtime that best satisfies the operating envelope, not the runtime with the most impressive isolated benchmark.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

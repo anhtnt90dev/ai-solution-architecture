@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Solution Architecture Toolkit | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../learn/en/index.html">English</a>
+        <a href="../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../learn/en/curriculum.html">Curriculum</a>
+        <a href="index.html">Toolkit</a>
+        <a href="../deep-dives/index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../learn/en/index.html">English course</a>
+      <a href="../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../learn/en/curriculum.html">Curriculum</a>
+      <a href="../learn/en/projects.html">Projects</a>
+      <a href="index.html">Architecture toolkit</a>
+      <a href="../capstone/index.html">Capstone</a>
+      <a href="../assessments/index.html">Assessments</a>
+      <a href="../deep-dives/index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Docs</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/templates/README.md">View source</a>
+      <h1 id="ai-solution-architecture-toolkit">AI Solution Architecture Toolkit</h1>
+<p>These templates turn the course into practical artifacts. Use them during design reviews, architecture workshops, production readiness checks, and post-incident reviews.</p>
+<h2 id="templates">Templates</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Template</th><th>Use When</th></tr></thead>
+<tbody>
+<tr><td><a href="architecture-decision-record.html">Architecture Decision Record</a></td><td>You need to record an architectural decision and rejected alternatives.</td></tr>
+<tr><td><a href="runtime-decision-matrix.html">Runtime Decision Matrix</a></td><td>You are choosing between Transformers, vLLM, llama.cpp, hosted APIs, or hybrid serving.</td></tr>
+<tr><td><a href="rag-data-contract.html">RAG Data Contract</a></td><td>You are designing ingestion, embeddings, metadata, vector stores, and retrieval policy.</td></tr>
+<tr><td><a href="llmops-evaluation-scorecard.html">LLMOps Evaluation Scorecard</a></td><td>You need a promotion gate for prompts, models, adapters, retrieval, or tools.</td></tr>
+<tr><td><a href="production-readiness-checklist.html">Production Readiness Checklist</a></td><td>You are reviewing whether an AI system can go live.</td></tr>
+<tr><td><a href="security-governance-review.html">Security And Governance Review</a></td><td>You need to review tool execution, data access, secrets, model artifacts, and auditability.</td></tr>
+</tbody></table></div>
+<h2 id="recommended-flow">Recommended Flow</h2>
+<div class="mermaid">flowchart LR
+  Idea[Product idea] --&gt; ADR[Architecture Decision Record]
+  ADR --&gt; Runtime[Runtime Decision Matrix]
+  ADR --&gt; RAG[RAG Data Contract]
+  Runtime --&gt; Eval[LLMOps Evaluation Scorecard]
+  RAG --&gt; Eval
+  Eval --&gt; Security[Security And Governance Review]
+  Security --&gt; Ready[Production Readiness Checklist]</div>
+<h2 id="review-rule">Review Rule</h2>
+<p>Every AI architecture decision should answer:</p>
+<ul>
+<li>What layer owns this concern?</li>
+<li>What alternatives were rejected?</li>
+<li>What evidence will prove the decision worked?</li>
+<li>What failure mode should be rehearsed?</li>
+<li>What must be true before this can be promoted to production?</li>
+</ul>
+<h2 id="how-to-use-the-toolkit">How To Use The Toolkit</h2>
+<p>Use the templates as review artifacts, not as paperwork. A good AI architecture review should make the hidden assumptions visible: which team owns each boundary, which runtime or data choice is being made, which metric proves the choice, and which incident would expose the weakness. Start with the Architecture Decision Record when the team is still debating direction. Move to the runtime matrix, RAG contract, and evaluation scorecard when the decision needs evidence. Finish with security governance and production readiness before the solution reaches users.</p>
+<p>For workshops, assign one owner to each artifact and keep the discussion anchored to measurable claims. Avoid generic statements such as &quot;the model is good&quot; or &quot;RAG improves accuracy.&quot; Replace them with claims like &quot;the candidate retrieval configuration improves grounded answer success from 72 percent to 86 percent on the finance policy evaluation set while keeping p95 latency under 4 seconds.&quot; This style turns architecture into an inspectable engineering discipline.</p>
+<h2 id="quality-bar">Quality Bar</h2>
+<p>An artifact is ready for review when it has a named owner, a clear scope, real alternatives, measurable evidence, and at least one explicit rollback or mitigation path. It is not ready when it only lists tools, omits operational ownership, ignores security impact, or treats evaluation as a one-time benchmark. Senior reviewers should be able to read the artifact and understand what will break first, who will notice, and what the team will do next.</p>
+<h2 id="mapping-to-course-domains">Mapping To Course Domains</h2>
+<p>The ADR links product goals to architecture boundaries. The runtime matrix covers model serving and inference. The RAG data contract covers retrieval architecture, vector databases, metadata, tenancy, and deletion workflows. The evaluation scorecard covers LLMOps, observability, prompt changes, model changes, and release gates. The security review covers agents, tools, model artifacts, secrets, audit logs, and data governance. The production checklist ties every domain together into a release decision.</p>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>

@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kien truc vLLM | AI Solution Architecture</title>
+  <meta name="description" content="AI solution architecture documentation page.">
+  <link rel="stylesheet" href="../../../assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../../../../index.html">
+        <span class="mark">AI</span>
+        <span>Solution Architecture</span>
+      </a>
+      <nav class="navlinks" aria-label="Documentation navigation">
+        <a href="../../../learn/en/index.html">English</a>
+        <a href="../../../learn/vi/index.html">Tiếng Việt</a>
+        <a href="../../../learn/en/curriculum.html">Curriculum</a>
+        <a href="../../../templates/index.html">Toolkit</a>
+        <a href="../../index.html">Deep Dives</a>
+        <a href="https://github.com/anhtnt90dev/ai-solution-architecture">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <strong>Documentation</strong>
+      <a href="../../../learn/en/index.html">English course</a>
+      <a href="../../../learn/vi/index.html">Trang tiếng Việt</a>
+      <a href="../../../learn/en/curriculum.html">Curriculum</a>
+      <a href="../../../learn/en/projects.html">Projects</a>
+      <a href="../../../templates/index.html">Architecture toolkit</a>
+      <a href="../../../capstone/index.html">Capstone</a>
+      <a href="../../../assessments/index.html">Assessments</a>
+      <a href="../../index.html">Repository deep dives</a>
+    </aside>
+    <article class="doc">
+      <p class="crumb">Deep Dives</p>
+      <a class="source-link" href="https://github.com/anhtnt90dev/ai-solution-architecture/blob/main/repo-architecture-docs/02-model-serving-inference/vllm/README.vi.md">View source</a>
+      <h1 id="kien-truc-vllm">Kien truc vLLM</h1>
+<p>Anh chup nguon: <code>github-repos/02-model-serving-inference/vllm</code> tai commit <code>2427094</code> (<code>[Feature] Support EPLB for DeepSeek v4 Mega Moe (#43339)</code>). Tai lieu nay dua tren cac tep va thu muc co trong anh chup do.</p>
+<h2 id="tom-tat-dieu-hanh">Tom tat dieu hanh</h2>
+<p>vLLM la mot inference va serving engine cho LLM, toi uu cho thong luong cao va su dung bo nho hieu qua. README cua du an nhan manh PagedAttention, continuous batching, chunked prefill, prefix caching, CUDA/HIP graphs, quantization, cac kernel attention/GEMM/MoE toi uu, speculative decoding, multi-LoRA va API tuong thich OpenAI.</p>
+<p>Ve kien truc, vLLM khong chi la lop boc Python quanh PyTorch. No gom scheduler cho request, bo cap phat KV cache, model runner, lop platform phan cung, native kernel, API server, plugin system, metrics va model registry lon. Cay thu muc hien tai co ca engine cu trong <code>vllm/engine/*</code> va runtime V1 trong <code>vllm/v1/*</code>; cac thanh phan quan trong cho production nam o <code>vllm/v1/engine</code>, <code>vllm/v1/core</code>, <code>vllm/v1/worker</code>, <code>vllm/entrypoints</code> va <code>vllm/model_executor</code>.</p>
+<p>Voi solution architect, gia tri cua vLLM la bien model weights thanh dich vu co the van hanh: HTTP/gRPC APIs, scheduling dong, batching theo bo nho, distributed execution, kernel quantized, streaming output, parser cho tool/reasoning, LoRA adapter va observability. Doi lai, do phuc tap cao vi hieu nang phu thuoc vao su phoi hop chat giua scheduler, KV-cache layout, model execution, kernel va topo trien khai.</p>
+<h2 id="bai-toan-duoc-giai-quyet">Bai toan duoc giai quyet</h2>
+<p>Serving LLM khac voi chay model offline:</p>
+<ul>
+<li>Request den lien tuc, prompt va output co do dai khac nhau.</li>
+<li>GPU memory bi chi phoi boi model weights va KV cache.</li>
+<li>Static batch lang phi tai nguyen khi request ngan ket thuc som.</li>
+<li>Prefill dai co the chan luong decode can latency thap.</li>
+<li>Moi token can scheduling, sampling, detokenization va streaming voi overhead rat thap.</li>
+<li>Production API can tuong thich giao thuc, monitoring, lifecycle control va co lap loi.</li>
+</ul>
+<p>vLLM giai quyet bang runtime lap lich moi step, cap phat KV cache theo block, tai su dung prefix, nap weights qua loader cau hinh duoc, chon kernel theo phan cung va expose API serving. Bang chung trong repo nam o <code>vllm/v1/core/sched/*</code>, <code>vllm/v1/core/block_pool.py</code>, <code>vllm/v1/core/kv_cache_coordinator.py</code>, <code>vllm/model_executor/*</code>, <code>csrc/attention/*</code>, <code>vllm/entrypoints/openai/*</code>, <code>vllm/v1/metrics/*</code> va <code>docs/design/*</code>.</p>
+<h2 id="vai-tro-trong-ai-stack">Vai tro trong AI stack</h2>
+<p>vLLM nam giua model-definition library va application/API client.</p>
+<ul>
+<li>Nguon model: Hugging Face repos, tensor formats, checkpoint quantized, LoRA adapters, tokenizer va chat template.</li>
+<li>Runtime: PyTorch, custom CUDA/HIP/C++/Triton/CuTeDSL kernels, platform plugins, distributed communicators.</li>
+<li>Serving: OpenAI-compatible API, Anthropic Messages API, gRPC, batch/offline API, CLI.</li>
+<li>Van hanh: Docker, deployment docs, metrics, logging, profiling, benchmarks, tests.</li>
+</ul>
+<p>Thong thuong, vLLM duoc chon khi to chuc can LLM serving thong luong cao ma khong tu xay scheduler va KV-cache system. Tuy model va flag, no co the phuc vu text generation, embeddings, pooling, classification, reward/scoring, multimodal, speech-to-text, LoRA va structured output.</p>
+<h2 id="ban-do-source-tree">Ban do source tree</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Duong dan</th><th>Vai tro</th></tr></thead>
+<tbody>
+<tr><td><code>README.md</code></td><td>Dinh vi du an, danh sach tinh nang, cai dat, nhom model ho tro, citation va kenh ho tro.</td></tr>
+<tr><td><code>pyproject.toml</code></td><td>Metadata package Python, build requirements, khoang Python version, CLI entry point <code>vllm = vllm.entrypoints.cli.main:main</code>, entry point plugin LoRA resolver, pytest markers.</td></tr>
+<tr><td><code>vllm/entrypoints</code></td><td>API nguoi dung: CLI, REST tuong thich OpenAI, Anthropic API, gRPC server, pooling, speech-to-text, MCP tool server, SageMaker.</td></tr>
+<tr><td><code>vllm/engine</code></td><td>Engine cu nhu <code>llm_engine.py</code>, <code>async_llm_engine.py</code>, engine arg utilities.</td></tr>
+<tr><td><code>vllm/v1/engine</code></td><td>Runtime V1: <code>async_llm.py</code>, <code>llm_engine.py</code>, <code>core.py</code>, <code>coordinator.py</code>, input/output processors, detokenizer, parallel sampling.</td></tr>
+<tr><td><code>vllm/v1/core</code></td><td>Scheduler, request queue, block pool, KV-cache manager/coordinator, encoder cache manager, cache metrics.</td></tr>
+<tr><td><code>vllm/v1/worker</code></td><td>Worker theo device va model runner: <code>gpu_worker.py</code>, <code>gpu_model_runner.py</code>, XPU/TPU paths, LoRA/KV connector mixins.</td></tr>
+<tr><td><code>vllm/v1/attention</code></td><td>Interface va backend attention cho runtime V1.</td></tr>
+<tr><td><code>vllm/model_executor</code></td><td>Model loading, model definitions, layers, quantization, attention layers, MoE layers, custom ops, offloading, warmup.</td></tr>
+<tr><td><code>vllm/config</code></td><td>Cau hinh co cau truc cho model, scheduler, cache, device, parallelism, LoRA, quantization, compilation, multimodal, observability, profiler, KV transfer.</td></tr>
+<tr><td><code>vllm/distributed</code></td><td>Distributed execution, device communicators, NCCL/Ray/shared-memory, elastic expert parallel, KV transfer, event connectors.</td></tr>
+<tr><td><code>vllm/lora</code> va <code>vllm/plugins/lora_resolvers</code></td><td>Xu ly LoRA request, runtime adapters, filesystem va Hugging Face Hub resolver plugins.</td></tr>
+<tr><td><code>vllm/platforms</code></td><td>Abstraction cho NVIDIA/AMD/CPU/TPU/XPU va out-of-tree hardware plugins.</td></tr>
+<tr><td><code>csrc</code></td><td>Native kernels va torch bindings: attention, cache ops, CUDA utilities, MoE, quantization, ROCm, CPU kernels, all-reduce.</td></tr>
+<tr><td><code>rust</code></td><td>Thanh phan Rust cho chat rendering, tokenization, tool parsing, text output va reasoning parser.</td></tr>
+<tr><td><code>docs/design</code></td><td>Ghi chu thiet ke cho PagedAttention, metrics, plugin system, prefix caching, multiprocessing, torch compile, LoRA resolver plugins, model runner V2, multimodal.</td></tr>
+<tr><td><code>examples</code></td><td>Chat templates, OpenAI client examples, tool-calling, observability, pooling va cac mau tinh nang.</td></tr>
+<tr><td><code>tests</code></td><td>Unit, kernel, config, model, entrypoint, distributed, LoRA, evaluation va regression tests.</td></tr>
+<tr><td><code>benchmarks</code> va <code>vllm/benchmarks</code></td><td>Benchmark latency, throughput, serving, startup, dataset va sweep.</td></tr>
+<tr><td><code>docker</code>, <code>requirements</code>, <code>scripts</code>, <code>tools</code></td><td>Packaging, container, dependency sets, automation cho dev/release.</td></tr>
+</tbody></table></div>
+<h2 id="khai-niem-cot-loi">Khai niem cot loi</h2>
+<p><strong>Vong doi request.</strong> Request cua nguoi dung duoc chuyen thanh request noi bo gom tokenized input, tham so sampling/structured-output, payload multimodal tuy chon, LoRA identity va metadata API. Cau truc request V1 nam o <code>vllm/v1/request.py</code>; output nam o <code>vllm/v1/outputs.py</code> va <code>vllm/outputs.py</code>.</p>
+<p><strong>Engine va engine core.</strong> Lop ngoai xu ly ingress, streaming, detokenization, metrics, cancellation va mapping protocol. <code>vllm/v1/engine/async_llm.py</code> co <code>AsyncLLM</code>; <code>vllm/v1/engine/core.py</code> co <code>EngineCore</code>, <code>EngineCoreProc</code> va actor variants. Tach lop nay giup co lap vong lap hieu nang cao.</p>
+<p><strong>Continuous batching.</strong> Scheduler tao batch moi o moi step thay vi doi static batch ket thuc. Cac tep lien quan la <code>vllm/v1/core/sched/scheduler.py</code>, <code>request_queue.py</code>, <code>async_scheduler.py</code> va <code>interface.py</code>.</p>
+<p><strong>Chunked prefill.</strong> Prompt dai duoc chia nho de decode khong bi chan qua lau. README liet ke chunked prefill, va cac file scheduler/cache cho thay co token va block budget tai runtime.</p>
+<p><strong>Paged KV cache.</strong> vLLM luu KV memory theo block de request co do dai khac nhau dung chung mot pool bo nho. <code>docs/design/paged_attention.md</code> giai thich kernel lich su va tro den <code>csrc/attention/attention_kernels.cu</code>; implementation V1 nam o <code>vllm/v1/core/block_pool.py</code>, <code>kv_cache_manager.py</code>, <code>single_type_kv_cache_manager.py</code>, <code>kv_cache_coordinator.py</code>.</p>
+<p><strong>Prefix caching.</strong> <code>docs/design/prefix_caching.md</code> va cac file cache coordinator/block pool mo ta tai su dung block prompt da tinh. Tinh nang nay huu ich voi system prompt lap lai, retrieval template va multi-turn chat co prefix chung.</p>
+<p><strong>Model runner.</strong> Runner phia worker chuan bi input batch, goi forward pass, xu ly KV cache tensors, sampling va GPU graph. Tep chinh gom <code>vllm/v1/worker/gpu_model_runner.py</code>, <code>gpu_input_batch.py</code>, <code>gpu_worker.py</code>, <code>gpu/structured_outputs.py</code>, <code>gpu/spec_decode/*</code>.</p>
+<p><strong>Model executor.</strong> <code>vllm/model_executor</code> la nen tang nap model va layer. No gom attention layers, quantization methods, fused MoE, Mamba, rotary embeddings, loader GGUF/tensorizer/bitsandbytes/default/sharded va nhieu file model architecture trong <code>vllm/model_executor/models</code>.</p>
+<p><strong>Serving protocols.</strong> <code>vllm/entrypoints/openai</code> cai dat chat/completion/responses/models/engine routes tuong thich OpenAI. Cac entrypoint khac gom <code>anthropic</code>, <code>grpc_server.py</code>, <code>pooling</code>, <code>speech_to_text</code>, <code>mcp</code>.</p>
+<p><strong>Plugins.</strong> <code>docs/design/plugin_system.md</code> mo ta entry point groups nhu <code>vllm.general_plugins</code>, <code>vllm.platform_plugins</code>, <code>vllm.io_processor_plugins</code>, <code>vllm.stat_logger_plugins</code>. <code>pyproject.toml</code> dang ky san cac LoRA resolver plugins.</p>
+<h2 id="so-do-thanh-phan-he-thong">So do thanh phan he thong</h2>
+<div class="mermaid">flowchart LR
+    Client[API clients va SDK] --&gt; Entrypoints[vllm/entrypoints\nOpenAI, Anthropic, gRPC, CLI, pooling]
+    Entrypoints --&gt; Engine[vllm/v1/engine\nAsyncLLM, LLMEngine, EngineCore client]
+    Engine --&gt; Scheduler[vllm/v1/core/sched\nscheduler va request queue]
+    Scheduler --&gt; KV[vllm/v1/core\nBlockPool va KV cache managers]
+    Scheduler --&gt; Worker[vllm/v1/worker\nGPU/XPU/TPU workers va model runners]
+    Worker --&gt; Executor[vllm/model_executor\nmodels, layers, loaders, quantization]
+    Executor --&gt; Kernels[csrc + Triton/CUDA/HIP\nattention, cache, MoE, GEMM]
+    Engine --&gt; Metrics[vllm/v1/metrics\nPrometheus va loggers]
+    Config[vllm/config\nmodel, cache, scheduler, parallel, device] --&gt; Engine
+    Plugins[vllm/plugins + entry_points\nLoRA, platform, stat logger] --&gt; Entrypoints
+    Distributed[vllm/distributed\ncommunicators, Ray, KV transfer] --&gt; Worker</div>
+<h2 id="kien-truc-noi-bo">Kien truc noi bo</h2>
+<p>Kien truc co bon mat phang chinh.</p>
+<p><strong>Mat phang protocol.</strong> <code>vllm/entrypoints</code> chuyen protocol ngoai thanh loi goi engine noi bo. <code>vllm/entrypoints/openai/api_server.py</code>, <code>chat_completion/serving.py</code>, <code>completion/serving.py</code>, <code>responses/serving.py</code> dinh nghia OpenAI-compatible surface. Adapter Anthropic trong <code>vllm/entrypoints/anthropic/serving.py</code> chuyen format message Anthropic sang request noi bo tuong thich OpenAI. Pooling va speech-to-text co protocol va IO processor rieng.</p>
+<p><strong>Mat phang scheduling va memory.</strong> <code>vllm/v1/core</code> quan ly admission, scheduling, cap phat KV block, cache reuse va cache metrics. Scheduler phai can bang decode dang chay, prefill dang doi, token budget, KV budget va fairness. Block pool quan ly block trong va block cached; cache coordinators xu ly full-attention, sliding-window, MLA, hybrid, Mamba, encoder-only va cross-attention cache spec tu <code>vllm/v1/kv_cache_interface.py</code>.</p>
+<p><strong>Mat phang thuc thi.</strong> <code>vllm/v1/worker</code> quan ly init device, load model, init cache, execution, sampling, structured outputs, LoRA mixing va graph warmup. <code>vllm/model_executor</code> chua reusable layers va model definitions. Kernel trong <code>csrc</code> va kernel generated/Triton duoc chon theo hardware, dtype, attention type, quantization va architecture.</p>
+<p><strong>Mat phang van hanh.</strong> Metrics, logging, profiling, benchmarks, deployment docs, Docker va tests giup runtime co the van hanh. <code>docs/design/metrics.md</code> noi V1 expose Prometheus-compatible metrics voi prefix <code>vllm:</code> va uu tien dua overhead metrics ra ngoai engine core khi co the.</p>
+<h2 id="luong-runtime-dau-cuoi">Luong runtime dau cuoi</h2>
+<div class="mermaid">sequenceDiagram
+    participant C as Client
+    participant API as entrypoints/openai
+    participant E as AsyncLLM / LLMEngine
+    participant S as Scheduler
+    participant K as KV cache coordinator
+    participant W as GPU model runner
+    participant M as Model executor + kernels
+    participant O as Output processor
+
+    C-&gt;&gt;API: POST /v1/chat/completions hoac /v1/responses
+    API-&gt;&gt;API: validate protocol, tools, chat template, params
+    API-&gt;&gt;E: add request
+    E-&gt;&gt;S: enqueue internal request
+    loop moi engine step
+        S-&gt;&gt;K: reserve hoac reuse KV blocks
+        S-&gt;&gt;W: schedule prefill/decode batch
+        W-&gt;&gt;M: forward pass va attention kernels
+        M--&gt;&gt;W: logits va cache updates
+        W-&gt;&gt;W: sample tokens / kiem tra structured output
+        W--&gt;&gt;S: step outputs va finished flags
+        S--&gt;&gt;E: EngineCoreOutputs
+        E-&gt;&gt;O: detokenize, logprobs, metrics
+        O--&gt;&gt;API: stream delta hoac final output
+        API--&gt;&gt;C: SSE chunk hoac JSON response
+    end</div>
+<h2 id="runtime-va-data-flow">Runtime va data flow</h2>
+<ol>
+<li><strong>Ingress.</strong> Route FastAPI hoac CLI nhan request. OpenAI-compatible code trong <code>vllm/entrypoints/openai/*</code> validate model, messages, prompt, tools, streaming, sampling, logprobs va response format.</li>
+<li><strong>Xu ly input.</strong> Chat templates trong <code>examples/*.jinja</code>, tokenizer utilities trong <code>vllm/tokenizers</code> va <code>vllm/transformers_utils</code>, multimodal processors trong <code>vllm/multimodal</code>, structured-output parsers chuan hoa input.</li>
+<li><strong>Admission.</strong> Engine tao request noi bo va dua vao scheduler. Admission phu thuoc token budget, model length, LoRA status, cache capacity va parallel config.</li>
+<li><strong>Prefill.</strong> Prompt tokens duoc xu ly va KV cache blocks duoc ghi. Prompt dai co the bi chia chunk.</li>
+<li><strong>Decode.</strong> Scheduler lien tuc tao decode batch. Moi active sequence thuong dong gop mot query token moi step, con cache pages cung cap context.</li>
+<li><strong>Sampling.</strong> <code>vllm/v1/worker/gpu/sample/*</code> va sampling params thuc thi temperature, top-k/top-p/min-p, penalties, logprob, bad words, logit bias va output states.</li>
+<li><strong>Post-processing.</strong> Detokenization, tool-call parsing, reasoning parser, structured-output validation va logprob formatting dien ra ngoai duong kernel nong.</li>
+<li><strong>Streaming/final response.</strong> API layer tra SSE chunks hoac JSON cuoi. Metrics duoc cap nhat tu request va engine events.</li>
+</ol>
+<h2 id="topology-trien-khai-va-van-hanh">Topology trien khai va van hanh</h2>
+<div class="mermaid">flowchart TB
+    subgraph Users
+        SDK[OpenAI SDK / curl / app server]
+    end
+    subgraph Edge
+        LB[Load balancer hoac ingress]
+        Auth[API key / TLS / network policy]
+    end
+    subgraph VLLMNode[&quot;vLLM serving node hoac pod&quot;]
+        API[API server process\nvllm serve]
+        Core[Engine core process / actor]
+        Workers[Worker processes\nGPU model runners]
+        Cache[KV cache blocks trong GPU memory]
+        Metrics[/metrics endpoint]
+    end
+    subgraph Platform
+        GPU[NVIDIA/AMD/TPU/XPU/CPU]
+        ModelStore[HF Hub, local disk, object store]
+        Adapters[LoRA resolver cache]
+        Prom[Prometheus + Grafana]
+    end
+
+    SDK --&gt; LB --&gt; Auth --&gt; API
+    API --&gt; Core --&gt; Workers --&gt; GPU
+    Workers &lt;--&gt; Cache
+    API --&gt; ModelStore
+    API --&gt; Adapters
+    Prom --&gt; Metrics</div>
+<p>vLLM co the chay nhu Python CLI service, containerized API server, Ray-backed distributed deployment, SageMaker endpoint, hoac topo dac biet cho data/expert/tensor/pipeline/context parallelism. Cay docs co <code>docs/deployment</code>, <code>docs/serving</code>, <code>docs/configuration</code>. Docker assets nam trong <code>docker</code>, dependency sets nam trong <code>requirements</code>.</p>
+<p>Nhung knob production quan trong nam trong <code>vllm/config</code>: cache sizing va block size, scheduler behavior, model length, dtype, quantization, parallelism, device selection, compilation, LoRA, multimodal limits, observability, profiling va KV transfer/offload.</p>
+<h2 id="vong-doi-quyet-dinh-va-phu-thuoc-module">Vong doi, quyet dinh va phu thuoc module</h2>
+<div class="mermaid">stateDiagram-v2
+    [*] --&gt; LoadConfig
+    LoadConfig --&gt; ResolvePlatform: kiem tra device va platform
+    ResolvePlatform --&gt; LoadModel: chon model loader
+    LoadModel --&gt; InitKVCache: profile memory va allocate blocks
+    InitKVCache --&gt; Warmup: graph/compile/kernel warmup
+    Warmup --&gt; Accepting
+    Accepting --&gt; Scheduling: request admitted
+    Scheduling --&gt; Prefill: schedule prompt tokens
+    Prefill --&gt; Decode: token dau san sang
+    Decode --&gt; Decode: tiep tuc generation
+    Decode --&gt; Finished: EOS, max tokens, stop, cancel
+    Finished --&gt; Accepting: release blocks / emit metrics
+    Decode --&gt; Failed: OOM, kernel error, protocol cancel
+    Failed --&gt; Accepting: cleanup hoac restart policy</div>
+<div class="mermaid">flowchart LR
+    ModelConfig[vllm/config/model.py] --&gt; Loader[vllm/model_executor/model_loader]
+    LoadConfig[vllm/config/load.py] --&gt; Loader
+    CacheConfig[vllm/config/cache.py] --&gt; KVInterface[vllm/v1/kv_cache_interface.py]
+    SchedulerConfig[vllm/config/scheduler.py] --&gt; Scheduler[vllm/v1/core/sched]
+    ParallelConfig[vllm/config/parallel.py] --&gt; Distributed[vllm/distributed]
+    DeviceConfig[vllm/config/device.py] --&gt; Platform[vllm/platforms]
+    QuantConfig[vllm/config/quantization.py] --&gt; QuantLayers[vllm/model_executor/layers/quantization]
+    CompilationConfig[vllm/config/compilation.py] --&gt; Compile[vllm/compilation]
+    ObservabilityConfig[vllm/config/observability.py] --&gt; Metrics[vllm/v1/metrics]</div>
+<h2 id="diem-mo-rong">Diem mo rong</h2>
+<p>vLLM co nhieu extension point, nhung can ton trong process boundary va version compatibility.</p>
+<ul>
+<li><strong>Model plugins:</strong> <code>docs/design/plugin_system.md</code> mo ta <code>vllm.general_plugins</code> de dang ky model architecture ngoai repo qua <code>ModelRegistry.register_model</code>.</li>
+<li><strong>Platform plugins:</strong> <code>vllm.platform_plugins</code> dang ky platform class ngoai repo voi worker, attention backend, device communicator va ops rieng.</li>
+<li><strong>IO processor plugins:</strong> <code>vllm.io_processor_plugins</code> ho tro pre/post-processing tuy bien cho pooling.</li>
+<li><strong>Stat logger plugins:</strong> <code>vllm.stat_logger_plugins</code> them sink metric/log tuy bien.</li>
+<li><strong>LoRA resolver plugins:</strong> <code>pyproject.toml</code> dang ky <code>lora_filesystem_resolver</code> va <code>lora_hf_hub_resolver</code>; <code>docs/design/lora_resolver_plugins.md</code> mo ta dynamic LoRA qua <code>VLLM_ALLOW_RUNTIME_LORA_UPDATING</code>, <code>VLLM_PLUGINS</code>, <code>VLLM_LORA_RESOLVER_CACHE_DIR</code>.</li>
+<li><strong>Attention backend va kernels:</strong> <code>vllm/v1/attention</code>, <code>vllm/model_executor/layers/attention</code>, <code>csrc/attention</code>, <code>vllm/kernels</code> la noi them backend/hieu nang.</li>
+<li><strong>Quantization methods:</strong> <code>vllm/model_executor/layers/quantization</code> co AWQ, GPTQ, FP8, MXFP4/MXFP8, GGUF, compressed tensors, TorchAO, bitsandbytes va cac chien luoc lien quan.</li>
+<li><strong>Serving protocols:</strong> Route moi co the theo pattern trong <code>vllm/entrypoints/openai/*</code>, <code>anthropic/*</code>, <code>pooling/*</code>, <code>serve/*</code>.</li>
+</ul>
+<h2 id="tich-hop">Tich hop</h2>
+<p>Repo the hien tich hop tren ca model, hardware va serving ecosystem:</p>
+<ul>
+<li>Nap model/tokenizer Hugging Face qua <code>vllm/transformers_utils</code>, <code>vllm/model_executor/model_loader</code> va cac nhom architecture trong README.</li>
+<li>OpenAI-compatible APIs trong <code>vllm/entrypoints/openai</code>.</li>
+<li>Anthropic Messages API trong <code>vllm/entrypoints/anthropic</code>.</li>
+<li>gRPC trong <code>vllm/entrypoints/grpc_server.py</code>.</li>
+<li>MCP tool serving trong <code>vllm/entrypoints/mcp</code>.</li>
+<li>SageMaker adapter trong <code>vllm/entrypoints/sagemaker</code>.</li>
+<li>Ray va distributed communication trong <code>vllm/ray</code> va <code>vllm/distributed</code>.</li>
+<li>Prometheus/Grafana observability qua <code>vllm/v1/metrics</code> va <code>examples/observability</code>.</li>
+<li>LoRA adapter serving qua <code>vllm/lora</code>.</li>
+<li>Structured outputs qua <code>vllm/v1/structured_output</code>, <code>vllm/config/structured_outputs.py</code>, <code>vllm/reasoning</code>, <code>vllm/tool_parsers</code> va Rust parser.</li>
+</ul>
+<h2 id="cau-hinh-trien-khai-va-ops">Cau hinh, trien khai va ops</h2>
+<p>Cau hinh duoc tach theo domain thay vi nam trong mot tep duy nhat. <code>vllm/config</code> tach model, scheduler, cache, parallel, device, compilation, quantization, LoRA, multimodal, profiler, observability va transfer. CLI arguments duoc noi qua <code>vllm/engine/arg_utils.py</code>, <code>vllm/entrypoints/cli/*</code> va OpenAI CLI utilities.</p>
+<p>Can nhac trien khai:</p>
+<ul>
+<li><strong>Model co vua hay khong:</strong> chon dtype, quantization, tensor/pipeline/expert/data parallelism, max model length va KV cache budget truoc khi scale replica.</li>
+<li><strong>Latency so voi throughput:</strong> continuous batching tang throughput nhung co the tang tail latency neu scheduler va prefill budget khong hop ly.</li>
+<li><strong>Prompt dai:</strong> chunked prefill va prefix caching giam blocking va viec tinh lap.</li>
+<li><strong>Adapter serving:</strong> runtime LoRA updates rat manh nhung can governance ve nguon adapter, compatibility va cache directories.</li>
+<li><strong>Multi-process metrics:</strong> <code>docs/design/metrics.md</code> luu y vi tri thu thap metrics anh huong toi kha nang quan sat; multiprocess mode thay doi nhung process metrics thay duoc.</li>
+<li><strong>Hardware portability:</strong> platform plugins mo rong phan cung, nhung do truong thanh kernel khac nhau theo backend.</li>
+<li><strong>Distributed serving:</strong> tensor, pipeline, data, expert va context parallelism can lap ke hoach network, NCCL/RCCL/communicator va placement.</li>
+</ul>
+<h2 id="observability-testing-evaluation-va-failure-modes">Observability, testing, evaluation va failure modes</h2>
+<p>Diem neo observability:</p>
+<ul>
+<li><code>docs/design/metrics.md</code> liet ke V1 Prometheus metrics nhu <code>vllm:num_requests_running</code>, <code>vllm:kv_cache_usage_perc</code>, <code>vllm:prefix_cache_queries</code>, <code>vllm:prefix_cache_hits</code>, <code>vllm:prompt_tokens_total</code>, <code>vllm:generation_tokens_total</code>, <code>vllm:request_success_total</code>, <code>vllm:time_to_first_token_seconds</code>, <code>vllm:inter_token_latency_seconds</code>, <code>vllm:e2e_request_latency_seconds</code>.</li>
+<li><code>vllm/v1/metrics/prometheus.py</code>, <code>stats.py</code>, <code>loggers.py</code>, <code>reader.py</code> cai dat metrics.</li>
+<li><code>vllm/logging_utils</code>, <code>vllm/logger.py</code>, <code>vllm/profiler</code>, <code>vllm/benchmarks</code> ho tro diagnosis va capacity planning.</li>
+</ul>
+<p>Diem neo testing:</p>
+<ul>
+<li><code>tests/test_config.py</code>, <code>tests/test_inputs.py</code>, <code>tests/test_outputs.py</code>, <code>tests/test_logprobs.py</code>, <code>tests/test_sequence.py</code> bao phu hanh vi cot loi.</li>
+<li><code>tests/kernels/*</code> test native va Triton kernels.</li>
+<li><code>tests/weight_loading/*</code> bao phu model loading.</li>
+<li><code>tests/evals/mrcr/*</code> la evaluation harness cho long-context/multi-round correctness.</li>
+<li><code>pyproject.toml</code> dinh nghia pytest markers cho slow, distributed, optional, CPU, hybrid va model categories.</li>
+</ul>
+<p>Failure modes pho bien:</p>
+<ul>
+<li><strong>GPU OOM khi load model hoac allocate KV:</strong> model qua lon, context qua dai, parallelism sai, hoac cache budget qua cao.</li>
+<li><strong>Scheduler starvation hoac latency spike:</strong> prefill dai, concurrency qua cao, admission policy khong can bang.</li>
+<li><strong>Prefix-cache kem hieu qua:</strong> prompt qua doc nhat, block size khong phu hop, hoac cache spec khong ho tro.</li>
+<li><strong>Kernel incompatible:</strong> dtype, quantization, architecture hoac platform khong ho tro attention/GEMM path da chon.</li>
+<li><strong>Tokenizer/chat-template mismatch:</strong> chat output hoac tool call sai khi template khong khop cach model duoc train.</li>
+<li><strong>LoRA incompatible:</strong> adapter khong khop base model, thieu file, resolver path sai, runtime update chua bat.</li>
+<li><strong>Metrics de hieu sai:</strong> multiprocess deployment co the an default Python/process metrics.</li>
+<li><strong>Distributed instability:</strong> communicator setup, rank placement, GPU topology, hoac Ray/process lifecycle loi.</li>
+</ul>
+<h2 id="rui-ro-bao-mat-va-governance">Rui ro bao mat va governance</h2>
+<ul>
+<li><strong>Nguon goc model:</strong> phuc vu model Hub hoac custom weights can review license, safety va supply-chain.</li>
+<li><strong>Remote code va plugins:</strong> plugin entry points chay Python trong moi process. Xem plugin da cai nhu privileged code.</li>
+<li><strong>Runtime LoRA loading:</strong> resolver co the keo adapter dong. Can gioi han <code>VLLM_PLUGINS</code>, cache directories, Hub tokens va adapter allow-list.</li>
+<li><strong>API exposure:</strong> endpoint tuong thich OpenAI de bi hieu nham la managed OpenAI API. Can auth, rate limit, network boundary va logging.</li>
+<li><strong>Tool calling va MCP:</strong> be mat thuc thi tool can sandbox va audit; tool call do model sinh khong mac dinh dang tin.</li>
+<li><strong>Prompt va output logging:</strong> log/metrics co the chua prompt, completion, tham chieu image/audio hoac tenant ID nhay cam.</li>
+<li><strong>Structured output assumptions:</strong> constrained decoding giam loi format nhung khong dam bao tinh dung, policy compliance hay argument tool an toan.</li>
+<li><strong>Multitenancy:</strong> shared KV cache, LoRA adapters va metrics can tenant-aware isolation neu phuc vu nhieu khach hang.</li>
+</ul>
+<h2 id="huong-dan-doc-source">Huong dan doc source</h2>
+<ol>
+<li>Bat dau voi <code>README.md</code> de hieu loi hua va feature set.</li>
+<li>Doc <code>pyproject.toml</code> de hieu packaging, CLI entry point, dependency va plugin registration.</li>
+<li>Doc <code>vllm/entrypoints/openai/api_server.py</code> va cac folder <code>chat_completion</code>, <code>completion</code>, <code>responses</code> de hieu serving protocols.</li>
+<li>Doc <code>vllm/v1/engine/async_llm.py</code> va <code>vllm/v1/engine/core.py</code> de hieu boundary cua V1 engine.</li>
+<li>Doc <code>vllm/v1/core/sched/scheduler.py</code>, <code>block_pool.py</code>, <code>kv_cache_coordinator.py</code> cho scheduling va memory.</li>
+<li>Doc <code>vllm/v1/worker/gpu_model_runner.py</code> va <code>vllm/model_executor/model_loader/*</code> cho execution va loading.</li>
+<li>Doc <code>docs/design/metrics.md</code>, <code>plugin_system.md</code>, <code>lora_resolver_plugins.md</code>, <code>prefix_caching.md</code>, <code>paged_attention.md</code> de hieu rationale.</li>
+<li>Luot qua <code>tests/kernels</code>, <code>tests/weight_loading</code>, <code>tests/evals</code> de thay nhung gi maintainer xem la quan trong.</li>
+</ol>
+<h2 id="lo-trinh-hoc">Lo trinh hoc</h2>
+<ol>
+<li>Hinh dung offline inference qua <code>vllm/entrypoints/llm.py</code> va <code>vllm/engine/llm_engine.py</code>.</li>
+<li>Trace mot OpenAI streaming chat request qua <code>vllm/entrypoints/openai/chat_completion/serving.py</code>.</li>
+<li>Theo request vao <code>vllm/v1/engine/async_llm.py</code>, roi den <code>EngineCore</code>.</li>
+<li>Hoc cach <code>scheduler.py</code> chon work va <code>BlockPool</code> cap phat KV blocks.</li>
+<li>Xem <code>gpu_model_runner.py</code> de thay batch tro thanh device tensor va model call.</li>
+<li>So sanh cac implementation quantization trong <code>vllm/model_executor/layers/quantization</code>.</li>
+<li>Review metrics va benchmark truoc khi ra quyet dinh capacity production.</li>
+<li>Sau do moi them plugins, custom models, custom kernels hoac distributed topology.</li>
+</ol>
+<h2 id="checklist-production-v-v-ng-l-p-capacity">Checklist production và vòng lặp capacity</h2>
+<p>Câu hỏi production với vLLM không chỉ là &quot;model có load được không?&quot;. Cần kiểm tra scheduler, KV cache, model runner, kernels, API layer và metrics có chịu được tenant mix mong muốn hay không. Các neo source quan trọng gồm <code>vllm/entrypoints/openai/*</code>, <code>vllm/v1/engine/*</code>, <code>vllm/v1/core/sched/scheduler.py</code>, <code>vllm/v1/core/block_pool.py</code>, <code>vllm/v1/worker/gpu_model_runner.py</code>, <code>vllm/model_executor/model_loader/*</code>, <code>vllm/config/*</code>, <code>vllm/v1/metrics/prometheus.py</code> và <code>docs/design/*</code>.</p>
+<div class="table-scroll"><table>
+<thead><tr><th>Khu vực readiness</th><th>Cần xác minh</th></tr></thead>
+<tbody>
+<tr><td>Model fit</td><td>Weights, dtype, quantization, max model length, multimodal limit, LoRA và KV cache budget phải vừa phần cứng.</td></tr>
+<tr><td>Scheduler policy</td><td>Long prefill, chunked prefill, prefix caching, max batched tokens và admission control phải khớp SLO TTFT/inter-token latency.</td></tr>
+<tr><td>API contract</td><td>OpenAI/Responses/Anthropic routes, tool parsing, reasoning parsers, stream cancellation và error format phải khớp client.</td></tr>
+<tr><td>Kernel/platform</td><td>Attention, quantization, MoE và GEMM path được chọn phải được hỗ trợ trên backend và kiến trúc model.</td></tr>
+<tr><td>Observability</td><td>Prometheus metrics, request ID, logs, benchmark baseline và cache hit ratio cần có trước khi tăng traffic.</td></tr>
+<tr><td>Governance</td><td>Runtime LoRA, plugin entry point, Hub access, prompt logging và structured-output assumption phải có policy.</td></tr>
+</tbody></table></div>
+<div class="mermaid">flowchart LR
+  Plan[Ke hoach model va traffic] --&gt; Config[vllm/config choices]
+  Config --&gt; Load[model_loader va model_executor]
+  Load --&gt; Profile[Profile memory va cap phat KV blocks]
+  Profile --&gt; Schedule[v1/core scheduler]
+  Schedule --&gt; Runner[v1/worker gpu_model_runner]
+  Runner --&gt; Metrics[v1/metrics va benchmarks]
+  Metrics --&gt; Decision{Dat SLO?}
+  Decision --&gt;|Khong| Tune[Tune dtype, quant, max length, batching, cache, parallelism]
+  Tune --&gt; Config
+  Decision --&gt;|Co| Release[Canary va scale replicas]
+  Release --&gt; Metrics</div>
+<h2 id="b-n-c-l-p-l-i">Bản đồ cô lập lỗi</h2>
+<p>Phần lớn incident vLLM có thể khoanh vùng bằng cách hỏi plane nào lỗi: protocol, scheduling/cache, model execution, kernel/platform, distributed coordination hay observability. Điều này quan trọng vì một triệu chứng API như streaming chậm có thể đến từ prefill starvation, KV pressure, detokenization overhead hoặc backend kernel fallback.</p>
+<div class="mermaid">flowchart TD
+  Symptom[Trieu chung serving] --&gt; Plane{Failure plane}
+  Plane --&gt; Protocol[Protocol va request parsing]
+  Plane --&gt; Cache[Scheduler va KV cache]
+  Plane --&gt; Runner[Worker va model runner]
+  Plane --&gt; Kernel[Kernel, dtype, quantization]
+  Plane --&gt; Distributed[Parallelism hoac communicator]
+  Plane --&gt; LoRA[Runtime LoRA hoac plugin]
+  Plane --&gt; Metrics[Metrics hoac logging]
+  Protocol --&gt; Files1[entrypoints/openai, tool_parsers, reasoning]
+  Cache --&gt; Files2[v1/core/sched, block_pool, kv_cache_coordinator]
+  Runner --&gt; Files3[v1/worker/gpu_model_runner.py]
+  Kernel --&gt; Files4[csrc, model_executor/layers, platforms]
+  Distributed --&gt; Files5[distributed, ray, config/parallel.py]
+  LoRA --&gt; Files6[lora va plugins/lora_resolvers]
+  Metrics --&gt; Files7[v1/metrics va docs/design/metrics.md]
+  Files1 --&gt; Action[Patch, tune, rollback hoac isolate tenant]
+  Files2 --&gt; Action
+  Files3 --&gt; Action
+  Files4 --&gt; Action
+  Files5 --&gt; Action
+  Files6 --&gt; Action
+  Files7 --&gt; Action</div>
+<h2 id="bang-chu-giai">Bang chu giai</h2>
+<div class="table-scroll"><table>
+<thead><tr><th>Thuat ngu</th><th>Nghia</th></tr></thead>
+<tbody>
+<tr><td>PagedAttention</td><td>Cach attention/KV-cache cua vLLM, luu key/value memory theo block thay vi cap phat lien tuc cho moi request.</td></tr>
+<tr><td>KV cache</td><td>Tensor key/value da cache tu token truoc, dung trong autoregressive decoding.</td></tr>
+<tr><td>Prefill</td><td>Xu ly prompt tokens de dien KV cache truoc khi generation bat dau.</td></tr>
+<tr><td>Decode</td><td>Sinh output token tung buoc dua tren KV cache da co.</td></tr>
+<tr><td>Continuous batching</td><td>Reschedule request moi step de request xong roi khoi batch va request moi vao ngay.</td></tr>
+<tr><td>Chunked prefill</td><td>Chia prompt dai thanh nhieu scheduling steps.</td></tr>
+<tr><td>Prefix caching</td><td>Tai su dung KV blocks cho prefix prompt giong nhau.</td></tr>
+<tr><td>Engine core</td><td>Vong lap noi bo nhay cam hieu nang, lap lich va thuc thi model steps.</td></tr>
+<tr><td>Model runner</td><td>Thanh phan phia worker tao device batch, goi model, cap nhat KV cache va sample token.</td></tr>
+<tr><td>LoRA resolver</td><td>Plugin tim va nap adapter dong tu filesystem, Hub hoac storage tuy bien.</td></tr>
+<tr><td>Tensor parallelism</td><td>Chia tinh toan tensor qua nhieu device.</td></tr>
+<tr><td>Pipeline parallelism</td><td>Chia layer cua model qua nhieu device.</td></tr>
+<tr><td>Expert parallelism</td><td>Chia MoE experts qua nhieu device.</td></tr>
+<tr><td>Structured outputs</td><td>Constrained generation dung parser/grammar/schema de ep dinh dang output.</td></tr>
+<tr><td>TTFT</td><td>Time to first token, metric latency quan trong cua serving.</td></tr>
+<tr><td>TPOT</td><td>Time per output token, con goi la inter-token latency.</td></tr>
+</tbody></table></div>
+    </article>
+  </main>
+  <footer>
+    <div class="footer-inner">
+      AI Solution Architecture Knowledge System. Published from <a href="https://github.com/anhtnt90dev/ai-solution-architecture">anhtnt90dev/ai-solution-architecture</a>.
+    </div>
+  </footer>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "base" });
+  </script>
+</body>
+</html>
